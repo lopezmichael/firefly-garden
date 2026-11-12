@@ -89,6 +89,11 @@ plus mark), the jar with its slots, one button, one sheet, and one full tall-pho
       canvas format isn't built for audio.
 - [ ] Fonts: OFL or similar only, self-hosted later. Two candidates per direction, chosen once
       the references are agreed, so they come from the look and not the other way round.
+- [x] Round 2 (2026-11-12), from Michael's feedback: finalists ink and wash and night print; the
+      diorama is parked but lends its paper lantern jar and its fibre-card empty tiles. Both
+      finalists get 2.5D fireflies, light that flows out along row and column as beams with
+      sparkles instead of filling whole tiles (lit tiles still change visibly), roses on a happy
+      bush and a wilt for too many. Boards R2Ink and R2Print on the canvas.
 - [ ] **Checkpoint B:** Michael picks a direction or a blend.
 
 ### 4. Full screen set, chosen direction (canvas row 3)
