@@ -30,7 +30,15 @@ describe('validateEvent', () => {
     ['an extra field', { ...good[1], email: 'x' }, /unknown field "email"/],
     ['a timestamp far in the future', { ...good[1], at: 9e15 }, /at must be/],
     ['a missing outcome', { ...good[3], outcome: undefined }, /outcome must be/],
+    ['a type that names a built-in', { ...base, type: 'constructor' }, /unknown event type/],
+    ['a __proto__ type', { ...base, type: '__proto__' }, /unknown event type/],
   ])('rejects %s', (_name, e, pattern) => {
     expect(validateEvent(e).join('\n')).toMatch(pattern);
+  });
+
+  it('rejects unknown level ids when given the shipped list', () => {
+    const levels = new Set(['c02-l04']);
+    expect(validateEvent(good[2], { levels })).toEqual([]);
+    expect(validateEvent({ ...good[2], level: 'made-up' }, { levels }).join()).toMatch(/known level id/);
   });
 });

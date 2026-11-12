@@ -74,19 +74,27 @@ const BASE_FIELDS = ['v', 'install', 'at', 'session', 'type'];
 const isText = (v: unknown, max = 64) => typeof v === 'string' && v.length > 0 && v.length <= max;
 
 /**
+ * Pass `levels` (every shipped level id) to also reject unknown level ids.
+ *
  * Validate an event before it is stored or sent (events are built from game
  * state that came from saved progress, which is untrusted). Unknown fields are
  * rejected, so a valid event carries exactly the schema's fields. Returns the
  * problems found; empty means valid.
  */
-export function validateEvent(e: unknown): string[] {
+export function validateEvent(e: unknown, options: { readonly levels?: ReadonlySet<string> } = {}): string[] {
   if (typeof e !== 'object' || e === null || Array.isArray(e)) return ['event is not an object'];
   const r = e as Record<string, unknown>;
   const p: string[] = [];
   if (r.v !== EVENT_SCHEMA_VERSION) p.push(`v must be ${EVENT_SCHEMA_VERSION}`);
   if (!isInstallId(r.install)) p.push('install must be a random hex id');
   if (!isTimestamp(r.at)) p.push('at must be a millisecond timestamp');
-  const allowed = new Set([...BASE_FIELDS, ...(FIELDS[String(r.type)] ?? [])]);
+  const type = String(r.type);
+  // Own keys only: a type like "constructor" or "__proto__" must not reach Object.prototype.
+  const typeFields = Object.hasOwn(FIELDS, type) ? FIELDS[type]! : [];
+  const allowed = new Set([...BASE_FIELDS, ...typeFields]);
+  if (options.levels && 'level' in r && !(typeof r.level === 'string' && options.levels.has(r.level))) {
+    p.push('level must be a known level id');
+  }
   for (const k of Object.keys(r)) if (!allowed.has(k)) p.push(`unknown field "${k}"`);
   if (!isCount(r.session)) p.push('session must be a count');
   const need = (key: string, ok: (v: unknown) => boolean, what: string) => {
