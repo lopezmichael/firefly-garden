@@ -43,6 +43,10 @@ export const HINT_REASONS: Readonly<Record<TechniqueId, string>> = {
   'T3-overlap': 'These two bushes share neighbors, and together their numbers need this spot.',
   'T4-lookahead': 'Leaving this spot empty runs into trouble one move later.',
   'T5-trial': 'Leaving this spot empty leads to a dead end a few moves later.',
+  // Count techniques only rule cells out and only run with a known count (an experiment);
+  // they never produce a place hint today.
+  'T1-count-complete': 'Every firefly is already placed.',
+  'T3-count-bound': 'The dark tiles and bushes that still need fireflies use up every one left.',
 };
 
 export const REMOVE_REASONS = {

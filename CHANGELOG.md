@@ -10,6 +10,10 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
   place of a stock sparkle, a crescent moon placed per layout band, and plainer copy.
 
 ### Added
+- Firefly jar experiment: `grade(board, { knownCount })` grades as if the total firefly count
+  were shown (count complete, T1; count bound, T3; count contradictions inside T4/T5). Default
+  grading is unchanged. `scripts/experiment-count.ts` writes
+  `reports/archive/count-experiment-2026-11-12.json`; soundness tested on every shipped level.
 - Phase 2 milestone 2: saved progress (`state/save.ts`: versioned, validated field by field per
   rules.md, fuzz-tested with 3,000 hostile saves; the board resumes exactly after a reload), the
   local analytics log (`state/events.ts`, schema-validated ring buffer), the hint sheet (coins or a

@@ -17,10 +17,22 @@ import type { Board } from './board.ts';
  * them when tried first, so overlap became its own, easier tier.)
  *   T5 deep trial         an assumption followed several deductions ahead to a contradiction
  * A level the grader cannot finish even with T5 is graded tier 6 ("beyond").
+ *
+ * Count techniques (only with `GradeOptions.knownCount`, the "firefly jar"
+ * experiment; default grading never uses them):
+ *   T1 count complete     the jar is empty: every undecided tile is empty. Pure bookkeeping,
+ *                         the same move as a satisfied bush, so tier 1, tried right after T1.
+ *   T3 count bound        bushes and dark tiles that cannot share a firefly already need every
+ *                         firefly left in the jar, so every other undecided tile is empty.
+ *                         Like overlap it adds up several clues' needs with no assumption, but
+ *                         over the whole board, so it is tier 3 and tried after overlap.
+ * With a known count, lookahead (T4) and trial (T5) also treat "more fireflies than
+ * the jar holds" and "the needs left exceed the jar" as contradictions.
  */
 
 export type TechniqueId =
-  | 'T1-satisfied' | 'T1-needs-all' | 'T2-one-source' | 'T2-bush-room' | 'T3-overlap' | 'T4-lookahead' | 'T5-trial';
+  | 'T1-satisfied' | 'T1-needs-all' | 'T2-one-source' | 'T2-bush-room' | 'T3-overlap' | 'T4-lookahead' | 'T5-trial'
+  | 'T1-count-complete' | 'T3-count-bound';
 
 export const TECHNIQUE_TIER: Readonly<Record<TechniqueId, number>> = {
   'T1-satisfied': 1,
@@ -30,6 +42,8 @@ export const TECHNIQUE_TIER: Readonly<Record<TechniqueId, number>> = {
   'T3-overlap': 3,
   'T4-lookahead': 4,
   'T5-trial': 5,
+  'T1-count-complete': 1,
+  'T3-count-bound': 3,
 };
 
 export interface Step {
@@ -92,6 +106,16 @@ export interface GradeOptions {
    * meaningful, and `solved`/`maxTier` describe an unfinished grade.
    */
   readonly stopAtFirefly?: boolean;
+  /**
+   * Experiment ("firefly jar"): the player is told the total number of
+   * fireflies in the answer, lanterns included. Enables the count techniques
+   * (see the header). Absent: grading is exactly the default. Throws
+   * RangeError unless it is an integer from the fireflies already placed
+   * (lanterns plus `start`) to the path count. A grade with a count is solved
+   * only if it ends with exactly that many fireflies, so a wrong count can
+   * never pass as a valid, too-easy grade.
+   */
+  readonly knownCount?: number;
 }
 
 export function grade(board: Board, options: GradeOptions = {}): Grade {
@@ -103,13 +127,23 @@ export function grade(board: Board, options: GradeOptions = {}): Grade {
     if (!place(board, s, c)) throw new RangeError(`start cell ${c} sees another firefly`);
   }
 
+  let finders = FINDERS;
+  if (options.knownCount !== undefined) {
+    const k = options.knownCount;
+    const placedAlready = board.paths.reduce((n, p) => n + (s.st[p] === FLY ? 1 : 0), 0);
+    if (!Number.isInteger(k) || k < placedAlready || k > board.paths.length) {
+      throw new RangeError(`knownCount ${k} is impossible on this board`);
+    }
+    finders = countFinders(k);
+  }
+
   const steps: Step[] = [];
   const maxSteps = options.maxSteps ?? 4 * n;
   let stuck = false;
 
   while (!isSolved(board, s) && steps.length < maxSteps) {
     let found: Deduction[] = [];
-    for (const finder of FINDERS) {
+    for (const finder of finders) {
       found = finder(board, s);
       if (found.length > 0) break;
     }
@@ -131,11 +165,14 @@ export function grade(board: Board, options: GradeOptions = {}): Grade {
     if (options.stopAtFirefly && d.value === 'firefly') break;
   }
 
-  const solved = !stuck && isSolved(board, s);
+  const fireflies = board.paths.filter((p) => s.st[p] === FLY);
+  // With a count, a finish that disagrees with it means the count was wrong and the
+  // count steps may have been unsound: report it unsolved rather than as an easy grade.
+  const countHolds = options.knownCount === undefined || fireflies.length === options.knownCount;
+  const solved = !stuck && isSolved(board, s) && countHolds;
   const tierCounts = [0, 0, 0, 0, 0, 0];
   for (const st of steps) tierCounts[st.tier]!++;
   const maxTier = solved ? steps.reduce((m, st) => Math.max(m, st.tier), 0) : 6;
-  const fireflies = board.paths.filter((p) => s.st[p] === FLY);
   return { solved, steps, maxTier, tierCounts, fireflies };
 }
 
@@ -271,18 +308,21 @@ const t2room: Finder = (board, s) => {
 };
 
 /** Try each assumption for one undecided cell; report the cells where one side fails. */
-function lookahead(board: Board, s: State, technique: TechniqueId, settle: (s: State) => boolean): Deduction[] {
+function lookahead(
+  board: Board, s: State, technique: TechniqueId, settle: (s: State) => boolean,
+  contra: (board: Board, s: State) => boolean = contradiction,
+): Deduction[] {
   const out: Deduction[] = [];
   for (const x of board.paths) {
     if (s.st[x] !== UNK) continue;
     const asFly = clone(s);
-    if (!place(board, asFly, x) || !settle(asFly) || contradiction(board, asFly)) {
+    if (!place(board, asFly, x) || !settle(asFly) || contra(board, asFly)) {
       out.push({ technique, cell: x, value: 'empty', because: [x] });
       continue;
     }
     const asEmpty = clone(s);
     asEmpty.st[x] = NO;
-    if (!settle(asEmpty) || contradiction(board, asEmpty)) out.push({ technique, cell: x, value: 'firefly', because: [x] });
+    if (!settle(asEmpty) || contra(board, asEmpty)) out.push({ technique, cell: x, value: 'firefly', because: [x] });
   }
   return out;
 }
@@ -333,14 +373,16 @@ const overlap: Finder = (board, s) => {
 };
 
 /** Apply T1, T2 and T3 (overlap) to a fixpoint. False if a placement fails along the way. */
-function settleWithBasics(board: Board, s: State, budget = 60): boolean {
+function settleWithBasics(
+  board: Board, s: State, budget = 60, contra: (board: Board, s: State) => boolean = contradiction,
+): boolean {
   for (let round = 0; round < budget; round++) {
     let ds = t1(board, s);
     if (ds.length === 0) ds = t2(board, s);
     if (ds.length === 0) ds = t2room(board, s);
     if (ds.length === 0) ds = overlap(board, s);
     if (ds.length === 0) return true;
-    if (!applyAll(board, s, ds) || contradiction(board, s)) return false;
+    if (!applyAll(board, s, ds) || contra(board, s)) return false;
   }
   return true;
 }
@@ -363,3 +405,89 @@ const t5: Finder = (board, s) => lookahead(board, s, 'T5-trial', (x) => settleWi
 
 // Simplest first. `overlap` is tier 3 and `lookahead` tier 4 (see header).
 const FINDERS: readonly Finder[] = [t1, t2, t2room, overlap, lookahead1, t5];
+
+// ---------------------------------------------------------------------------
+// Count techniques (GradeOptions.knownCount only)
+
+function fireflyCount(board: Board, s: State): number {
+  let k = 0;
+  for (const p of board.paths) if (s.st[p] === FLY) k++;
+  return k;
+}
+
+interface Need {
+  /** Undecided cells, at least `min` of which must hold fireflies. */
+  readonly cells: readonly number[];
+  readonly min: number;
+  /** The bush or dark tile behind the need. */
+  readonly source: number;
+}
+
+/**
+ * A lower bound on the fireflies still to come: a greedy set of needs whose
+ * candidate cells are pairwise disjoint, so no firefly can serve two of them
+ * (one firefly can light a dark tile and count for a bush at once, which is
+ * why overlapping needs are never both counted). An unsatisfied bush needs its
+ * deficit among its open neighbors; an unlit dark tile needs one firefly among
+ * the cells that can still light it. Densest needs first, then fewest cells,
+ * then board order, so the result is deterministic.
+ */
+function disjointNeeds(board: Board, s: State): { needs: Need[]; bound: number; covered: Set<number> } {
+  const all: Need[] = [];
+  for (const b of board.numbered) {
+    const { have, open } = bushCounts(board, s, b);
+    const min = board.clue[b]! - have;
+    if (min > 0) all.push({ cells: open, min, source: b });
+  }
+  for (const p of board.needsLight) if (!s.lit[p]) all.push({ cells: candidates(board, s, p), min: 1, source: p });
+  all.sort((a, b) => b.min * a.cells.length - a.min * b.cells.length || a.cells.length - b.cells.length || a.source - b.source);
+  const needs: Need[] = [];
+  const covered = new Set<number>();
+  let bound = 0;
+  for (const need of all) {
+    if (need.cells.some((c) => covered.has(c))) continue;
+    needs.push(need);
+    bound += need.min;
+    for (const c of need.cells) covered.add(c);
+  }
+  return { needs, bound, covered };
+}
+
+function countFinders(total: number): readonly Finder[] {
+  /** The jar is empty: nothing undecided can hold a firefly. */
+  const complete: Finder = (board, s) => {
+    if (fireflyCount(board, s) !== total) return [];
+    const out: Deduction[] = [];
+    for (const p of board.paths) if (s.st[p] === UNK) out.push({ technique: 'T1-count-complete', cell: p, value: 'empty', because: [] });
+    return out;
+  };
+
+  /** Disjoint needs already use up the jar: every undecided cell outside them is empty. */
+  const bound: Finder = (board, s) => {
+    const remaining = total - fireflyCount(board, s);
+    if (remaining <= 0) return [];
+    const { needs, bound: lo, covered } = disjointNeeds(board, s);
+    if (lo !== remaining) return [];
+    const because = needs.map((n) => n.source);
+    const out: Deduction[] = [];
+    for (const p of board.paths) {
+      if (s.st[p] === UNK && !covered.has(p)) out.push({ technique: 'T3-count-bound', cell: p, value: 'empty', because });
+    }
+    return out;
+  };
+
+  /** The usual contradictions, plus: over the jar, or needs (or room) that the jar cannot meet. */
+  const contra = (board: Board, s: State): boolean => {
+    if (contradiction(board, s)) return true;
+    const placed = fireflyCount(board, s);
+    if (placed > total) return true;
+    let open = 0;
+    for (const p of board.paths) if (s.st[p] === UNK) open++;
+    if (placed + open < total) return true;
+    return disjointNeeds(board, s).bound > total - placed;
+  };
+
+  const look: Finder = (board, s) => lookahead(board, s, 'T4-lookahead', (x) => settleOneRound(board, x), contra);
+  const trial: Finder = (board, s) => lookahead(board, s, 'T5-trial', (x) => settleWithBasics(board, x, 60, contra), contra);
+  return [t1, complete, t2, t2room, overlap, bound, look, trial];
+}
