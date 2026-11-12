@@ -8,8 +8,10 @@ const MAX_TEXT = 128;
 
 const TWIST_KEYS = ['mushrooms', 'moonlit', 'lanterns'] as const;
 const LEVEL_KEYS = new Set([
-  'id', 'area', 'w', 'h', 'tier', 'score', 'mask', 'bushes', 'twists', 'solution', 'techniques',
+  'id', 'area', 'w', 'h', 'tier', 'score', 'mask', 'bushes', 'twists', 'solution', 'techniques', 'seconds',
 ]);
+/** Estimated solve times are whole seconds, at most an hour (shipped levels cap at five minutes). */
+export const MAX_LEVEL_SECONDS = 3600;
 
 export class LevelError extends Error {
   readonly problems: readonly string[];
@@ -61,6 +63,9 @@ export function parseLevel(json: unknown): Level {
   }
   for (const key of ['tier', 'score'] as const) {
     if (json[key] !== undefined && !isFiniteNumber(json[key])) problems.push(`${key} must be a number`);
+  }
+  if (json.seconds !== undefined && !(isInt(json.seconds) && json.seconds > 0 && json.seconds <= MAX_LEVEL_SECONDS)) {
+    problems.push(`seconds must be an integer 1..${MAX_LEVEL_SECONDS}`);
   }
   if (json.solution !== undefined && !isCoordArray(json.solution)) problems.push('solution must be an array of [row, col]');
   if (json.techniques !== undefined && !isStringArray(json.techniques)) problems.push('techniques must be an array of strings');

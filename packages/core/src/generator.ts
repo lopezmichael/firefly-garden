@@ -1,4 +1,5 @@
 import { buildBoard, type Board } from './board.ts';
+import { MAX_LEVEL_SECONDS } from './level.ts';
 import { measure, type Difficulty } from './difficulty.ts';
 import { grade, type Grade } from './grader.ts';
 import { createRng, deriveSeed, type Rng } from './rng.ts';
@@ -192,7 +193,9 @@ function attempt(spec: GenSpec, rng: Rng): Omit<Generated, 'attempts'> | null {
   if (spec.maxHardestSteps !== undefined && (g.tierCounts[difficulty.tier] ?? 0) > spec.maxHardestSteps) return null;
 
   const techniques = [...new Set(g.steps.map((s) => s.technique))].sort();
-  const graded: Level = { ...level, tier: difficulty.tier, score: difficulty.score, techniques };
+  // Clamped into the range parseLevel accepts, so a written pack always parses.
+  const seconds = Math.min(MAX_LEVEL_SECONDS, Math.max(1, difficulty.estimatedSeconds));
+  const graded: Level = { ...level, tier: difficulty.tier, score: difficulty.score, techniques, seconds };
   return { level: graded, board, grade: g, difficulty, repairs };
 }
 

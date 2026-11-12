@@ -38,10 +38,11 @@ line is swappable.
 | `types.ts` | The on-disk `Level` format (see `docs/references/rules.md`) |
 | `level.ts` | `parseLevel` (untrusted JSON → `Level`, all problems reported at once) and `validateLevel` |
 | `board.ts` | `buildBoard`: compiles a `Level` into a `Board` with precomputed rays (what each tile sees) and bush neighborhoods |
-| `rules.ts` | `evaluate`: lit tiles, conflicts, bush states, solved. `canPlace` |
+| `rules.ts` | `evaluate`: lit tiles, conflicts, bush states, solved. `canPlace` (refuses lanterns and locked hint cells) |
 | `solver.ts` | `solve` / `isUnique`: exact search with propagation, stops at a solution limit |
 | `transform.ts` | The 8 rotations/mirrors, so one stored orientation serves portrait and landscape; `canonicalKey` spots disguised duplicates |
-| `grader.ts` | Human-style technique solver: one deduction at a time, simplest first, records the trace (tier, width, reason) |
+| `grader.ts` | Human-style technique solver: one deduction at a time, simplest first, records the trace (tier, width, reason); can start from a position |
+| `hints.ts` | `hint`: removes a wrong firefly or places the grader's next one from the player's position, with a one-line reason; `hintStep` maps a hint to the full trace for analytics |
 | `difficulty.ts` | Features, score, tier and estimated solve time from a trace; all weights in `DIFFICULTY_CONFIG` |
 | `rng.ts` | Seeded PRNG so every generated level can be regenerated from its spec |
 | `shapes.ts` | Garden masks: rectangle, ring, L, bridge, crescent |
@@ -73,12 +74,34 @@ a naive enumerator on 300 random boards with every twist
 
 ## apps/game
 
-Phase 0 is a placeholder page that loads core and the platform adapter. The
-board renderer (PixiJS), menus (plain DOM) and audio arrive in Phase 2.
+Plain DOM for the screens, PixiJS for the board, one controller between them.
+The look follows the Phase 2 design baseline (`docs/design/phase-2/`).
 
-- `src/platform/platform.ts`: the `Platform` interface. The only door to SDKs.
+| Folder | Holds | May import |
+| --- | --- | --- |
+| `src/state/` | Level catalog (`catalog.ts`), one play with undo, reset, hints and active time (`play.ts`), coins and hint bank (`wallet.ts`), progress and the next-level policy (`session.ts`), status-card wording (`status.ts`), saved progress and its validation (`save.ts`), the local analytics log (`events.ts`) | `@firefly/core` only, no browser globals (ratchet) |
+| `src/view/` | Pure layout math: bands, board fit, orientation (`layout.ts`); the PixiJS board (`board.ts`); CSS tokens read into a Pixi palette (`theme.ts`) | `state/`, `pixi.js` |
+| `src/ui/` | The play screen's DOM (`screen.ts`, `game.css`), the hint and settings sheets (`sheets.ts`) and the controller (`app.ts`) | `state/`, `view/`, `platform/` |
+| `src/platform/` | The `Platform` interface and adapters; the only door to SDKs (ratchet) | |
+
+- **Layout follows the screen's shape** (`bandFor`): tall (phones in portrait), square
+  (iPhone Duo, tablets), wide (landscape, desktop). The board picks its rotation when a level
+  starts and keeps it through a resize or fold unless cells would drop under 44 px.
+- **The board draws, the state decides.** `BoardView.render` takes a `BoardState` (evaluation,
+  locked cells, hint outlines) and reports taps as canonical cell indices, so rotation never
+  reaches game state, saves or events.
+- **Saved progress is untrusted.** One versioned document (`state/save.ts`) under one key, read
+  through `parseSave`, which validates field by field and never throws; the game writes the
+  validated copy straight back. Cells are stored as canonical `[row, col]`.
+- **Colors live only in `src/theme.css`.** The board reads them through `readPalette`; a
+  ratchet rejects color literals anywhere else in `apps/game/src`.
 - `src/platform/local.ts`: development adapter (no ads, localStorage saves).
-- `src/theme.css`: design tokens. Placeholder → painted art is a theme change.
+- **Hosting:** Vercel (team Lopez Studio, project `firefly-garden`) builds from the repo root
+  (`vercel.json`: `npm ci`, `npm run build`, output `apps/game/dist`). Production deploys from
+  `main` (each `develop` → `main` release); `develop` is the testing build at its branch link;
+  every pull request gets its own preview. Headers: a
+  strict content security policy (no eval, no outside origins; Pixi runs through
+  `pixi.js/unsafe-eval`, its eval-free path), no indexing, long cache for hashed assets.
 
 ## Data flow (target)
 
@@ -86,5 +109,5 @@ board renderer (PixiJS), menus (plain DOM) and audio arrive in Phase 2.
    grades and orders each chapter into `levels/launch.json`, fills `levels/reserve.json`, and
    writes the report tables to `reports/`.
 2. CI re-validates every pack with the exact solver.
-3. The game bundles the packs, rotates each level to fit the screen, and uses `evaluate` for play and `solve` for hints.
+3. The game bundles the packs, rotates each level to fit the screen, and uses `evaluate` for play and `hint` (the grader from the current position) for hints.
 4. Progress goes through `Platform.save/load` and is validated on the way back in.

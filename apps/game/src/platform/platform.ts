@@ -4,6 +4,10 @@
  * this interface and nothing else. See ARCHITECTURE.md.
  */
 export interface Platform {
+  /** Short name for analytics (`session_start.platform`). */
+  readonly name: string;
+  /** Whether this build offers rewarded ads at all (the friends playtest does not). */
+  readonly rewardedAds: boolean;
   init(): Promise<void>;
   /** Player is actively solving: portals use this for ad pacing and analytics. */
   gameplayStart(): void;

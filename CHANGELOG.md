@@ -4,7 +4,34 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Changed
+- Look pass 1 (`docs/design/phase-2/README.md`): teal and plum night, glow only on the board, an
+  outlined Hint button, sentence-case labels, visible gold on satisfied bushes, the firefly mark in
+  place of a stock sparkle, a crescent moon placed per layout band, and plainer copy.
+
 ### Added
+- Phase 2 milestone 2: saved progress (`state/save.ts`: versioned, validated field by field per
+  rules.md, fuzz-tested with 3,000 hostile saves; the board resumes exactly after a reload), the
+  local analytics log (`state/events.ts`, schema-validated ring buffer), the hint sheet (coins or a
+  saved hint; rewarded ads hidden in the friends build) and a settings sheet with reduce motion and
+  the play log (copy as JSON).
+- Phase 2 milestone 1, the playable board: chapters 1 to 3 of the launch pack in PixiJS, in the
+  approved design's look; tap to place, undo, reset, hints that lift a wrong firefly or place a
+  locked one (with reason outlines and ruled-out marks), coins from `PLAYER_CONFIG`, auto-advance
+  through the next-level policy; tall, square (iPhone Duo) and wide layouts; reduced motion.
+  Game state is DOM-free and unit-tested (`apps/game/test`). Ratchets: game state imports only
+  core; no color literals outside `theme.css`. Fonts self-hosted; bundle 1.05 MB.
+- Vercel hosting config (`vercel.json`) with a strict content security policy, tested by
+  replaying the game under those headers; Pixi switched to its eval-free path.
+- Phase 2 design baseline (`docs/design/phase-2/`).
+- Phase 2 core: `hint` (`packages/core/src/hints.ts`) removes a wrong firefly or places the
+  grader's next one from the player's position, with a one-line reason, the `because` cells
+  and the `ruledOut` cells the game marks so the reason reads true; `hintStep` ties a hint to
+  the level's full trace for analytics. `grade` options `start` (grade from a position) and
+  `stopAtFirefly`. `canPlace` refuses locked hint cells. `PolicyInput.playedReserve` /
+  `quitMain` and `POLICY_CONFIG.minHistory` so saved history can be capped. Level files carry
+  `seconds` (estimated solve time), validated by `parseLevel` and re-checked in CI; packs
+  regenerated with no other change.
 - Phase 1: technique grader (`grade`) with T1 bookkeeping, T2 one source and bush room,
   T3 one-step lookahead, T4 overlapping bushes, T5 deep trial; difficulty model (`measure`)
   with score, tier and estimated solve time; seeded generator (`generate`) with garden shapes,

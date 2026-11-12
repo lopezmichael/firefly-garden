@@ -1,0 +1,181 @@
+/* Play screen layout. The band (tall / square / wide) is set by JS from
+   view/layout.ts so the thresholds live in one place. Colors and fonts come
+   only from theme.css tokens. */
+
+.ff-app {
+  position: fixed;
+  inset: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--ff-night-0) 0%, var(--ff-night-1) 45%, var(--ff-night-2) 100%);
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(20px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  display: grid;
+  gap: 14px;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+/* Tall (phones in portrait) and square (iPhone Duo, tablets): one column. */
+.ff-app[data-band='tall'], .ff-app[data-band='square'] {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  grid-template-areas: 'top' 'title' 'board' 'status' 'controls';
+}
+.ff-app[data-band='tall'] .ff-side, .ff-app[data-band='square'] .ff-side { display: contents; }
+.ff-app[data-band='square'] .ff-status,
+.ff-app[data-band='square'] .ff-controls { width: 100%; max-width: 560px; justify-self: center; box-sizing: border-box; }
+.ff-app[data-band='tall'] { padding-left: max(8px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); }
+.ff-app[data-band='tall'] .ff-top, .ff-app[data-band='tall'] .ff-title,
+.ff-app[data-band='tall'] .ff-status, .ff-app[data-band='tall'] .ff-controls { margin-inline: 8px; }
+
+/* Wide (phones in landscape, desktop): info panel, board, control column. */
+.ff-app[data-band='wide'] {
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) 84px;
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: 'side board controls';
+  gap: 20px;
+}
+.ff-app[data-band='wide'] .ff-side { grid-area: side; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.ff-app[data-band='wide'] .ff-status { margin-top: auto; }
+.ff-app[data-band='wide'] .ff-controls { flex-direction: column; justify-content: center; }
+.ff-app[data-band='wide'] .ff-controls button { flex: 0 0 64px; flex-direction: column; gap: 4px; font-size: 13px; }
+.ff-app[data-band='wide'] .ff-controls .ff-hint { flex-basis: 84px; }
+
+.ff-sky { position: absolute; inset: 0; pointer-events: none; }
+.ff-star {
+  position: absolute; border-radius: 999px; background: var(--ff-star); opacity: 0.7;
+  animation: ff-star var(--dur) ease-in-out var(--delay) infinite;
+}
+.ff-moon {
+  /* A crescent: the lit edge is an inset shadow on a transparent disc. */
+  position: absolute; right: 28px; top: 70px; width: 40px; height: 40px; border-radius: 999px;
+  background: transparent;
+  box-shadow: inset -11px 5px 0 0 var(--ff-moon), 6px -2px 26px -6px color-mix(in srgb, var(--ff-moon) 35%, transparent);
+  transform: rotate(-18deg);
+}
+.ff-app[data-band='square'] .ff-moon { top: 18px; right: 50%; margin-right: -20px; }
+@keyframes ff-star { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+
+.ff-top { grid-area: top; position: relative; display: flex; align-items: center; gap: 10px; }
+.ff-chapter { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.ff-chapter-label { font-size: 14px; font-weight: 700; color: var(--ff-label); }
+.ff-dots { display: flex; gap: 5px; }
+.ff-dot { width: 18px; height: 6px; border-radius: 999px; background: var(--ff-panel-edge); }
+.ff-dot[data-state='done'] { background: var(--ff-gold); }
+.ff-dot[data-state='now'] { background: var(--ff-ink); }
+.ff-coins {
+  display: flex; align-items: center; gap: 6px; padding: 6px 12px 6px 8px; border-radius: 999px;
+  background: color-mix(in srgb, var(--ff-panel) 85%, transparent); font-weight: 800; font-size: 15px;
+}
+.ff-coin { width: 18px; height: 18px; flex-shrink: 0; border-radius: 999px; background: var(--ff-gold); box-shadow: inset 0 0 0 4px var(--ff-gold), inset 0 0 0 5.5px var(--ff-gold-deep); }
+
+.ff-title {
+  grid-area: title; position: relative; margin: 0; font-family: var(--ff-font-display); font-weight: 700;
+  font-size: 30px; line-height: 1.05; color: var(--ff-glow);
+}
+.ff-app[data-band='wide'] .ff-title { font-size: 28px; }
+
+.ff-board { grid-area: board; position: relative; min-height: 0; min-width: 0; }
+.ff-board canvas { position: absolute; inset: 0; display: block; }
+
+.ff-status {
+  grid-area: status; position: relative; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;
+  background: color-mix(in srgb, var(--ff-panel) 90%, transparent);
+}
+.ff-status[data-tone='solved'] { background: color-mix(in srgb, var(--ff-solved-panel) 95%, transparent); }
+.ff-status-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.ff-status-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ff-status-title { font-family: var(--ff-font-display); font-weight: 600; font-size: 18px; color: var(--ff-ink); }
+.ff-status[data-tone='warn'] .ff-status-title { color: var(--ff-warn); }
+.ff-status[data-tone='glow'] .ff-status-title, .ff-status[data-tone='solved'] .ff-status-title { color: var(--ff-glow); }
+.ff-status-sub { font-size: 15px; line-height: 1.4; color: var(--ff-ink-quiet); }
+.ff-app[data-band='wide'] .ff-status { padding: 12px 14px; }
+.ff-app[data-band='wide'] .ff-status-title { font-size: 16px; }
+.ff-app[data-band='wide'] .ff-status-sub { font-size: 14px; }
+.ff-bar { height: 8px; border-radius: 999px; background: var(--ff-track); overflow: hidden; }
+.ff-bar-fill {
+  height: 100%; width: 0; border-radius: 999px; background: var(--ff-gold); transition: width 400ms ease;
+}
+
+.ff-next { border: 0; background: var(--ff-gold); color: var(--ff-on-gold); font-weight: 800; cursor: pointer; }
+/* Hint is a secondary action: outlined, so the paid move is never the loudest thing on screen. */
+.ff-hint { border: 2px solid var(--ff-gold); background: var(--ff-panel); color: var(--ff-glow); font-weight: 800; cursor: pointer; }
+.ff-hint:disabled { opacity: 0.5; cursor: default; }
+.ff-next { flex-shrink: 0; height: 44px; padding: 0 16px; border-radius: 12px; font-size: 15px; }
+.ff-next[hidden] { display: none; }
+
+.ff-controls { grid-area: controls; position: relative; display: flex; gap: 10px; }
+.ff-controls button {
+  flex: 1; height: 56px; min-height: 44px; border-radius: 16px; font-weight: 800; font-size: 15px;
+  display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;
+}
+.ff-app[data-band='wide'] .ff-controls button { height: auto; }
+.ff-quiet { border: 2px solid var(--ff-panel-edge); background: var(--ff-panel); color: var(--ff-ink); }
+.ff-quiet:disabled { opacity: 0.5; cursor: default; }
+.ff-controls .ff-hint { flex: 1.3; }
+.ff-cost {
+  display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px 2px 4px; border-radius: 999px; font-size: 13px;
+  background: color-mix(in srgb, var(--ff-gold) 16%, transparent);
+}
+.ff-cost .ff-coin { width: 13px; height: 13px; }
+.ff-sheet-primary .ff-cost { background: color-mix(in srgb, var(--ff-on-gold) 14%, transparent); }
+.ff-sheet-primary .ff-cost .ff-coin { background: var(--ff-on-gold); box-shadow: inset 0 0 0 3px var(--ff-on-gold), inset 0 0 0 4.5px var(--ff-gold); }
+.ff-icon { width: 18px; height: 18px; flex-shrink: 0; }
+
+.ff-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ff-star { animation: none; }
+  .ff-bar-fill { transition: none; }
+}
+.ff-app[data-motion='reduced'] .ff-star { animation: none; }
+
+/* Wide band: the narrow info panel puts coins above the chapter label, and the
+   moon moves off the control column. */
+.ff-app[data-band='wide'] .ff-top { flex-wrap: wrap; }
+.ff-app[data-band='wide'] .ff-coins { order: -1; }
+.ff-app[data-band='wide'] .ff-chapter { flex-basis: 100%; }
+.ff-app[data-band='wide'] .ff-moon { right: 140px; top: 16px; }
+
+.ff-fail { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; text-align: center; }
+.ff-fail h1 { margin: 0; font-family: var(--ff-font-display); color: var(--ff-glow); }
+.ff-fail p { margin: 0; color: var(--ff-ink-quiet); max-width: 32em; }
+
+/* Sheets (hint, settings): design baseline HintDialog and Settings artboards. */
+.ff-backdrop {
+  position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+  background: color-mix(in srgb, var(--ff-night-0) 62%, transparent);
+}
+.ff-backdrop[hidden] { display: none; }
+.ff-sheet {
+  box-sizing: border-box; width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto;
+  background: var(--ff-panel); border-radius: 28px 28px 0 0; box-shadow: inset 0 2px 0 var(--ff-panel-edge);
+  padding: 12px 20px max(28px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 14px;
+}
+.ff-app[data-band='wide'] .ff-sheet { border-radius: 28px; margin-bottom: 16px; }
+.ff-sheet-handle { align-self: center; width: 44px; height: 5px; border-radius: 999px; background: var(--ff-panel-edge); }
+.ff-sheet-head { display: flex; gap: 14px; align-items: center; }
+.ff-sheet-text { display: flex; flex-direction: column; gap: 4px; }
+.ff-sheet-title { margin: 0; font-family: var(--ff-font-display); font-weight: 600; font-size: 24px; color: var(--ff-glow); }
+.ff-sheet-sub, .ff-sheet-note { margin: 0; font-size: 15px; line-height: 1.45; color: var(--ff-ink-quiet); }
+.ff-sheet-line { margin: 0; font-size: 16px; font-weight: 700; color: var(--ff-ink); }
+.ff-sheet-note[hidden] { display: none; }
+.ff-sheet button { min-height: 52px; border-radius: 16px; font-weight: 800; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.ff-sheet-primary { border: 0; background: var(--ff-gold); color: var(--ff-on-gold); }
+.ff-sheet-primary:disabled { opacity: 0.45; cursor: default; }
+.ff-sheet-ad { border: 2px solid var(--ff-gold); background: transparent; color: var(--ff-glow); }
+.ff-sheet-ad[hidden] { display: none; }
+.ff-sheet-quiet { border: 2px solid var(--ff-panel-edge); background: var(--ff-panel-deep); color: var(--ff-ink); }
+.ff-section { display: flex; flex-direction: column; gap: 10px; }
+.ff-section-title { margin: 0; font-size: 16px; font-weight: 800; color: var(--ff-ink); }
+.ff-segments { display: flex; background: var(--ff-panel-deep); border-radius: 14px; padding: 4px; gap: 4px; }
+.ff-sheet .ff-segment { flex: 1; min-height: 44px; border-radius: 11px; border: 0; background: transparent; color: var(--ff-ink); font-size: 14px; }
+.ff-sheet .ff-segment[aria-checked='true'] { background: var(--ff-gold); color: var(--ff-on-gold); }
+
+.ff-gear {
+  width: 44px; height: 44px; flex-shrink: 0; border-radius: 14px; border: 2px solid var(--ff-panel-edge);
+  background: var(--ff-panel); color: var(--ff-ink); display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer;
+}
+.ff-gear .ff-icon { width: 20px; height: 20px; }

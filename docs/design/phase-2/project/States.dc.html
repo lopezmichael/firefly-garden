@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Firefly Garden · tile states and motion</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&amp;family=Nunito:wght@600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#0C1A22}
+@keyframes ffBob{0%,100%{transform:translateY(-4px)}50%{transform:translateY(3px)}}
+@keyframes ffHalo{0%,100%{transform:scale(.85);opacity:.55}50%{transform:scale(1.15);opacity:.95}}
+@keyframes ffFlicker{0%,100%{opacity:1}30%{opacity:.35}45%{opacity:.95}70%{opacity:.45}}
+@keyframes ffFlutter{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.45)}}
+@keyframes ffTwinkle{0%,100%{transform:scale(.55) rotate(0deg);opacity:.55}50%{transform:scale(1.1) rotate(25deg);opacity:1}}
+@keyframes ffRing{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+@keyframes ffGhost{0%,20%{transform:translateY(0) scale(1);opacity:.9}100%{transform:translateY(-26px) scale(.7);opacity:0}}
+@keyframes ffPulse{0%,100%{outline-color:rgba(255,231,163,.35)}50%{outline-color:rgba(255,231,163,1)}}
+@keyframes ffMote{0%{transform:translateY(0) scale(.5);opacity:0}20%{opacity:1}100%{transform:translateY(-38px) scale(1);opacity:0}}
+.ff-wing{transform-box:fill-box;transform-origin:50% 100%;animation:ffFlutter .16s ease-in-out infinite}
+.ff-rm .ff-wing{animation:none}
+@media (prefers-reduced-motion: reduce){*{animation:none !important}}
+</style>
+</helmet>
+<div class="{{rmClass}}" style="width: 1200px; height: 900px; box-sizing: border-box; background: linear-gradient(180deg, #0C1A22 0%, #13252C 55%, #2A1B26 100%); color: #F3EEDC; font-family: 'Nunito', system-ui, sans-serif; padding: 40px; display: flex; gap: 40px">
+
+  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 26px">
+    <h1 style="margin: 0; font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 32px; color: #FFE7A3">Tile states</h1>
+
+    <section style="display: flex; flex-direction: column; gap: 12px">
+      <h2 style="margin: 0; font-size: 14px; font-weight: 700; color: #B3C6BD">Path tiles</h2>
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px 14px">
+        <sc-for list="{{paths}}" as="t" hint-placeholder-count="8">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center">
+            <div style="position: relative; width: 72px; height: 72px; border-radius: 17px; background: {{t.bg}}; box-shadow: {{t.shadow}}; outline: {{t.outline}}; outline-offset: 2px; animation: {{t.pulse}}">
+              <sc-for list="{{t.motes}}" as="m" hint-placeholder-count="0">
+                <span style="position: absolute; left: {{m.left}}%; bottom: 20%; width: {{m.size}}px; height: {{m.size}}px; border-radius: 999px; background: #FFF3C4; box-shadow: 0 0 6px 2px rgba(255,230,150,0.8); animation: ffMote {{m.dur}}s ease-out {{m.delay}}s infinite"></span>
+              </sc-for>
+              <sc-if value="{{t.ring}}" hint-placeholder-val="{{false}}">
+                <span style="position: absolute; inset: 6%; border-radius: 999px; border: 2.5px solid #FFE7A3; box-shadow: 0 0 10px rgba(255,231,163,0.75), inset 0 0 8px rgba(255,231,163,0.45)"></span>
+                <span style="position: absolute; inset: 0; animation: {{ringSpin}}"><svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" style="position: absolute; right: 2px; top: 2px"><circle cx="4" cy="15" r="1.2" fill="#FFE7A3" fill-opacity="0.35"></circle><circle cx="7.5" cy="12.5" r="1.8" fill="#FFE7A3" fill-opacity="0.6"></circle><circle cx="12" cy="8.5" r="5.5" fill="#FFE7A3" fill-opacity="0.25"></circle><circle cx="12" cy="8.5" r="3.4" fill="#FFE7A3"></circle></svg></span>
+              </sc-if>
+              <sc-if value="{{t.ruled}}" hint-placeholder-val="{{false}}">
+                <svg width="72" height="72" viewBox="0 0 72 72" style="position: absolute; inset: 0"><circle cx="36" cy="36" r="13" fill="none" stroke="#9FB0CF" stroke-width="2.5" stroke-dasharray="4 4"></circle><path d="M27 45L45 27" stroke="#9FB0CF" stroke-width="2.5" stroke-linecap="round"></path></svg>
+              </sc-if>
+              <sc-if value="{{t.fly}}" hint-placeholder-val="{{false}}">
+                <span style="position: absolute; left: 32%; right: 32%; bottom: 12%; height: 9%; border-radius: 50%; background: rgba(40,24,0,0.5)"></span>
+                <span style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; animation: {{t.bob}}; opacity: {{t.opacity}}">
+                  <span style="position: absolute; width: 84px; height: 84px; border-radius: 999px; background: radial-gradient(circle, {{t.halo}} 0%, rgba(255,214,120,0) 70%); animation: {{halo}}"></span>
+                  <svg width="54" height="54" viewBox="0 0 36 36" style="position: relative">
+                    <ellipse class="ff-wing" cx="11" cy="13" rx="7.5" ry="5" fill="#FFFFFF" fill-opacity="0.85" transform="rotate(-25 11 13)"></ellipse>
+                    <ellipse class="ff-wing" cx="25" cy="13" rx="7.5" ry="5" fill="#FFFFFF" fill-opacity="0.85" transform="rotate(25 25 13)"></ellipse>
+                    <circle cx="18" cy="21" r="8" fill="{{t.body}}" stroke="{{t.stroke}}" stroke-width="1.5"></circle>
+                    <circle cx="18" cy="12" r="4.2" fill="#3A2E1A"></circle>
+                    <circle cx="16.5" cy="11" r="1.1" fill="#FFFFFF"></circle>
+                    <circle cx="19.5" cy="11" r="1.1" fill="#FFFFFF"></circle>
+                  </svg>
+                </span>
+              </sc-if>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px">
+              <span style="font-weight: 800; font-size: 14px">{{t.name}}</span>
+              <span style="font-size: 12px; line-height: 1.35; color: #CDD8CF">{{t.note}}</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 12px">
+      <h2 style="margin: 0; font-size: 14px; font-weight: 700; color: #B3C6BD">Bushes</h2>
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px 14px">
+        <sc-for list="{{bushes}}" as="b" hint-placeholder-count="8">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center">
+            <div style="position: relative; width: 72px; height: 72px; border-radius: 46% 54% 44% 56% / 56% 46% 54% 44%; background: {{b.bg}}; box-shadow: 0 6px 0 #1A3E2C, 0 10px 14px rgba(0,0,0,0.45); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; outline: {{b.outline}}; outline-offset: 3px; animation: {{b.pulse}}">
+              <sc-if value="{{b.hasClue}}" hint-placeholder-val="{{true}}">
+                <span style="font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 30px; line-height: 1; color: {{b.color}}; text-shadow: 0 2px 0 rgba(0,0,0,0.3)">{{b.clue}}</span>
+                <div style="display: flex; gap: 3px; height: 8px">
+                  <sc-for list="{{b.pips}}" as="p" hint-placeholder-count="2">
+                    <span style="width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; border: 1.5px solid {{p.ring}}; background: {{p.fill}}; box-shadow: {{p.glow}}"></span>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{b.hidden}}" hint-placeholder-val="{{false}}">
+                <svg width="28" height="28" viewBox="0 0 24 24"><path d="M5 19C5 10 11 5 20 4c-1 9-6 15-15 15z" fill="#4E9A6E" stroke="#1A3E2C" stroke-width="1.5"></path><path d="M5 19L14 10" stroke="#1A3E2C" stroke-width="1.5" stroke-linecap="round"></path></svg>
+              </sc-if>
+              <sc-if value="{{b.star}}" hint-placeholder-val="{{false}}">
+                <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" style="position: absolute; right: -4px; top: -6px; animation: {{twinkle}}"><circle cx="4" cy="15" r="1.2" fill="#FFE7A3" fill-opacity="0.35"></circle><circle cx="7.5" cy="12.5" r="1.8" fill="#FFE7A3" fill-opacity="0.6"></circle><circle cx="12" cy="8.5" r="5.5" fill="#FFE7A3" fill-opacity="0.25"></circle><circle cx="12" cy="8.5" r="3.4" fill="#FFE7A3"></circle></svg>
+              </sc-if>
+              <sc-if value="{{b.flowers}}" hint-placeholder-val="{{false}}">
+                <svg width="18" height="18" viewBox="0 0 16 16" style="position: absolute; left: 2px; top: 0"><circle cx="8" cy="4" r="3.2" fill="#F7A8C4"></circle><circle cx="12" cy="8" r="3.2" fill="#F7A8C4"></circle><circle cx="8" cy="12" r="3.2" fill="#F7A8C4"></circle><circle cx="4" cy="8" r="3.2" fill="#F7A8C4"></circle><circle cx="8" cy="8" r="2.4" fill="#FFE7A3"></circle></svg>
+                <svg width="14" height="14" viewBox="0 0 16 16" style="position: absolute; right: 5px; bottom: 6px"><circle cx="8" cy="4" r="3.2" fill="#FBE3C2"></circle><circle cx="12" cy="8" r="3.2" fill="#FBE3C2"></circle><circle cx="8" cy="12" r="3.2" fill="#FBE3C2"></circle><circle cx="4" cy="8" r="3.2" fill="#FBE3C2"></circle><circle cx="8" cy="8" r="2.4" fill="#FFF0CC"></circle></svg>
+              </sc-if>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px">
+              <span style="font-weight: 800; font-size: 14px">{{b.name}}</span>
+              <span style="font-size: 12px; line-height: 1.35; color: #CDD8CF">{{b.note}}</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 10px; margin-top: auto">
+      <h2 style="margin: 0; font-size: 14px; font-weight: 700; color: #B3C6BD">Color tokens (become theme.css)</h2>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px">
+        <sc-for list="{{tokens}}" as="c" hint-placeholder-count="12">
+          <div style="display: flex; align-items: center; gap: 6px; background: rgba(27,44,48,0.9); border-radius: 999px; padding: 4px 10px 4px 4px">
+            <span style="width: 20px; height: 20px; border-radius: 999px; background: {{c.hex}}; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15)"></span>
+            <span style="font-size: 12px; font-weight: 700; color: #CDD8CF">{{c.name}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+  </div>
+
+  <div style="width: 420px; flex-shrink: 0; display: flex; flex-direction: column; gap: 14px">
+    <h1 style="margin: 0; font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 32px; color: #FFE7A3">Motion</h1>
+    <p style="margin: 0; font-size: 14px; line-height: 1.45; color: #CDD8CF">Every moment keeps its state change with reduced motion on; only the decoration goes. Timings are the starting values for the PixiJS port.</p>
+    <div role="table" aria-label="Motion and reduced motion" style="display: flex; flex-direction: column; background: rgba(27,44,48,0.9); border-radius: 18px; overflow: hidden">
+      <div role="row" style="display: grid; grid-template-columns: 96px minmax(0, 1fr) minmax(0, 1fr); gap: 10px; padding: 10px 14px; background: #122125; font-size: 14px; font-weight: 700; color: #B3C6BD">
+        <span role="columnheader">Moment</span><span role="columnheader">Full motion</span><span role="columnheader">Reduced</span>
+      </div>
+      <sc-for list="{{motion}}" as="m" hint-placeholder-count="9">
+        <div role="row" style="display: grid; grid-template-columns: 96px minmax(0, 1fr) minmax(0, 1fr); gap: 10px; padding: 10px 14px; border-top: 1px solid #33494B; font-size: 13px; line-height: 1.35">
+          <span role="cell" style="font-weight: 800">{{m.moment}}</span>
+          <span role="cell" style="color: #F3EEDC">{{m.full}}</span>
+          <span role="cell" style="color: #CDD8CF">{{m.reduced}}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"reducedMotion":{"editor":"boolean","default":false},"$preview":{"width":1200,"height":900}}'>
+var LIT = "radial-gradient(circle at 50% 42%, #FFEDB5 0%, #F5CD74 55%, #E3AE4E 100%)";
+var DARK = "radial-gradient(circle at 30% 25%, #2E584C 0%, #20403A 65%, #1A352F 100%)";
+var LIT_SH = "0 6px 0 #A9782A, 0 0 18px rgba(255,210,120,0.45), 0 10px 14px rgba(0,0,0,0.35)";
+var DARK_SH = "0 6px 0 #11241F, 0 10px 14px rgba(0,0,0,0.45)";
+var BUSH = "radial-gradient(circle at 34% 28%, #5BA97A 0%, #33724F 55%, #275B40 100%)";
+var HIDDEN = "radial-gradient(circle at 34% 28%, #4A8C66 0%, #2C6446 55%, #224F38 100%)";
+var GLOW = "#FFE7A3", PINK = "#FFB4B4";
+function pips(want, have, over) {
+  var out = [];
+  for (var i = 0; i < want; i++) { var on = i < have; out.push({ key: String(i), ring: over ? PINK : GLOW, fill: over ? PINK : (on ? GLOW : "transparent"), glow: on && !over ? "0 0 6px rgba(255,231,163,0.9)" : "none" }); }
+  return out;
+}
+class Component extends DCLogic {
+  renderVals() {
+    var rm = !!this.props.reducedMotion;
+    var bob = rm ? "none" : "ffBob 2.6s ease-in-out infinite";
+    function path(name, note, o) {
+      return Object.assign({ key: name, name: name, note: note, bg: DARK, shadow: DARK_SH, outline: "none", pulse: "none", motes: [], ring: false, ruled: false, fly: false,
+        body: "#FFF3C4", stroke: "#7A5413", halo: "rgba(255,226,140,0.85)", bob: bob, opacity: "1" }, o);
+    }
+    var motes = rm ? [] : [{ key: "a", left: 24, size: 3, dur: "2.4", delay: "0" }, { key: "b", left: 62, size: 2, dur: "3.0", delay: "1.1" }];
+    var paths = [
+      path("Dark", "Needs light", {}),
+      path("Lit", "Warm gold, motes drift up", { bg: LIT, shadow: LIT_SH, motes: motes }),
+      path("Your firefly", "Cream body, tap again to lift", { bg: LIT, shadow: LIT_SH, fly: true }),
+      path("Hint firefly", "Gold body, ring and firefly mark; locked", { bg: LIT, shadow: LIT_SH, fly: true, ring: true, body: "#F2C66D", stroke: "#8A5A10", halo: "rgba(242,198,109,0.9)" }),
+      path("Conflict", "Sees another firefly: pink, flickers", { bg: LIT, shadow: LIT_SH, fly: true, body: "#FF8A8A", stroke: "#8A3A3A", halo: "rgba(255,122,122,0.75)", bob: rm ? "none" : "ffBob 2.6s ease-in-out infinite, ffFlicker .9s linear infinite" }),
+      path("Lifted by a hint", "A wrong firefly floats away", { bg: DARK, shadow: DARK_SH, fly: true, body: "#FF8A8A", stroke: "#8A3A3A", halo: "rgba(255,122,122,0.5)", bob: rm ? "none" : "ffGhost 1.6s ease-out infinite", opacity: rm ? "0.45" : "1" }),
+      path("Ruled out", "Shown with a hint: no firefly fits here", { ruled: true }),
+      path("Hint reason", "The tiles a hint points at", { outline: "2px dashed #FFE7A3", pulse: rm ? "none" : "ffPulse 1.2s ease-in-out infinite" })
+    ];
+    function bush(name, note, o) { return Object.assign({ key: name, name: name, note: note, bg: BUSH, outline: "none", pulse: "none", hasClue: true, hidden: false, star: false, flowers: false, color: "#FFFFFF", clue: "2", pips: pips(2, 0, false) }, o); }
+    var bushes = [
+      bush("Wants 2", "White number, empty dots", {}),
+      bush("1 of 2", "Dots fill as fireflies land", { pips: pips(2, 1, false) }),
+      bush("Happy", "Gold number, firefly mark", { color: "#F2C66D", pips: pips(2, 2, false), star: true }),
+      bush("Too many", "Pink number and dots", { color: PINK, pips: pips(2, 2, true) }),
+      bush("Wants 0", "No dots; happy when empty", { clue: "0", pips: [], color: GLOW }),
+      bush("No number", "Blocks light, counts nothing", { hasClue: false, hidden: true, bg: HIDDEN }),
+      bush("Hint reason", "A hint points at this bush", { pips: pips(2, 1, false), outline: "2px dashed #FFE7A3", pulse: rm ? "none" : "ffPulse 1.2s ease-in-out infinite" }),
+      bush("Solved", "Flowers open on every bush", { color: "#F2C66D", pips: pips(2, 2, false), flowers: true })
+    ];
+    var tokens = [["night-0", "#0C1A22"], ["night-1", "#13252C"], ["night-2", "#2A1B26"], ["tray", "#08151A"], ["panel", "#1B2C30"], ["panel-edge", "#33494B"], ["ink", "#F3EEDC"], ["ink-quiet", "#CDD8CF"], ["label", "#B3C6BD"], ["glow", "#FFE7A3"], ["gold", "#F2C66D"], ["on-gold", "#2A1E08"], ["tile-dark", "#20403A"], ["tile-lit", "#F5CD74"], ["moss", "#33724F"], ["warn", "#FFB4B4"], ["firefly", "#FFF3C4"], ["hint-firefly", "#F2C66D"], ["petal-pink", "#F7A8C4"], ["petal-cream", "#FBE3C2"], ["moon", "#F3E4BD"], ["star", "#FFF0CC"]]
+      .map(function (t) { return { key: t[0], name: "--ff-" + t[0], hex: t[1] }; });
+    var motion = [
+      ["Place", "Drops in with a bounce (480 ms), then bobs (2.6 s); wings flutter; shadow breathes", "Appears in place, still"],
+      ["Light", "Tiles light in order of distance, 85 ms apart, each with a 520 ms bloom", "All tiles light at once"],
+      ["Lit tiles", "Two motes per tile drift up, 2.4 to 3.6 s, capped board-wide", "No motes"],
+      ["Bush happy", "Number and dots turn gold, firefly mark appears, soft chime", "Gold number and dots, still mark; chime stays"],
+      ["Conflict", "Both fireflies flicker (0.9 s) and tint pink", "Pink tint only"],
+      ["Hint", "Gold firefly drops in; ring with an orbiting firefly mark (6 s); reason tiles pulse (1.2 s); ruled-out tiles fade in", "Ring, dashed outlines and ruled-out marks, all still"],
+      ["Hint removal", "Wrong firefly lifts and fades (1.1 s), dashed outline stays a moment", "Faded firefly, then gone"],
+      ["Solve", "Flowers pop (500 ms), sparkle burst (1.4 s), coins rise, next garden in 3 s", "Flowers appear; same auto-advance"],
+      ["Ambient", "Stars twinkle 2 to 4 s; moon glow; slow parallax", "Still sky"]
+    ].map(function (m) { return { key: m[0], moment: m[0], full: m[1], reduced: m[2] }; });
+    return { rmClass: rm ? "ff-rm" : "", paths: paths, bushes: bushes, tokens: tokens, motion: motion,
+      ringSpin: rm ? "none" : "ffRing 6s linear infinite", halo: rm ? "none" : "ffHalo 2.6s ease-in-out infinite", twinkle: rm ? "none" : "ffTwinkle 1.8s ease-in-out infinite" };
+  }
+}
+</script>
+</body>
+</html>

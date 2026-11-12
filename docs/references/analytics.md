@@ -15,6 +15,17 @@ rules (GDPR, COPPA-style rules for young players) treat as personal data. Before
 Phase 3, check each portal's consent and opt-out requirements, and remember a
 portal SDK may attach its own user id or IP address on its side.
 
+## Where the Phase 2 log lives
+
+`apps/game/src/state/events.ts`: every event goes through `validateEvent` (with the known level
+ids) before it is stored, so a stored event carries only schema fields. The log is a ring buffer
+of the last 2,000 events saved through `Platform.save` under the key `events`, read back and
+re-validated on start. Settings → Play log shows a summary and copies the log as JSON for
+playtesters to send back. Sessions: a new one on each launch and on return after 30 minutes
+hidden; `session_end` is logged each time the tab hides with the session's visible seconds so
+far, so the last one per session counts. A level resumed after a reload logs no second
+`level_start`: its `level_end` keeps the original attempt number and may land in a later session.
+
 ## Events
 
 | Event | When | Key fields |

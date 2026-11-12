@@ -101,4 +101,79 @@ describe('nextLevel', () => {
     const next = nextLevel(input(second))!;
     expect(next.id).not.toBe('r-mid');
   });
+
+  describe('compact facts for a capped history', () => {
+    // A long, varied history; the game keeps only its tail plus the facts.
+    const long: PlayRecord[] = [
+      play('m1', { endedAt: 1 }), play('r-easy', { reason: 'warm-up', endedAt: 2 }), play('m2', { solved: false, endedAt: 3 }),
+      play('r-mid', { reason: 'breather-after-quit', endedAt: 4 }), play('m2', { reason: 'retry', endedAt: 5 }),
+      play('m3', { solved: false, endedAt: 6 }),
+    ];
+    const facts = (h: readonly PlayRecord[]) => ({
+      playedReserve: new Set(h.filter((p) => reserve.some((r) => r.id === p.levelId)).map((p) => p.levelId)),
+      quitMain: new Set(h.filter((p) => !p.solved && main.some((m) => m.id === p.levelId)).map((p) => p.levelId)),
+    });
+
+    it('decides the same from the last plays plus the facts as from the full history', () => {
+      const solved = new Set(long.filter((h) => h.solved).map((h) => h.levelId));
+      for (let keep = 1; keep <= long.length; keep++) {
+        for (const now of [long.at(-1)!.endedAt + 60_000, POLICY_CONFIG.returnGapHours * HOUR + 10]) {
+          const full = nextLevel(input(long, { solved, now }));
+          const capped = nextLevel(input(long.slice(-keep), { solved, now, ...facts(long) }));
+          // Warm-ups read the comfortable tier from the history itself; it is reached in the
+          // last plays here (m1 and m2 are both clean solves inside every tail of length ≥ 2).
+          if (keep >= 2 || full?.reason !== 'warm-up') expect(capped, `keep ${keep}`).toEqual(full);
+        }
+      }
+    });
+
+    it(`decides the same from the last ${POLICY_CONFIG.minHistory} plays plus the facts, hint streaks included`, () => {
+      const { minHistory, hintStreak } = POLICY_CONFIG;
+      expect(minHistory).toBeGreaterThanOrEqual(2 * hintStreak + 1);
+      const more = [L('m5', 3, 90, 60), L('m6', 3, 92, 60), L('m7', 3, 94, 60), L('m8', 3, 96, 60), L('m9', 3, 98, 60)];
+      const spare = [L('r-b1', 1, 30, 40), L('r-b2', 2, 50, 40), L('r-b3', 2, 54, 40), L('r-b4', 2, 56, 40)];
+      const mainPath = [...main, ...more].map((l) => l.id);
+      const allReserve = [...reserve, ...spare];
+      const allLevels = new Map([...main, ...more, ...allReserve].map((l) => [l.id, l]));
+      const isReserve = (id: string) => allReserve.some((r) => r.id === id);
+      const story: Partial<PlayRecord>[] = [
+        { levelId: 'm1' }, { levelId: 'm2', hints: 1 }, { levelId: 'm3', hints: 1 },
+        { levelId: 'r-easy', reason: 'breather-after-hints' }, { levelId: 'm4', solved: false },
+        { levelId: 'r-mid', reason: 'breather-after-quit' }, { levelId: 'm4', reason: 'retry', hints: 2 },
+        { levelId: 'm5', hints: 1 }, { levelId: 'r-b2', reason: 'breather-after-hints' }, { levelId: 'm6', hints: 1 },
+        { levelId: 'm7', solved: false }, { levelId: 'r-b1', reason: 'breather-after-quit' },
+        { levelId: 'm7', reason: 'retry', hints: 1 }, { levelId: 'm8', hints: 1 },
+      ];
+      const history = story.map((p, i) => play(p.levelId!, { ...p, endedAt: (i + 1) * 60_000 }));
+      const reasons = new Set<string>();
+      for (let k = 1; k <= history.length; k++) {
+        const h = history.slice(0, k);
+        const base = {
+          mainPath, reserve: allReserve, levels: allLevels, now: h.at(-1)!.endedAt + 60_000,
+          solved: new Set(h.filter((p) => p.solved).map((p) => p.levelId)),
+        };
+        const full = nextLevel({ ...base, history: h });
+        const capped = nextLevel({
+          ...base, history: h.slice(-minHistory),
+          playedReserve: new Set(h.filter((p) => isReserve(p.levelId)).map((p) => p.levelId)),
+          quitMain: new Set(h.filter((p) => !p.solved && !isReserve(p.levelId)).map((p) => p.levelId)),
+        });
+        expect(capped, `after ${k} plays`).toEqual(full);
+        if (full) reasons.add(full.reason);
+      }
+      expect([...reasons]).toEqual(expect.arrayContaining(['main', 'retry', 'breather-after-quit', 'breather-after-hints']));
+    });
+
+    it('never repeats a reserve level once played, even after it drops out of the history', () => {
+      const h = [play('m1'), play('m2'), play('m3'), play('m4', { solved: false })];
+      expect(nextLevel(input(h))?.id).toBe('r-mid');
+      expect(nextLevel(input(h, { playedReserve: new Set(['r-mid']) }))?.id).not.toBe('r-mid');
+    });
+
+    it('brings back a level quit long ago as a retry', () => {
+      const h = [play('m1')];
+      expect(nextLevel(input(h, { now: 120_000 }))).toEqual({ id: 'm2', reason: 'main' });
+      expect(nextLevel(input(h, { now: 120_000, quitMain: new Set(['m2']) }))).toEqual({ id: 'm2', reason: 'retry' });
+    });
+  });
 });

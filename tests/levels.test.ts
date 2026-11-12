@@ -1,6 +1,6 @@
 /**
  * Level ratchets: every committed level must parse, re-solve to exactly one
- * solution, and re-grade to its stored tier and score. Chapter 1 may not
+ * solution, and re-grade to its stored tier, score and estimated seconds. Chapter 1 may not
  * need anything above T2. Regenerate with `npm run levels`, never hand-edit.
  */
 import { readdirSync, readFileSync } from 'node:fs';
@@ -34,7 +34,7 @@ describe('committed levels', () => {
     expect(byId.size).toBe(levels.length);
   });
 
-  it('every level is unique, its solution solves it, and it re-grades to its stored tier and score', () => {
+  it('every level is unique, its solution solves it, and it re-grades to its stored tier, score and seconds', () => {
     const bad: string[] = [];
     for (const level of levels) {
       const board = buildBoard(level);
@@ -46,6 +46,7 @@ describe('committed levels', () => {
       if (d.tier !== level.tier || d.score !== level.score) {
         bad.push(`${level.id}: stored tier/score ${level.tier}/${level.score}, re-graded ${d.tier}/${d.score}`);
       }
+      if (level.seconds !== d.estimatedSeconds) bad.push(`${level.id}: stored seconds ${level.seconds}, re-graded ${d.estimatedSeconds}`);
     }
     expect(bad).toEqual([]);
   });

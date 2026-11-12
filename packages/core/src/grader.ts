@@ -78,12 +78,30 @@ interface Deduction {
 export interface GradeOptions {
   /** Stop after this many steps (safety net). Default: 4 × cell count. */
   readonly maxSteps?: number;
+  /**
+   * Fireflies already on the board (besides lanterns), so the trace is "the
+   * next steps from here" (used for hints). The grader cannot check these
+   * against the answer: callers pass only cells of the unique solution, or
+   * the trace means nothing. Throws RangeError for a non-path cell or two
+   * start fireflies that see each other.
+   */
+  readonly start?: Iterable<number>;
+  /**
+   * Stop right after the first step that places a firefly (hints need only
+   * the steps up to there). The trace is then partial: only `steps` is
+   * meaningful, and `solved`/`maxTier` describe an unfinished grade.
+   */
+  readonly stopAtFirefly?: boolean;
 }
 
 export function grade(board: Board, options: GradeOptions = {}): Grade {
   const n = board.w * board.h;
   const s: State = { st: new Int8Array(n), lit: new Uint8Array(n) };
   for (const l of board.lanterns) place(board, s, l);
+  for (const c of options.start ?? []) {
+    if (board.kind[c] !== 'path') throw new RangeError(`start cell ${c} cannot hold a firefly`);
+    if (!place(board, s, c)) throw new RangeError(`start cell ${c} sees another firefly`);
+  }
 
   const steps: Step[] = [];
   const maxSteps = options.maxSteps ?? 4 * n;
@@ -110,6 +128,7 @@ export function grade(board: Board, options: GradeOptions = {}): Grade {
       s.st[d.cell] = NO;
     }
     steps.push({ technique: d.technique, tier: TECHNIQUE_TIER[d.technique], cell: d.cell, value: d.value, width, because: d.because });
+    if (options.stopAtFirefly && d.value === 'firefly') break;
   }
 
   const solved = !stuck && isSolved(board, s);
