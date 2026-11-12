@@ -1,0 +1,437 @@
+<meta name="dash-one-writer">
+<style>
+  .fg { display: flex; flex-direction: column; gap: var(--cds-gap-xl); max-width: 960px; }
+  .fg h1 { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); margin: 0; text-wrap: balance; }
+  .fg h2 { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); margin: 0; text-wrap: balance; }
+  .fg h3 { font-size: var(--cds-font-size-body); font-weight: var(--cds-font-weight-medium); margin: 0; }
+  .fg p { margin: 0; max-width: 68ch; line-height: 1.55; }
+  .fg-eyebrow { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); letter-spacing: .06em; text-transform: uppercase; }
+  .fg-lede { font-size: var(--cds-font-size-heading); line-height: 1.4; }
+  .fg-muted { color: var(--color-fg-muted); }
+  .fg-section { display: flex; flex-direction: column; gap: var(--cds-gap-md); }
+  .fg-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--cds-gap-md); }
+  .fg-tile { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: flex; flex-direction: column; gap: var(--cds-gap-xs); min-width: 0; }
+  .fg-tile .fg-big { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); font-variant-numeric: tabular-nums; }
+  .fg-tile .fg-label { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+  .fg-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--cds-gap-lg); }
+  .fg-pair > * { min-width: 0; display: flex; flex-direction: column; gap: var(--cds-gap-sm); }
+  .fg-chart { position: relative; width: 100%; min-height: 220px; }
+  .fg-chart.fg-short { min-height: 170px; }
+  .fg-chart svg { display: block; width: 100%; overflow: visible; }
+  .fg-chart .tick text, .fg-chart .fg-axis-label { fill: var(--cds-text-secondary); font-size: var(--cds-font-size-caption); }
+  .fg-chart .domain { stroke: var(--cds-chart-axis); }
+  .fg-chart .tick line { stroke: var(--cds-chart-grid); }
+  .fg-chart .fg-end { fill: var(--cds-text-secondary); font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+  .fg-chart .fg-band-label { fill: var(--cds-text-secondary); font-size: var(--cds-font-size-caption); }
+  .fg-tip { position: absolute; pointer-events: none; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); box-shadow: var(--cds-shadow-popover); border-radius: var(--cds-radius); padding: var(--cds-pad-sm) var(--cds-pad-md); font-size: var(--cds-font-size-caption); line-height: 1.45; white-space: nowrap; z-index: 2; }
+  .fg-tip .fg-tip-head { font-weight: var(--cds-font-weight-medium); }
+  .fg-tip .fg-tip-sub { color: var(--cds-text-secondary); }
+  .fg-legend { display: flex; flex-wrap: wrap; gap: var(--cds-gap-xs) var(--cds-gap-md); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); list-style: none; margin: 0; padding: 0; }
+  .fg-legend li { display: inline-flex; align-items: center; gap: 6px; }
+  .fg-sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; background: var(--cds-chart-muted); }
+  .fg-sw.fg-dot { border-radius: 50%; }
+  .fg tr.fg-shipped td { font-weight: var(--cds-font-weight-medium); background: var(--color-panel); }
+  .fg-callout { border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: flex; flex-direction: column; gap: var(--cds-gap-sm); background: var(--color-panel); }
+  .fg-callout .fg-tag { align-self: flex-start; font-size: var(--cds-font-size-caption); font-weight: var(--cds-font-weight-medium); border: 1px solid var(--color-border-line); border-radius: 999px; padding: 2px 10px; }
+  .fg-scroll { overflow-x: auto; }
+  .fg table { border-collapse: collapse; width: 100%; font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+  .fg th, .fg td { text-align: right; padding: 6px 10px; border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
+  .fg th:first-child, .fg td:first-child { text-align: left; }
+  .fg th { color: var(--color-fg-muted); font-weight: var(--cds-font-weight-medium); }
+  .fg details { border-top: 1px solid var(--color-border-line); padding-top: var(--cds-pad-md); }
+  .fg summary { cursor: pointer; font-weight: var(--cds-font-weight-medium); }
+  .fg dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: var(--cds-gap-md) 0 0; }
+  .fg dt { font-weight: var(--cds-font-weight-medium); }
+  .fg dd { margin: 0; color: var(--color-fg-muted); }
+  .fg ul.fg-list { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 6px; max-width: 70ch; line-height: 1.5; }
+  [data-dash-source-state=refreshing] { opacity: .5; }
+  @media (max-width: 520px) { .fg dl { grid-template-columns: 1fr; } }
+</style>
+
+<div class="fg">
+  <header class="fg-section" id="top">
+    <span class="fg-eyebrow">Phase 1 · generator spike and launch pack</span>
+    <h1>Firefly Garden difficulty report</h1>
+    <p class="fg-lede">
+      <span class="gate-pass"><b data-draw="val" data-source="gate" data-field="share" data-where="key=large" data-fmt="pct">—</b> of generated gardens at 8x8 and up need overlap reasoning or harder (T3+), so bigger boards do not go easy under the eight-neighbor rule. The Phase 1 gate passes.</span>
+      <span class="gate-fail" hidden>Only <b data-draw="val" data-source="gate" data-field="share" data-where="key=large" data-fmt="pct">—</b> of generated gardens at 8x8 and up need overlap reasoning or harder (T3+). The Phase 1 gate does not pass yet.</span>
+      <span data-draw="gateVerdict"></span>
+    </p>
+  </header>
+
+  <section class="fg-tiles" id="tiles" aria-label="Headline numbers">
+    <div class="fg-tile">
+      <span class="fg-big" data-draw="val" data-source="gate" data-field="n" data-where="key=all" data-fmt="int">—</span>
+      <span class="fg-label">graded levels, 4x4 to 10x10, every one unique</span>
+    </div>
+    <div class="fg-tile">
+      <span class="fg-big" data-draw="val" data-source="gate" data-field="share" data-where="key=large" data-fmt="pct">—</span>
+      <span class="fg-label">of 8x8+ levels need T3 or harder (gate: at least half)</span>
+    </div>
+    <div class="fg-tile">
+      <span class="fg-big" data-draw="val" data-source="timeStats" data-field="seconds" data-where="key=longest" data-fmt="time">—</span>
+      <span class="fg-label">longest estimated solve in the pack (limit: five minutes)</span>
+    </div>
+    <div class="fg-tile">
+      <span class="fg-big" data-draw="val" data-source="medianTime" data-field="median" data-where="size=4" data-fmt="time">—</span>
+      <span class="fg-label">median estimated solve time on 4x4 (target: under a minute)</span>
+    </div>
+  </section>
+
+  <section class="fg-section" id="launch">
+    <h2>The launch pack: 40 chapters in 8 garden areas</h2>
+    <p class="fg-muted">Each chapter is generated from its own pool and ordered by the ramp builder. Each area has its own board shapes and a headline twist or pairing; more areas arrive as content updates. Every level is unique, graded, inside its time limit, and not a rotation or mirror of another.</p>
+    <div class="fg-tiles" id="pack-tiles">
+      <div class="fg-tile">
+        <span class="fg-big" data-draw="val" data-source="pack" data-field="mainLevels" data-where="key=launch" data-fmt="int">—</span>
+        <span class="fg-label">main-path levels in <b data-draw="val" data-source="pack" data-field="chapters" data-where="key=launch" data-fmt="int">—</b> chapters</span>
+      </div>
+      <div class="fg-tile">
+        <span class="fg-big" data-draw="val" data-source="pack" data-field="reserveLevels" data-where="key=launch" data-fmt="int">—</span>
+        <span class="fg-label">reserve levels for warm-ups, breathers and the daily puzzle</span>
+      </div>
+      <div class="fg-tile">
+        <span class="fg-big" data-draw="val" data-source="pack" data-field="hours" data-where="key=launch" data-fmt="num">—</span>
+        <span class="fg-label">hours of estimated play on the main path (four-minute cap per level)</span>
+      </div>
+      <div class="fg-tile">
+        <span class="fg-big" data-draw="val" data-source="journey" data-field="cleared" data-where="key=c40|all" data-fmt="pct">—</span>
+        <span class="fg-label">of simulated players finish all 40 chapters (<b data-draw="val" data-source="journey" data-field="cleared" data-where="key=c20|all" data-fmt="pct">—</b> reach chapter 20)</span>
+      </div>
+    </div>
+    <div class="fg-scroll">
+      <table id="area-table">
+        <thead>
+          <tr><th>Area</th><th>Chapters</th><th>Board shapes</th><th>Headline</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Rose Bed</td><td>1 to 5</td><td>Rectangles</td><td>The techniques: T3 debuts in chapter 2, T4 in chapter 3</td></tr>
+          <tr><td>Orchard</td><td>6 to 10</td><td>L-shaped beds</td><td>Shaped gardens debut</td></tr>
+          <tr><td>Mushroom Glade</td><td>11 to 15</td><td>Crescent clearings</td><td>Mushrooms debut</td></tr>
+          <tr><td>Moon Meadow</td><td>16 to 20</td><td>Meadows and crescents</td><td>Moonlit tiles debut</td></tr>
+          <tr><td>Lantern Walk</td><td>21 to 25</td><td>Two plots and a bridge</td><td>Lanterns debut</td></tr>
+          <tr><td>Koi Pond</td><td>26 to 30</td><td>A ring around the pond</td><td>Moonlit tiles with mushrooms</td></tr>
+          <tr><td>Stone Bridge</td><td>31 to 35</td><td>Bridges</td><td>Lanterns with mushrooms</td></tr>
+          <tr><td>Old Greenhouse</td><td>36 to 40</td><td>Every shape</td><td>All the twists, the largest boards</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h3 id="chapter-curve-heading">Difficulty by chapter</h3>
+    <p class="fg-muted">Mean score of each chapter's levels (line) and its peak (dots), with each debut marked. Twist debuts dip on purpose: a new rule arrives on easier boards.</p>
+    <div class="fg-chart" id="chapter-curve" data-draw="chapterCurve" data-source="packChapters"></div>
+    <h3 id="journey-heading">How far simulated players get</h3>
+    <p class="fg-muted">Share of each kind of player who has cleared each chapter, playing the whole pack in sittings with the next-level policy and the shipped economy. Model output, not real players.</p>
+    <ul class="fg-legend" aria-label="Player kinds">
+      <li><i class="fg-sw" data-series="0"></i>Newcomer</li>
+      <li><i class="fg-sw" data-series="1"></i>Casual</li>
+      <li><i class="fg-sw" data-series="2"></i>Puzzler</li>
+      <li><i class="fg-sw" data-series="3"></i>Expert</li>
+      <li><i class="fg-sw" data-everyone="1"></i>Everyone</li>
+    </ul>
+    <div class="fg-chart" id="journey-lines" data-draw="journeyLines" data-source="journey"></div>
+    <div class="fg-callout" id="launch-finding">
+      <span class="fg-tag">Why the main path stops at four minutes</span>
+      <p>A chapter ends on its hardest level. With five-minute peaks allowed after chapter 10, simulated newcomers (about 1.4 times slower) hit a wall at every peak and none got past chapter 15. Capping the main path at four minutes keeps <b data-draw="val" data-source="journey" data-field="cleared" data-where="key=c15|newcomer" data-fmt="pct">—</b> of newcomers going through chapter 15. Five-minute levels stay possible as optional challenges.</p>
+    </div>
+  </section>
+
+  <section class="fg-section" id="tiers-by-size">
+    <h2>Hard deductions show up more as boards grow</h2>
+    <p class="fg-muted">Share of levels by the hardest technique they need. "All clues" keeps every bush number; "Hidden clues" hides numbers for as long as the level stays unique. The label at the right of each bar is the share needing T3 or harder.</p>
+    <ul class="fg-legend" aria-label="Tiers">
+      <li><i class="fg-sw" data-tier="1"></i>T1 bookkeeping</li>
+      <li><i class="fg-sw" data-tier="2"></i>T2 one source or bush room</li>
+      <li><i class="fg-sw" data-tier="3"></i>T3 overlapping bushes</li>
+      <li><i class="fg-sw" data-tier="4"></i>T4 one-step lookahead</li>
+      <li><i class="fg-sw" data-tier="5"></i>T5 deep trial</li>
+    </ul>
+    <div class="fg-pair">
+      <div>
+        <h3>All clues</h3>
+        <div class="fg-chart" id="tiers-all" data-draw="tierBySize" data-mode="All clues" data-source="census tierBySize"></div>
+      </div>
+      <div>
+        <h3>Hidden clues</h3>
+        <div class="fg-chart" id="tiers-hidden" data-draw="tierBySize" data-mode="Hidden clues" data-source="census tierBySize"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="fg-section" id="solve-time">
+    <h2>Estimated solve time grows from under a minute to near the five-minute limit</h2>
+    <p class="fg-muted">One dot per level; the tick is the median for that size and clue mode, and the dashed line is the five-minute limit. Times come from the difficulty model (seconds per technique, slower when few moves are available, plus taps) and still need real players to calibrate.</p>
+    <ul class="fg-legend" aria-label="Clue mode">
+      <li><i class="fg-sw fg-dot" data-series="0"></i>All clues</li>
+      <li><i class="fg-sw fg-dot" data-series="1"></i>Hidden clues</li>
+    </ul>
+    <div class="fg-chart" id="time-strip" data-draw="timeStrip" data-source="census medianTime"></div>
+  </section>
+
+  <section class="fg-section" id="techniques">
+    <h2>Most of the work is bookkeeping; overlap and lookahead carry the hard steps</h2>
+    <p class="fg-muted">Deduction steps across every census level, by technique, in the order the grader tries them.</p>
+    <div class="fg-chart fg-short" id="technique-bars" data-draw="techniques" data-source="techniques"></div>
+  </section>
+
+  <section class="fg-section" id="decisions">
+    <h2>Decided on November 12</h2>
+    <ul class="fg-list">
+      <li><b>Overlap is now T3, lookahead T4.</b> The first census showed 79 of 142 lookahead levels could be solved with overlapping-bush reasoning instead, because the eight-neighbor rule makes bushes share neighbors constantly. Overlap is the easier, more teachable idea, so it now gets its own tier before lookahead.</li>
+      <li><b>Mushrooms count their 4 side neighbors.</b> A mushroom is now a numbered blocker that counts only up, down, left and right, unlike a bush, which counts all 8. The experiment below chose it.</li>
+      <li><b>No level over five minutes.</b> Every shipped level is estimated at <span data-draw="capText">—</span> or less, every chapter 1 level at <span data-draw="cap1Text">—</span> or less, and every chapter 3 level at <span data-draw="cap3Text">—</span> or less. The generator stops hiding clues before a level crosses the limit, and CI fails if a committed level breaks it.</li>
+      <li><b>Scores separate levels within a tier.</b> The hardest technique still picks a 25-point band (T2 is 50 to 74), and how much searching a level demands now places it inside the band on a log scale, so doubling the effort moves a level the same distance anywhere in the band.</li>
+    </ul>
+  </section>
+
+  <section class="fg-section" id="mushrooms">
+    <h2>Why mushrooms count 4 neighbors</h2>
+    <p class="fg-muted">The experiment behind the decision, kept as it ran: the same 40 seeds on 7x7 boards with clues hidden, generated four ways. Twist share is the share of deduction steps whose reason involves a twist tile. Variant C is what the mushroom became. Tiers here use the old order, with lookahead as T3.</p>
+    <ul class="fg-legend" aria-label="Variants">
+      <li><b>A · Blocker (current)</b>&nbsp;blocks light, no number</li>
+      <li><b>B · Toadstool</b>&nbsp;needs light, lets light through, no firefly may land</li>
+      <li><b>C · Sporecap</b>&nbsp;a numbered mushroom that counts only its 4 side neighbors</li>
+    </ul>
+    <div class="fg-pair">
+      <div>
+        <h3>Hardest technique needed</h3>
+        <div class="fg-chart fg-short" id="variant-tiers" data-draw="variantTiers" data-source="experiment variants"></div>
+      </div>
+      <div>
+        <h3>Averages per level</h3>
+        <div class="fg-scroll">
+          <table id="variant-table" data-source="variants" data-row-key="variant">
+            <thead>
+              <tr>
+                <th data-field="label">Variant</th>
+                <th data-field="seconds">Est. time</th>
+                <th data-field="steps">Steps</th>
+                <th data-field="t3">T3+ steps</th>
+                <th data-field="participation">Twist share</th>
+              </tr>
+            </thead>
+            <tbody data-draw="variantRows"></tbody>
+          </table>
+        </div>
+        <p class="fg-muted">n/a: blockers carry no number, so no deduction ever cites one; their effect shows only in the other columns.</p>
+      </div>
+    </div>
+    <div class="fg-callout" id="mushroom-decision">
+      <span class="fg-tag">What the experiment showed</span>
+      <ul class="fg-list">
+        <li><b>C · Sporecap</b> takes part in <b data-draw="val" data-source="variants" data-field="participation" data-where="variant=C" data-fmt="pct">—</b> of all deduction steps and gives the longest solves (<b data-draw="val" data-source="variants" data-field="seconds" data-where="variant=C" data-fmt="time">—</b> against <b data-draw="val" data-source="variants" data-field="seconds" data-where="variant=base" data-fmt="time">—</b> with no twist). Reading a 4-neighbor clue inside an 8-neighbor garden is a genuinely new skill. It needs art that makes the counting area obvious.</li>
+        <li><b>A · Blocker</b> plays exactly like a bush with a hidden number, and the levels come out slightly easier (<b data-draw="val" data-source="variants" data-field="seconds" data-where="variant=A" data-fmt="time">—</b>). It adds variety to the look, not to the thinking.</li>
+        <li><b>B · Toadstool</b> almost never matters: <b data-draw="val" data-source="variants" data-field="participation" data-where="variant=B" data-fmt="pct">—</b> of steps. Tiles that need light are usually lit by accident, so the rule rarely bites at this density.</li>
+        <li>Differences in averages are modest at 40 levels each; participation is the clear signal. Plain blockers can still appear as scenery (rocks, stumps) if the art wants them.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="fg-section" id="ramp">
+    <h2>The first three chapters climb, dip, and end on a peak</h2>
+    <p class="fg-muted">Difficulty score of each level in play order, built by the ramp builder from the census pool. Each chapter climbs, drops to an easier level every few levels, and finishes on its hardest. A chapter that brings in a new technique debuts it about 30% of the way in and alternates practice of it with easier levels.</p>
+    <div class="fg-chart" id="ramp-line" data-draw="ramp" data-source="ramp"></div>
+    <div class="fg-scroll">
+      <table id="chapter-table" data-source="chapters" data-row-key="chapter">
+        <thead>
+          <tr>
+            <th data-field="title">Chapter</th>
+            <th data-field="levels">Levels</th>
+            <th data-field="minutes">Est. minutes</th>
+            <th data-field="first">First score</th>
+            <th data-field="peak">Peak score</th>
+          </tr>
+        </thead>
+        <tbody data-draw="chapterRows"></tbody>
+      </table>
+    </div>
+    <p class="fg-muted">Within a tier, a level's score rises with how much searching it demands, so chapter 1 still climbs even though nearly all of its levels are T2. Chapter 1 levels stay under one minute and chapter 3 levels under four.</p>
+  </section>
+
+  <section class="fg-section" id="players">
+    <h2>Simulated players: who makes it through chapters 1 to 3</h2>
+    <p class="fg-muted">Four kinds of portal player, a thousand of each, play the chapters above step by step along each level's grader trace. Steps at their skill take normal time; one tier above is a stretch that can get them stuck; solving stretch steps teaches the technique. Stuck players buy a hint, watch an ad for one, struggle on, or quit, and some who quit leave for good. Every rate here comes from that model, not from real players.</p>
+    <div class="fg-tiles" id="player-tiles">
+      <div class="fg-tile">
+        <span class="fg-big" data-draw="val" data-source="simSummary" data-field="value" data-where="key=ch1-all" data-fmt="pct">—</span>
+        <span class="fg-label">of all simulated players finish chapter 1 (guardrail: at least 95%)</span>
+      </div>
+      <div class="fg-tile">
+        <span class="fg-big" data-draw="val" data-source="simSummary" data-field="value" data-where="key=final-all" data-fmt="pct">—</span>
+        <span class="fg-label">reach the end of chapter 3, weighted by how common each kind is</span>
+      </div>
+      <div class="fg-tile">
+        <span class="fg-big" data-draw="val" data-source="simSummary" data-field="value" data-where="key=final-newcomer" data-fmt="pct">—</span>
+        <span class="fg-label">of newcomers reach the end of chapter 3, the group the economy matters most for</span>
+      </div>
+    </div>
+    <ul class="fg-legend" aria-label="Player kinds">
+      <li><i class="fg-sw" data-series="0"></i>Newcomer (30%, knows bookkeeping)</li>
+      <li><i class="fg-sw" data-series="1"></i>Casual (45%, knows T2)</li>
+      <li><i class="fg-sw" data-series="2"></i>Puzzler (20%, knows T3)</li>
+      <li><i class="fg-sw" data-series="3"></i>Expert (5%, knows T4)</li>
+      <li><i class="fg-sw" data-everyone="1"></i>Everyone</li>
+    </ul>
+    <div class="fg-chart" id="survival-lines" data-draw="survival" data-source="players"></div>
+  </section>
+
+  <section class="fg-section" id="hints">
+    <h2>Hints are needed where a new technique first appears, not at the peaks</h2>
+    <p class="fg-muted">Share of plays that used at least one hint, across everyone, level by level. The shaded band is the plan's target for chapter peaks (10 to 25%); the dashed line is its ceiling for breathers (5%).</p>
+    <ul class="fg-legend" aria-label="Level roles">
+      <li><i class="fg-sw" data-role="climb"></i>Climb</li>
+      <li><i class="fg-sw" data-role="breather"></i>Breather</li>
+      <li><i class="fg-sw" data-role="peak"></i>Peak</li>
+      <li><i class="fg-sw" data-role="opener"></i>Opener</li>
+    </ul>
+    <div class="fg-chart" id="hint-bars" data-draw="hintBars" data-source="players"></div>
+    <div class="fg-callout" id="hint-targets">
+      <span class="fg-tag">Against the plan's targets</span>
+      <ul class="fg-list">
+        <li>Breathers average <b data-draw="val" data-source="simSummary" data-field="value" data-where="key=hint-breather" data-fmt="pct1">—</b> hint use, under the 5% target. CI now fails if that slips.</li>
+        <li>Peaks average <b data-draw="val" data-source="simSummary" data-field="value" data-where="key=hint-peak" data-fmt="pct">—</b> overall, and <b data-draw="val" data-source="simSummary" data-field="value" data-where="key=hint-peak-later" data-fmt="pct">—</b> after chapter 1: below the plan's 10 to 25% target. The opening now starts on bookkeeping boards and teaches each technique on its gentlest level, which protects the first session at the cost of peak hint moments. A tougher peak per chapter is an easy lever if Phase 3 data says players want more challenge.</li>
+        <li>Debut levels still need a hint in about a third of plays (the busiest: <b data-draw="val" data-source="simSummary" data-field="value" data-where="key=hint-worst" data-fmt="pct">—</b>). The first meeting with a technique is where help is wanted most, which is what hints are for; it stays under the 40% guardrail.</li>
+        <li>How the ramp handles a new technique now: it debuts on its gentlest level about 30% into the chapter, practice of it alternates with easier levels (gentlest practice first), and the chapter still ends on its hardest level.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="fg-section" id="economy">
+    <h2>Hint economy: generosity decides how many newcomers stay</h2>
+    <p class="fg-muted">Eighteen economies run through the same simulation. The price of a hint barely changes how often players want one; it changes who pays. When a stuck newcomer cannot afford a hint and skips the ad, they usually quit.</p>
+    <div class="fg-scroll">
+      <table id="economy-table" data-source="economy" data-row-key="key">
+        <thead>
+          <tr>
+            <th data-field="startingCoins">Starting coins</th>
+            <th data-field="coinsPerSolve">Coins per solve</th>
+            <th data-field="hintCost">Hint cost</th>
+            <th data-field="newcomerFinish">Newcomers finish</th>
+            <th data-field="finish">Everyone finishes</th>
+            <th data-field="coinShare">Hints paid in coins</th>
+            <th data-field="adShare">Paid by ad</th>
+            <th data-field="refusedShare">Refused</th>
+            <th data-field="casualEndCoins">Casual coins at end</th>
+            <th data-field="adViewsPerPlayer">Ad views per player</th>
+          </tr>
+        </thead>
+        <tbody data-draw="economyRows"></tbody>
+      </table>
+    </div>
+    <div class="fg-callout" id="economy-decision">
+      <span class="fg-tag">Shipped: 60 starting coins, 10 per solve, 30 per hint, 3 hints per ad</span>
+      <p>This keeps <b data-draw="val" data-source="economy" data-field="newcomerFinish" data-where="key=60-10-30" data-fmt="pct">—</b> of newcomers, within about a point of the most generous settings (a gap inside the simulation's noise), banks the fewest coins of the top group, and refuses almost no one (<b data-draw="val" data-source="economy" data-field="refusedShare" data-where="key=60-10-30" data-fmt="pct1">—</b> of hint requests). Established players bank coins (a casual player ends chapter 3 with <b data-draw="val" data-source="economy" data-field="casualEndCoins" data-where="key=60-10-30" data-fmt="int">—</b>) and almost never need a rewarded ad for a hint. That costs little: the ad views below show midgame ads are where the money is, and they follow how long people keep playing.</p>
+    </div>
+
+    <h3 id="ad-views-heading">Ad views per player</h3>
+    <p class="fg-muted">Midgame ads follow the plan's pacing: none in the first five levels, then on a level-complete screen at most once every three minutes (the CrazyGames cap). Rewarded ads are the ones watched for hints. Counted per simulated player who started, through chapter 3.</p>
+    <div class="fg-tiles" id="ad-tiles">
+      <div class="fg-tile">
+        <span class="fg-big" data-draw="val" data-source="ads" data-field="interstitials" data-where="profile=all" data-fmt="num">—</span>
+        <span class="fg-label">midgame ads per player across chapters 1 to 3</span>
+      </div>
+      <div class="fg-tile">
+        <span class="fg-big" data-draw="val" data-source="ads" data-field="rewarded" data-where="profile=all" data-fmt="num2">—</span>
+        <span class="fg-label">rewarded hint ads per player with the shipped economy</span>
+      </div>
+      <div class="fg-tile">
+        <span class="fg-big" data-draw="val" data-source="economy" data-field="adViewsPerPlayer" data-where="key=perAd-tight-3" data-fmt="num">—</span>
+        <span class="fg-label">ad views per player with a tight economy (30 starting coins, 60 per hint), against <b data-draw="val" data-source="economy" data-field="adViewsPerPlayer" data-where="key=60-10-30" data-fmt="num">—</b> shipped</span>
+      </div>
+    </div>
+    <ul class="fg-legend" aria-label="Ad kinds">
+      <li><i class="fg-sw" data-series="0"></i>Midgame ad</li>
+      <li><i class="fg-sw" data-series="1"></i>Rewarded hint ad</li>
+    </ul>
+    <div class="fg-chart fg-short" id="ad-bars" data-draw="adBars" data-source="ads"></div>
+    <div class="fg-callout" id="ad-finding">
+      <span class="fg-tag">What this means</span>
+      <p>Squeezing players toward hint ads loses ad views overall. A tight economy adds a fraction of a rewarded ad per player but keeps fewer of them playing, so they see fewer midgame ads. Slower players see the most midgame ads because they play longest; experts see the fewest. Keeping people in the game is the revenue lever, so the generous economy stays.</p>
+    </div>
+
+    <h3 id="hints-per-ad-heading">Hints per rewarded ad</h3>
+    <p class="fg-muted">One hint places a single correct firefly (or fixes one wrong one), which is thin pay for a 30 to 60 second video. Here a rewarded ad grants a bundle: one hint now, the rest saved. Compared at the tight economy, where ads actually get watched; at the shipped economy almost no one needs one.</p>
+    <div class="fg-scroll">
+      <table id="per-ad-table" data-source="economy" data-row-key="key">
+        <thead>
+          <tr>
+            <th data-field="hintsPerAd">Hints per ad</th>
+            <th data-field="newcomerFinish">Newcomers finish</th>
+            <th data-field="refusedShare">Hint requests refused</th>
+            <th data-field="bankedShare">Hints from the saved bundle</th>
+            <th data-field="rewardedPerPlayer">Rewarded ads per player</th>
+          </tr>
+        </thead>
+        <tbody data-draw="perAdRows"></tbody>
+      </table>
+    </div>
+    <div class="fg-callout" id="per-ad-decision">
+      <span class="fg-tag">Shipped: 3 hints per ad</span>
+      <p>Three hints per ad keeps <b data-draw="val" data-source="economy" data-field="newcomerFinish" data-where="key=perAd-tight-3" data-fmt="pct">—</b> of newcomers at the tight economy against <b data-draw="val" data-source="economy" data-field="newcomerFinish" data-where="key=perAd-tight-1" data-fmt="pct">—</b> with one, and fewer requests go unanswered. Five adds nothing over three. Players need fewer ads for the same help, which is the trade a rewarded ad should offer.</p>
+    </div>
+  </section>
+
+  <section class="fg-section" id="policy">
+    <h2>Next-level policy: a short detour when a player needs one</h2>
+    <p class="fg-muted">After each play the game picks what comes next. By default it is the next level on the main path. It inserts one detour from a reserve of extra levels (never main-path levels) when recent play suggests the player needs it, and never two detours in a row.</p>
+    <ul class="fg-list" id="policy-rules">
+      <li><b>Back after a break</b> (8 hours or more): a quick warm-up under a minute, one tier below the hardest technique they have used without help.</li>
+      <li><b>Quit a level:</b> an easier breather, then the level they quit comes back.</li>
+      <li><b>A long solve</b> (well past the estimate, or over 4 minutes): an easier breather.</li>
+      <li><b>Hints on two levels running:</b> an easier breather.</li>
+    </ul>
+    <p class="fg-muted">The simulation plays sittings of 8 to 20 minutes, 12 hours apart, through the same next-level function the game will use. It cannot know how much a breather soothes a real player, so it runs twice: once with no effect on quitting, and once assuming 30% fewer players leave after a quit when an easier level comes next. That assumption is a placeholder until Phase 3 measures it.</p>
+    <div class="fg-scroll">
+      <table id="policy-table" data-source="policy" data-row-key="key">
+        <thead>
+          <tr>
+            <th data-field="variantLabel">Everyone</th>
+            <th data-field="finished">Reach the end of chapter 3</th>
+            <th data-field="minutes">Minutes played</th>
+            <th data-field="adViews">Ad views</th>
+            <th data-field="warmups">Warm-ups</th>
+            <th data-field="breathers">Breathers</th>
+          </tr>
+        </thead>
+        <tbody data-draw="policyRows"></tbody>
+      </table>
+    </div>
+    <ul class="fg-legend" aria-label="Variants">
+      <li><i class="fg-sw" data-series="0"></i>No policy</li>
+      <li><i class="fg-sw" data-series="1"></i>Policy, no assumed effect</li>
+      <li><i class="fg-sw" data-series="2"></i>Policy, assumed effect</li>
+    </ul>
+    <div class="fg-chart" id="policy-bars" data-draw="policyBars" data-source="policy"></div>
+    <div class="fg-callout" id="policy-finding">
+      <span class="fg-tag">What it shows</span>
+      <p>Even with no effect on quitting, the policy is worth having: the same share of players finish, but each plays about <b data-draw="val" data-source="policyDelta" data-field="value" data-where="key=minutes" data-fmt="int">—</b> more minutes and sees <b data-draw="val" data-source="policyDelta" data-field="value" data-where="key=adViews" data-fmt="num">—</b> more ad views, because detours are extra levels. If breathers do soften quits, newcomers gain most: <b data-draw="val" data-source="policy" data-field="finished" data-where="key=policy-assumed|newcomer" data-fmt="pct">—</b> reach the end against <b data-draw="val" data-source="policy" data-field="finished" data-where="key=none|newcomer" data-fmt="pct">—</b> without the policy.</p>
+    </div>
+  </section>
+
+  <section class="fg-section" id="next">
+    <h2>What comes next in Phase 1</h2>
+    <ul class="fg-list">
+      <li>Phase 1 is complete: the next step is Phase 2, the playable web build with the real renderer.</li>
+      <li>Twist chapters (moonlit tiles, lanterns, mushrooms) with technique-targeted teaching levels.</li>
+      <li>Calibrate the time estimates against real playtests before trusting the five-minute limit to the second.</li>
+    </ul>
+  </section>
+
+  <details id="definitions">
+    <summary>How levels are graded</summary>
+    <dl>
+      <dt>T1 bookkeeping</dt><dd>A bush already has its number, so its other neighbors stay empty; or it needs every open neighbor, so fill them.</dd>
+      <dt>T2 one source</dt><dd>A dark tile that only one open cell can light.</dd>
+      <dt>T2 bush room</dt><dd>A bush needs k more fireflies and only some open spots can hold k at once without seeing each other.</dd>
+      <dt>T3 overlap</dt><dd>Two bushes share open neighbors; together their numbers pin the shared and unshared cells.</dd>
+      <dt>T4 lookahead</dt><dd>Assume a cell, apply the moves that become obvious, and hit a contradiction.</dd>
+      <dt>Hints</dt><dd>A hint places one correct firefly or fixes one wrong one, taken from the grader's next step. A rewarded ad grants 3 hints: one used now, two saved.</dd>
+      <dt>Simulated players</dt><dd>Newcomer: knows T1, 1.4x slower, 150 s patience. Casual: knows T2, 1.15x, 240 s. Puzzler: knows T3, 0.9x, 420 s. Expert: knows T4, 0.7x, 600 s. A stretch step (one tier above) takes 2.5x as long and gets a player stuck 25% of the time (50% when it is the only move); two tiers above, 85%. Learning the next tier takes 2 to 3 unaided stretch steps.</dd>
+      <dt>Mushroom</dt><dd>A numbered blocker that counts fireflies on its 4 side tiles only.</dd>
+      <dt>T5 deep trial</dt><dd>Assume a cell and follow T1 to T3 moves many steps until a contradiction.</dd>
+      <dt>Score</dt><dd>The hardest technique picks a 25-point band (T1 25 to 49, T2 50 to 74, and so on). Search effort (the time estimate without taps) places the level inside its band on a log scale, from that tier's easiest to its hardest levels in the census.</dd>
+      <dt>Estimated time</dt><dd>Seconds per step by tier (2.5, 4, 12, 18, 40), slower when fewer moves are available, plus 0.8 s per firefly tapped. A model to calibrate against playtests.</dd>
+    </dl>
+  </details>
+</div>
+
+<script src="report.js"></script>

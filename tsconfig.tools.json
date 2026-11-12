@@ -1,0 +1,9 @@
+{
+  // Tests, ratchets and repo scripts: Node environment, sees core sources.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "types": ["node"]
+  },
+  "include": ["packages/*/test", "apps/*/test", "tests", "scripts/*.ts", "vitest.config.ts", "apps/game/vite.config.ts"]
+}

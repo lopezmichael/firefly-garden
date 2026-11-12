@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // No "DOM" lib and no ambient @types: core must run in Node scripts, the
+    // game, and tests alike. Reaching for window/document here is a type error.
+    "lib": ["ES2022"],
+    "types": []
+  },
+  "include": ["src"]
+}

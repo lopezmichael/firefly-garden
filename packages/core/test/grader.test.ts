@@ -1,0 +1,122 @@
+import { describe, expect, it } from 'vitest';
+import { buildBoard, cellIndex, generate, grade, measure, type GenSpec, type Level } from '../src/index.ts';
+import { MOCKUPS, UNIQUE } from './fixtures.ts';
+
+/** A spread of specs covering sizes, shapes and every twist. */
+const SPECS: GenSpec[] = [];
+for (let i = 0; i < 60; i++) {
+  const size = 4 + (i % 6);
+  SPECS.push({
+    id: `g${i}`, seed: 900 + i, w: size, h: size - (i % 3 === 0 ? 1 : 0), bushDensity: 0.15 + (i % 4) * 0.03,
+    shape: (['rect', 'ring', 'L', 'bridge', 'crescent'] as const)[i % 5]!,
+    hide: i % 2 === 0 ? 'max' : 'none',
+    ...(i % 6 === 1 ? { mushrooms: 0.06 } : {}),
+    ...(i % 6 === 4 ? { mushrooms: 0.06, moonlit: 0.06, lanterns: true } : {}),
+    ...(i % 6 === 2 ? { moonlit: 0.08 } : {}),
+    ...(i % 6 === 3 ? { mushrooms: 0.1, hide: 'none' as const } : {}),
+    ...(i % 6 === 5 ? { lanterns: true } : {}),
+  });
+}
+
+describe('grade', () => {
+  it('only ever makes deductions that agree with the unique solution', () => {
+    let checked = 0;
+    for (const spec of SPECS) {
+      const gen = generate(spec);
+      if (!gen) continue;
+      const board = gen.board;
+      const answer = new Set(gen.level.solution!.map((c) => cellIndex(board, c)));
+      const g = grade(board);
+      for (const step of g.steps) {
+        expect(answer.has(step.cell), `${spec.id} ${step.technique} on ${step.cell}`).toBe(step.value === 'firefly');
+      }
+      if (g.solved) expect(new Set(g.fireflies)).toEqual(answer);
+      checked++;
+    }
+    expect(checked).toBeGreaterThan(50);
+  });
+
+  it.each(UNIQUE)('solves the known-unique board $level.id with techniques alone', (f) => {
+    const g = grade(buildBoard(f.level));
+    expect(g.solved).toBe(true);
+    expect(g.maxTier).toBeGreaterThanOrEqual(1);
+    expect(g.maxTier).toBeLessThanOrEqual(5);
+  });
+
+  it.each(MOCKUPS)('gets stuck (tier 6) on the non-unique board $level.id instead of guessing', (f) => {
+    const g = grade(buildBoard(f.level));
+    expect(g.solved).toBe(false);
+    expect(g.maxTier).toBe(6);
+  });
+
+  it('does not call a board solved while a moonlit tile could still take a firefly', () => {
+    // Two answers: firefly on (0,0) alone, or on both (0,0) and the moonlit (0,2).
+    const level: Level = { id: 'moon', w: 3, h: 1, mask: ['#.#'], bushes: [], twists: { moonlit: [[0, 2]] } };
+    expect(grade(buildBoard(level)).solved).toBe(false);
+  });
+
+  it('grades a pure bookkeeping board as T1', () => {
+    // The bush wants 2 and has exactly 2 open neighbors, which light everything.
+    const level: Level = { id: 't1', w: 3, h: 1, mask: ['###'], bushes: [[0, 1, 2]] };
+    const g = grade(buildBoard(level));
+    expect(g).toMatchObject({ solved: true, maxTier: 1 });
+    expect(g.steps.every((s) => s.technique === 'T1-needs-all')).toBe(true);
+  });
+
+  it('records every technique tier across a varied batch of generated levels', () => {
+    const used = new Set<string>();
+    for (const spec of SPECS) {
+      const gen = generate(spec);
+      if (gen) for (const st of gen.grade.steps) used.add(st.technique);
+    }
+    for (const t of ['T1-satisfied', 'T1-needs-all', 'T2-one-source', 'T2-bush-room', 'T3-overlap', 'T4-lookahead']) {
+      expect(used, t).toContain(t);
+    }
+  });
+});
+
+describe('measure', () => {
+  // Fake T2 traces: each step costs secondsPerTier[2] × (1 + spread / (width + 1)) ≈ 4 s
+  // when the width is huge, so `n` steps give about 4n seconds of search.
+  const board = buildBoard({ id: 'm', w: 3, h: 1, mask: ['###'], bushes: [[0, 1, 2]] });
+  const level: Level = { id: 'm', w: 3, h: 1, mask: ['###'], bushes: [[0, 1, 2]] };
+  const fakeT2 = (n: number) => ({
+    solved: true, maxTier: 2, tierCounts: [0, 0, n, 0, 0, 0], fireflies: [],
+    steps: Array.from({ length: n }, () => ({ technique: 'T2-one-source' as const, tier: 2, cell: 0, value: 'firefly' as const, width: 1e9, because: [] })),
+  });
+
+  it('puts a level with less search than its tier floor at the bottom of the band', () => {
+    expect(measure(level, board, fakeT2(2)).score).toBe(50); // ~8 s, below the T2 floor of 25 s
+  });
+
+  it('places levels on a log scale: the geometric middle of the range is mid-band', () => {
+    // T2 range is 25..210 s; its geometric middle is ~72 s (18 steps). Linear would give 56.
+    expect(measure(level, board, fakeT2(18)).score).toBe(62);
+  });
+
+  it('keeps every score inside its tier band, rising with search effort within the band', () => {
+    const rows: { tier: number; score: number; seconds: number }[] = [];
+    for (const spec of SPECS) {
+      const gen = generate(spec);
+      if (!gen || gen.difficulty.tier === 0) continue;
+      const { tier, score, estimatedSeconds } = gen.difficulty;
+      expect(score, spec.id).toBeGreaterThanOrEqual(25 * tier);
+      expect(score, spec.id).toBeLessThan(25 * (tier + 1));
+      rows.push({ tier, score, seconds: estimatedSeconds });
+    }
+    // Within T2, more estimated time should usually mean a higher score.
+    const t2 = rows.filter((r) => r.tier === 2).sort((a, b) => a.seconds - b.seconds);
+    expect(t2.length).toBeGreaterThan(10);
+    const half = Math.floor(t2.length / 2);
+    const mean = (xs: typeof t2) => xs.reduce((a, r) => a + r.score, 0) / xs.length;
+    expect(mean(t2.slice(half))).toBeGreaterThan(mean(t2.slice(0, half)));
+  });
+
+  it('scores harder traces higher and estimates longer solves', () => {
+    const easy = generate({ id: 'e', seed: 1, w: 4, h: 4, bushDensity: 0.2, hide: 'none', targetTiers: [1, 2] })!;
+    const hard = generate({ id: 'h', seed: 2, w: 8, h: 8, bushDensity: 0.18, hide: 'max', targetTiers: [3, 5] })!;
+    expect(hard.difficulty.score).toBeGreaterThan(easy.difficulty.score);
+    expect(hard.difficulty.estimatedSeconds).toBeGreaterThan(easy.difficulty.estimatedSeconds);
+    expect(measure(easy.level, easy.board, easy.grade)).toEqual(easy.difficulty);
+  });
+});

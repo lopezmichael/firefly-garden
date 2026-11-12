@@ -1,0 +1,5 @@
+#!/bin/sh
+# Installed by `npm install` (scripts/install-hooks.mjs). Never bypass with
+# --no-verify; fix the failure instead.
+set -e
+npm run --silent check
