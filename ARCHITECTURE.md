@@ -40,13 +40,14 @@ line is swappable.
 | `board.ts` | `buildBoard`: compiles a `Level` into a `Board` with precomputed rays (what each tile sees) and bush neighborhoods |
 | `rules.ts` | `evaluate`: lit tiles, conflicts, bush states, solved. `canPlace` |
 | `solver.ts` | `solve` / `isUnique`: exact search with propagation, stops at a solution limit |
-| `transform.ts` | The 8 rotations/mirrors, so one stored orientation serves portrait and landscape |
+| `transform.ts` | The 8 rotations/mirrors, so one stored orientation serves portrait and landscape; `canonicalKey` spots disguised duplicates |
 | `grader.ts` | Human-style technique solver: one deduction at a time, simplest first, records the trace (tier, width, reason) |
 | `difficulty.ts` | Features, score, tier and estimated solve time from a trace; all weights in `DIFFICULTY_CONFIG` |
 | `rng.ts` | Seeded PRNG so every generated level can be regenerated from its spec |
 | `shapes.ts` | Garden masks: rectangle, ring, L, bridge, crescent |
 | `generator.ts` | Spec → unique, graded level (scatter, hidden answer, derive clues, repair, clue removal, grade) |
 | `ramp.ts` | Picks levels for each chapter, orders them as a sawtooth, swaps in a teaching level where each new tier first appears, and places that debut early in the chapter with practice alternating with easier levels |
+| `policy.ts` | Next-level policy: main path by default, one detour (warm-up after a break; breather after a quit, a long solve or repeated hints) from a reserve pool, never two in a row |
 | `players.ts` | Simulated players (four kinds of portal player) walking grader traces with skill, learning, patience, hints and churn; the shipped hint economy (`PLAYER_CONFIG`) |
 
 Rules of the package: no DOM, no Node APIs, no dependencies, relative imports

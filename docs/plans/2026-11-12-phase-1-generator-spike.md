@@ -97,7 +97,7 @@ This is where we design the pull of the game while it is still cheap to change.
 - [ ] **First-session script**: levels 1 to 10 hand-checked from generated
       candidates: T1 to T2 only, 4x4 to 5x5, each under a minute, each teaching one idea.
       The first session protects the hook (no ads before level 5 per the plan).
-- [ ] **Next-level policy** (pure function of player history → next level): warm-up
+- [x] **Next-level policy** (pure function of player history → next level): warm-up
       level when returning after a gap, an easier breather after a quit or a long
       solve, steady climb otherwise. Simulated now, wired into the game in Phase 2.
 - [x] **Simulated players**: models with a skill level (highest technique mastered),
@@ -180,4 +180,20 @@ better game.
   Debut levels still draw about a third of plays to a hint; that is where help belongs and
   it stays under the 40% guardrail. Placing debuts alone barely moved the numbers; ordering
   practice gentlest-first is what brought breathers under 5%.
+- **Next-level policy (2026-11-12):** `nextLevel` in core, used by the simulator now and by
+  the game in Phase 2. Detours average ~6.6 per player over chapters 1 to 3 (3.4 warm-ups,
+  3.2 breathers). No assumed effect: completion unchanged, +10 minutes and +2.4 ad views per
+  player. Assumed 30% fewer leave after a quit with a breather next: 83% finish (from
+  78.5%), newcomers 62% (from 53%). The real effect is a Phase 3 measurement.
+
+## Launch pack size (target 500 to 1,000 levels)
+
+- Generation is cheap (252 graded levels in ~2 s), and 1,000 levels is ~400 KB of JSON
+  against the 8 MB budget; CI validation of 1,000 levels takes seconds.
+- Shape: roughly 600 to 750 main-path levels in chapters of 8 to 12 (60 to 80 chapters),
+  plus 250 to 300 reserve levels for warm-ups and breathers (and the daily puzzle pool).
+- Variety at that size needs the twist chapters (moonlit, lanterns, mushrooms, shapes) and a
+  duplicate guard: `canonicalKey` now rejects rotations and mirrors of existing levels.
+- Content limits seen so far (few T1 openers, few T3 practice levels) disappear with a
+  larger, targeted pool: generate per-chapter specs instead of one census.
 

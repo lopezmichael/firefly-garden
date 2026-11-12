@@ -7,7 +7,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
-  buildBoard, cellIndex, DIFFICULTY_CONFIG, evaluate, grade, isUnique, measure, parseLevel, type Level,
+  buildBoard, canonicalKey, cellIndex, DIFFICULTY_CONFIG, evaluate, grade, isUnique, measure, parseLevel, type Level,
 } from '../packages/core/src/index.ts';
 
 const { maxSecondsAnyLevel, chapterMaxSeconds } = DIFFICULTY_CONFIG.limits;
@@ -48,6 +48,18 @@ describe('committed levels', () => {
       }
     }
     expect(bad).toEqual([]);
+  });
+
+  it('has no level that is a rotation or mirror of another', () => {
+    const seen = new Map<string, string>();
+    const dupes: string[] = [];
+    for (const l of levels) {
+      const k = canonicalKey(l);
+      const prev = seen.get(k);
+      if (prev) dupes.push(`${l.id} duplicates ${prev}`);
+      else seen.set(k, l.id);
+    }
+    expect(dupes).toEqual([]);
   });
 
   it('manifest matches the packs', () => {

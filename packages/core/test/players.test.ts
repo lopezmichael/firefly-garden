@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { combine, PLAYER_CONFIG, rampRoles, simulate, type PlayerProfile, type SimLevel } from '../src/index.ts';
+import { combine, PLAYER_CONFIG, rampRoles, simulate, simulateWithPolicy, type PlayerProfile, type SimLevel } from '../src/index.ts';
 
 const step = (tier: number, width = 3) => ({ tier, width });
 const level = (id: string, tiers: number[], width = 3): SimLevel =>
@@ -107,6 +107,39 @@ describe('simulate', () => {
 
   it('ships a population whose shares sum to 1', () => {
     expect(PLAYER_CONFIG.profiles.reduce((a, p) => a + p.share, 0)).toBeCloseTo(1, 9);
+  });
+});
+
+describe('simulateWithPolicy', () => {
+  const mainLv = [level('a', [1, 2]), level('b', [2, 3], 1), level('c', [3, 3, 4], 1), level('d', [4, 4], 1)]
+    .map((l, i) => ({ ...l, tier: [2, 3, 4, 4][i]!, score: [55, 80, 110, 120][i]!, estimatedSeconds: 60 }));
+  const reserve = Array.from({ length: 12 }, (_, i) => ({ ...level(`r${i}`, [1, 1, 2]), tier: i % 2 ? 2 : 1, score: 30 + i, estimatedSeconds: 30 }));
+  const opts = { reserve, churnFactorWithBreather: 1 };
+
+  it('is deterministic and keeps per-level books balanced', () => {
+    const a = simulateWithPolicy(mainLv, profile({ skill: 2 }), economy, 300, 31, opts);
+    expect(a).toEqual(simulateWithPolicy(mainLv, profile({ skill: 2 }), economy, 300, 31, opts));
+    a.levels.forEach((o) => {
+      expect(o.plays).toBe(o.solved + o.quits);
+      expect(o.solved + o.churned).toBeLessThanOrEqual(o.reached);
+    });
+    expect(a.finished).toBeLessThanOrEqual(a.levels.at(-1)!.solved);
+  });
+
+  it('takes detours from the reserve and plays longer than without the policy', () => {
+    const p = profile({ skill: 1, speed: 1.5 });
+    const without = simulate(mainLv, p, economy, 300, 32);
+    const withPolicy = simulateWithPolicy(mainLv, p, economy, 300, 32, opts);
+    const detours = Object.values(withPolicy.detoursPerPlayer).reduce((a, b) => a + b, 0);
+    expect(detours).toBeGreaterThan(0);
+    expect(withPolicy.minutesPerPlayer).toBeGreaterThan(without.minutesPerPlayer);
+  });
+
+  it('keeps more players when breathers are assumed to soften quits', () => {
+    const p = profile({ skill: 1, churnOnQuit: 0.8 });
+    const none = simulateWithPolicy(mainLv, p, economy, 400, 33, opts);
+    const soft = simulateWithPolicy(mainLv, p, economy, 400, 33, { ...opts, churnFactorWithBreather: 0.5 });
+    expect(soft.finished).toBeGreaterThan(none.finished);
   });
 });
 

@@ -43,6 +43,16 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 - A rewarded ad grants 3 hints (one now, two saved); at a tight economy this keeps more
   newcomers than one per ad, and five adds nothing over three.
 
+### Added (next-level policy)
+- `nextLevel` (`policy.ts`): the main path by default, plus one detour from a reserve pool
+  when needed: a warm-up after a break of 8+ hours, a breather after a quit (then the quit
+  level returns), a long solve, or hints on two levels running. Never two detours in a row.
+- `simulateWithPolicy`: the same players in 8 to 20 minute sittings, served by `nextLevel`.
+  With no assumed effect on quitting, completion is unchanged but players get ~10 more
+  minutes and ~2.4 more ad views each; assuming 30% fewer leave after a quit when a breather
+  follows, 83% finish chapter 3 instead of 78.5% (newcomers 62% instead of 53%).
+- `canonicalKey` and a level ratchet: no committed level is a rotation or mirror of another.
+
 ### Added (debut placement)
 - Ramp builder places each new tier's debut about 30% into its chapter (`debutAt`), then
   alternates practice of the new tier (gentlest first) with easier levels before the peak,

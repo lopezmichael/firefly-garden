@@ -73,7 +73,8 @@ about the code today.
 - No portal or ad SDK mentioned outside `apps/game/src/platform/`
 - Production bundle under 8 MB
 - Every committed level re-solves to exactly one solution and re-grades to its stored
-  tier and score (`tests/levels.test.ts`)
+  tier and score; no level is a rotation or mirror of another; each chapter introduces at
+  most one new tier and ends on its top score (`tests/levels.test.ts`)
 - No level in chapter 1 requires a technique above T2
 - Hint economy (simulated, `tests/economy.test.ts`): at most 5% of hint requests refused,
   at least 95% of players clear chapter 1, breathers under 5% hint use on average, no level

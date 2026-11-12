@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildBoard, cellIndex, evaluate, solve, TRANSFORMS, transformLevel, validateLevel } from '../src/index.ts';
+import { buildBoard, canonicalKey, cellIndex, evaluate, solve, TRANSFORMS, transformLevel, validateLevel } from '../src/index.ts';
 import { mockup4, mockup6, mockupKoi, UNIQUE } from './fixtures.ts';
 
 describe('transformLevel', () => {
@@ -35,4 +35,16 @@ describe('transformLevel', () => {
       }
     },
   );
+});
+
+describe('canonicalKey', () => {
+  it('is the same for every rotation and mirror of a level, whatever its id', () => {
+    const base = canonicalKey(mockupKoi.level);
+    for (const t of TRANSFORMS) expect(canonicalKey({ ...transformLevel(mockupKoi.level, t), id: `other-${t}` })).toBe(base);
+  });
+
+  it('differs when a clue differs', () => {
+    const changed = { ...mockup6.level, bushes: mockup6.level.bushes.map(([r, c, n], i) => [r, c, i === 0 ? (n ?? 0) + 1 : n] as const) };
+    expect(canonicalKey(changed)).not.toBe(canonicalKey(mockup6.level));
+  });
 });

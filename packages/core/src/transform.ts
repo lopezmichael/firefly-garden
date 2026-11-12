@@ -57,3 +57,20 @@ function mapLevel(level: Level, w: number, h: number, f: (p: Coord) => Coord): L
   if (solution) out.solution = solution;
   return out;
 }
+
+/**
+ * A key that is identical for two levels exactly when one is a rotation or
+ * mirror of the other (same mask, clues and twists; ids and grading ignored).
+ * Used to keep large packs free of disguised duplicates.
+ */
+export function canonicalKey(level: Level): string {
+  const keyOf = (l: Level) => {
+    const entries = (xs: readonly (readonly (number | null)[])[] | undefined) => (xs ?? []).map((e) => e.join(',')).sort();
+    const twists = Object.entries(l.twists ?? {})
+      .filter(([, v]) => Array.isArray(v) && v.length > 0)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([k, v]) => [k, entries(v as readonly (readonly number[])[])]);
+    return JSON.stringify([l.w, l.h, l.mask, entries(l.bushes), twists]);
+  };
+  return TRANSFORMS.map((t) => keyOf(transformLevel(level, t))).sort()[0]!;
+}

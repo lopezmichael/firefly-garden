@@ -1,4 +1,5 @@
 import { DIFFICULTY_CONFIG } from './difficulty.ts';
+import { isDetour, nextLevel, type PlayRecord, type PolicyLevel } from './policy.ts';
 import { createRng, deriveSeed, type Rng } from './rng.ts';
 
 /**
@@ -27,6 +28,10 @@ export interface SimLevel {
   readonly role: LevelRole;
   readonly steps: readonly SimStep[];
   readonly fireflies: number;
+  /** Needed by the next-level policy (tier, score, estimate). */
+  readonly tier?: number;
+  readonly score?: number;
+  readonly estimatedSeconds?: number;
 }
 
 export interface PlayerProfile {
@@ -111,6 +116,13 @@ export const PLAYER_CONFIG = {
   },
   /** Simulated players per profile. */
   runs: 1000,
+  /** Sessions, for the next-level policy's warm-ups. */
+  sessions: {
+    /** Minutes in one sitting (uniform range). */
+    minutes: [8, 20] as readonly [number, number],
+    /** Hours between sittings. */
+    gapHours: 12,
+  },
 } as const;
 
 export interface LevelOutcome {
@@ -334,3 +346,166 @@ export function combine(results: readonly SimResult[], profiles: readonly Player
     return { id: l.id, survival, hintRate, quitRate };
   });
 }
+
+export interface PolicyOptions {
+  /** Extra levels for detours (warm-ups and breathers). */
+  readonly reserve: readonly SimLevel[];
+  /**
+   * ASSUMPTION, not evidence: multiplier on the chance of leaving the game
+   * after a quit when the policy offers an easier level next (1 = no effect).
+   */
+  readonly churnFactorWithBreather: number;
+}
+
+export interface PolicySimResult extends SimResult {
+  /** Detours per simulated player, by reason. */
+  readonly detoursPerPlayer: Readonly<Record<string, number>>;
+}
+
+const toPolicyLevel = (l: SimLevel): PolicyLevel => ({
+  id: l.id,
+  tier: l.tier ?? Math.max(1, ...l.steps.map((s) => s.tier)),
+  score: l.score ?? 0,
+  estimatedSeconds: l.estimatedSeconds ?? 60,
+});
+
+/**
+ * Like `simulate`, but every next level comes from the next-level policy
+ * (`nextLevel`), with play split into sessions so warm-ups happen. Tallies
+ * are per main-path level, so results compare directly with `simulate`. A
+ * player still leaves after quitting the same main level twice.
+ */
+export function simulateWithPolicy(
+  levels: readonly SimLevel[], profile: PlayerProfile, economy: Economy, runs: number, seed: number, options: PolicyOptions,
+): PolicySimResult {
+  const ads = PLAYER_CONFIG.ads;
+  const sessions = PLAYER_CONFIG.sessions;
+  const mainIndex = new Map(levels.map((l, i) => [l.id, i]));
+  const all = new Map<string, SimLevel>([...levels, ...options.reserve].map((l) => [l.id, l]));
+  const policyLevels = new Map([...all.values()].map((l) => [l.id, toPolicyLevel(l)]));
+  const reserve = options.reserve.map(toPolicyLevel);
+  const mainPath = levels.map((l) => l.id);
+
+  const tallies: Tally[] = levels.map(() => ({
+    reached: 0, plays: 0, solved: 0, quits: 0, churned: 0, hintedPlays: 0, coinHints: 0, adHints: 0, refusedHints: 0, bankedHints: 0,
+    interstitials: 0, solveSeconds: 0,
+  }));
+  const detours: Record<string, number> = {};
+  let endCoins = 0, finished = 0, totalSeconds = 0, interstitials = 0, rewarded = 0;
+
+  for (let run = 0; run < runs; run++) {
+    const rng = createRng(deriveSeed(seed, run));
+    const state: PlayerState = { skill: profile.skill, xp: 0, coins: economy.startingCoins, bank: 0 };
+    const solved = new Set<string>();
+    const reached = new Set<number>();
+    const quits = new Map<string, number>();
+    const history: PlayRecord[] = [];
+    let clock = 0; // seconds of play
+    let gaps = 0; // milliseconds of time between sessions
+    let sessionStart = 0;
+    let sessionLength = sessionMinutes(rng) * 60;
+    let completed = 0;
+    let lastMidgame = -Infinity;
+    let alive = true;
+
+    for (let guard = 0; guard < levels.length * 6 && alive; guard++) {
+      const next = nextLevel({ mainPath, reserve, levels: policyLevels, solved, history, now: clock * 1000 + gaps });
+      if (!next) break;
+      const level = all.get(next.id)!;
+      const mi = mainIndex.get(next.id);
+      if (mi !== undefined && !reached.has(mi)) {
+        reached.add(mi);
+        tallies[mi]!.reached++;
+      }
+      if (isDetour(next.reason)) detours[next.reason] = (detours[next.reason] ?? 0) + 1;
+
+      const r = playOnce(level, profile, economy, state, rng);
+      rewarded += r.adHints;
+      clock += r.seconds + ads.levelTransitionSeconds;
+      if (mi !== undefined) {
+        const t = tallies[mi]!;
+        t.plays++;
+        t.coinHints += r.coinHints;
+        t.adHints += r.adHints;
+        t.refusedHints += r.refusedHints;
+        t.bankedHints += r.bankedHints;
+        if (r.coinHints + r.adHints + r.bankedHints > 0) t.hintedPlays++;
+      }
+      history.push({
+        levelId: level.id, reason: next.reason, solved: r.solved, seconds: r.seconds,
+        hints: r.coinHints + r.adHints + r.bankedHints, endedAt: clock * 1000 + gaps,
+      });
+
+      if (r.solved) {
+        solved.add(level.id);
+        state.coins += economy.coinsPerSolve;
+        completed++;
+        if (mi !== undefined) {
+          tallies[mi]!.solved++;
+          tallies[mi]!.solveSeconds += r.seconds;
+        }
+        if (completed > ads.midgameAfterLevels && clock - lastMidgame >= ads.midgameMinGapSeconds) {
+          if (mi !== undefined) tallies[mi]!.interstitials++;
+          interstitials++;
+          lastMidgame = clock;
+          clock += ads.midgameSeconds;
+        }
+      } else if (mi !== undefined) {
+        const t = tallies[mi]!;
+        t.quits++;
+        const n = (quits.get(level.id) ?? 0) + 1;
+        quits.set(level.id, n);
+        const churn = profile.churnOnQuit * options.churnFactorWithBreather;
+        if (n > PLAYER_CONFIG.retries || rng.next() < churn) {
+          t.churned++;
+          alive = false;
+          break;
+        }
+      } else if (rng.next() < profile.churnOnQuit * options.churnFactorWithBreather) {
+        // Quitting a detour can end the game too (the policy then goes back to the main path).
+        detours['left during a detour'] = (detours['left during a detour'] ?? 0) + 1;
+        alive = false;
+        break;
+      }
+
+      // End of a sitting: the next play starts after a gap (a warm-up's cue).
+      if (clock - sessionStart >= sessionLength) {
+        gaps += sessions.gapHours * 3_600_000;
+        sessionStart = clock;
+        sessionLength = sessionMinutes(rng) * 60;
+      }
+    }
+    if (alive && mainPath.every((id) => solved.has(id))) {
+      finished++;
+      endCoins += state.coins;
+    }
+    totalSeconds += clock;
+  }
+
+  return {
+    profile: profile.id,
+    runs,
+    finished,
+    meanEndCoins: finished ? endCoins / finished : 0,
+    interstitialsPerPlayer: runs ? interstitials / runs : 0,
+    rewardedPerPlayer: runs ? rewarded / runs : 0,
+    minutesPerPlayer: runs ? totalSeconds / runs / 60 : 0,
+    detoursPerPlayer: Object.fromEntries(Object.entries(detours).map(([k, v]) => [k, runs ? v / runs : 0])),
+    levels: levels.map((l, i) => {
+      const t = tallies[i]!;
+      return {
+        id: l.id, chapter: l.chapter, role: l.role,
+        reached: t.reached, plays: t.plays, solved: t.solved, quits: t.quits, churned: t.churned,
+        hintedPlays: t.hintedPlays, coinHints: t.coinHints, adHints: t.adHints, refusedHints: t.refusedHints,
+        bankedHints: t.bankedHints, interstitials: t.interstitials,
+        meanSolveSeconds: t.solved ? t.solveSeconds / t.solved : 0,
+      };
+    }),
+  };
+}
+
+function sessionMinutes(rng: Rng): number {
+  const [a, b] = PLAYER_CONFIG.sessions.minutes;
+  return a + rng.next() * (b - a);
+}
+

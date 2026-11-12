@@ -7,7 +7,8 @@
 // Writes levels/spike.json, levels/manifest.json and reports/phase1-data.json.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import {
-  buildBoard, buildRamp, cellIndex, combine, DIFFICULTY_CONFIG, generate, grade, PLAYER_CONFIG, rampRoles, simulate,
+  buildBoard, buildRamp, cellIndex, combine, DIFFICULTY_CONFIG, generate, grade, measure, PLAYER_CONFIG, rampRoles, simulate,
+  simulateWithPolicy,
   type ChapterSpec, type Economy, type SimLevel, type Generated, type GenSpec, type Level, type RampLevel, type ShapeId,
 } from '../packages/core/src/index.ts';
 
@@ -149,10 +150,17 @@ writeFileSync('reports/dash/ramp.json', JSON.stringify(chapters.flatMap((c) => c
 
 // 4. Simulated players through chapters 1 to 3, and the hint-economy sweep.
 const levelById = new Map(census.map((c) => [c.level.id, c.level]));
-const simLevels: SimLevel[] = chapters.flatMap((c) => c.levels.map((l) => {
-  const g = grade(buildBoard(levelById.get(l.id)!));
-  return { id: l.id, chapter: c.id, role: roles.get(l.id)!, steps: g.steps.map((s) => ({ tier: s.tier, width: s.width })), fireflies: g.fireflies.length };
-}));
+const toSim = (id: string, chapter: string, role: SimLevel['role']): SimLevel => {
+  const level = levelById.get(id)!;
+  const board = buildBoard(level);
+  const g = grade(board);
+  const d = measure(level, board, g);
+  return {
+    id, chapter, role, steps: g.steps.map((s) => ({ tier: s.tier, width: s.width })), fireflies: g.fireflies.length,
+    tier: d.tier, score: d.score, estimatedSeconds: d.estimatedSeconds,
+  };
+};
+const simLevels: SimLevel[] = chapters.flatMap((c) => c.levels.map((l) => toSim(l.id, c.id, roles.get(l.id)!)));
 const runAll = (economy: Economy) => PLAYER_CONFIG.profiles.map((p, k) => simulate(simLevels, p, economy, PLAYER_CONFIG.runs, 4242 + k));
 const shipped = runAll(PLAYER_CONFIG.economy);
 const pop = combine(shipped, PLAYER_CONFIG.profiles);
@@ -224,6 +232,40 @@ for (const [name, base] of [['shipped', PLAYER_CONFIG.economy], ['tight', TIGHT]
     economyRows.push({ key: `perAd-${name}-${n}`, group: `perAd-${name}`, ...summarize({ ...base, hintsPerAd: n }, false) });
   }
 }
+// 5. Next-level policy: the same players with detours (warm-ups, breathers) from
+// the reserve of census levels outside the chapters, with no assumed effect on
+// quitting and with an assumed one.
+const inChapters = new Set(chapters.flatMap((c) => c.levels.map((l) => l.id)));
+const reserve = census.filter((c) => !inChapters.has(c.level.id)).map((c) => toSim(c.level.id, 'extra', 'climb'));
+const ASSUMED_CHURN_FACTOR = 0.7;
+const policyRows = [];
+for (const [variant, label, run] of [
+  ['none', 'No policy', () => shipped],
+  ['policy', 'Policy, no assumed effect', () => PLAYER_CONFIG.profiles.map((p, k) =>
+    simulateWithPolicy(simLevels, p, PLAYER_CONFIG.economy, PLAYER_CONFIG.runs, 4242 + k, { reserve, churnFactorWithBreather: 1 }))],
+  ['policy-assumed', `Policy, ${Math.round((1 - ASSUMED_CHURN_FACTOR) * 100)}% fewer leave after a quit (assumed)`, () => PLAYER_CONFIG.profiles.map((p, k) =>
+    simulateWithPolicy(simLevels, p, PLAYER_CONFIG.economy, PLAYER_CONFIG.runs, 4242 + k, { reserve, churnFactorWithBreather: ASSUMED_CHURN_FACTOR }))],
+] as const) {
+  const res = run();
+  const rows = res.map((r, k) => {
+    const detours = 'detoursPerPlayer' in r ? (r as { detoursPerPlayer: Record<string, number> }).detoursPerPlayer : {};
+    return {
+      key: `${variant}|${r.profile}`, variant, variantLabel: label, profile: r.profile, label: PLAYER_CONFIG.profiles[k]!.label,
+      share: PLAYER_CONFIG.profiles[k]!.share, finished: r.finished / r.runs, minutes: r.minutesPerPlayer,
+      adViews: r.interstitialsPerPlayer + r.rewardedPerPlayer,
+      warmups: detours['warm-up'] ?? 0,
+      breathers: (detours['breather-after-quit'] ?? 0) + (detours['breather-after-long'] ?? 0) + (detours['breather-after-hints'] ?? 0),
+    };
+  });
+  const w = (f: (x: (typeof rows)[number]) => number) => rows.reduce((a, x) => a + x.share * f(x), 0);
+  policyRows.push(...rows, {
+    key: `${variant}|all`, variant, variantLabel: label, profile: 'all', label: 'Everyone', share: 1,
+    finished: w((x) => x.finished), minutes: w((x) => x.minutes), adViews: w((x) => x.adViews),
+    warmups: w((x) => x.warmups), breathers: w((x) => x.breathers),
+  });
+}
+writeFileSync('reports/dash/policy.json', JSON.stringify(policyRows));
+
 // Ad views per player under the shipped economy, by kind of player.
 writeFileSync('reports/dash/ads.json', JSON.stringify([
   ...shipped.map((r, k) => ({
