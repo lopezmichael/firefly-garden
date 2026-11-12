@@ -108,10 +108,12 @@ plus mark), the jar with its slots, one button, one sheet, and one full tall-pho
       Directional strokes in lit tiles are out; four calmer lit-tile options (A pooled wash, B
       dimmer with distance, C each tile glows, D rim light), A on the board. Board R4Ink.
 - [x] **Locked (Michael, 2026-11-12):** firefly C as refined and animated in round 4; lit tiles
-      are A + C (pooled wash with a soft warm centre in each tile). Roses vary: five kinds (open,
-      bud, cream wild rose, deep red, a pair), each happy bush picks three by board position so a
-      garden always looks the same. The red ground ring under a hint firefly is the hint's shape
-      cue (locked rule: hints differ by shape, not only colour); kept unless Michael asks otherwise.
+      are A + C (pooled wash with a soft warm centre in each tile). Roses: one rose in variations
+      (three shades, a bud of it, one with a leaf, each turned and sized differently); each happy
+      bush picks three by board position so a garden always looks the same. Hint marker: the
+      ground ring sat too close to the tile's bottom edge; options A (dashed halo at body height
+      plus the small seal), B (bigger corner seal), C (red knot on the tail); A on the board,
+      waiting for Michael's pick.
 - [ ] **Checkpoint B:** Michael picks a direction or a blend.
 
 ### 4. Full screen set, chosen direction (canvas row 3)
