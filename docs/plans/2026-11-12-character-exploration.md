@@ -94,6 +94,13 @@ plus mark), the jar with its slots, one button, one sheet, and one full tall-pho
       finalists get 2.5D fireflies, light that flows out along row and column as beams with
       sparkles instead of filling whole tiles (lit tiles still change visibly), roses on a happy
       bush and a wilt for too many. Boards R2Ink and R2Print on the canvas.
+- [x] Round 3 (2026-11-12). **Decided (Michael):** ink and wash is the main style; it takes the
+      night print paper lantern jar (in ink colours) and printed-style hills behind the status card
+      (Michael asked for them, so this scenery is approved). Round 2's fireflies read as bees and
+      too large: three slimmer, smaller firefly variants (A slim, B slim with a face, C mostly
+      light), B on the board. Roses moved inside the bush. Light: back to filling the whole tile,
+      improved (paper card with a 2.5D edge, brush grain along the light, a bright lane, bloom
+      under each firefly); the round 2 flow is kept only as the spreading animation. Board R3Ink.
 - [ ] **Checkpoint B:** Michael picks a direction or a blend.
 
 ### 4. Full screen set, chosen direction (canvas row 3)
