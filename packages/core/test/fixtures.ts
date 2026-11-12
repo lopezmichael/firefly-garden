@@ -6,8 +6,9 @@ import type { Coord, Level } from '../src/index.ts';
  * checked for uniqueness, and none of them is unique.
  *
  * `expectedCount` was counted by an independent brute-force script (written
- * separately from this solver, 2026-11-12) and is cross-checked again in
- * solver.test.ts by a naive enumerator. `intended` is the answer the mockup
+ * separately from this solver, 2026-11-12). The Phase 0 gate test in
+ * solver.test.ts also re-derives every fixture's solutions with the naive
+ * enumerator in oracle.ts. `intended` is the answer the mockup
  * shipped with.
  */
 export interface Fixture {

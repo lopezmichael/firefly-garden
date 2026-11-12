@@ -19,6 +19,11 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 - `Platform` adapter interface and a local development adapter.
 - Docs: CLAUDE.md, ARCHITECTURE.md, ROADMAP.md, rules reference, Phase 0 and Phase 1 plans.
 
+### Security
+- `parseLevel` caps list lengths, mask row width and text fields before any per-item work.
+- `solve` takes an optional `maxNodes` budget for levels generated on the fly.
+- CI checkout no longer persists credentials; job timeout added.
+
 ### Changed
 - Gate 0 reworded: the mockup gardens are not unique, so the gate checks correct counting
   plus known-unique boards (see ROADMAP.md).

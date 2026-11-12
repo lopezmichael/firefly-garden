@@ -22,6 +22,9 @@ describe('Phase 0 gate', () => {
     for (const s of result.solutions) expect(evaluate(board, s).solved).toBe(true);
     expect(new Set(result.solutions.map(key)).size).toBe(result.count);
 
+    // The naive enumerator finds exactly the same set.
+    expect(result.solutions.map(key).sort()).toEqual(bruteForceSolutions(board).map(key).sort());
+
     // The mockup's own answer is among them.
     const intended = f.intended.map((c) => cellIndex(board, c)).sort((a, b) => a - b);
     expect(result.solutions.map(key)).toContain(key(intended));
@@ -30,6 +33,7 @@ describe('Phase 0 gate', () => {
   it.each(UNIQUE)('confirms $level.id has exactly one solution, the intended one', (f) => {
     const board = buildBoard(f.level);
     expect(isUnique(board)).toBe(true);
+    expect(bruteForceSolutions(board)).toHaveLength(1);
     const [only] = solve(board, { limit: 10 }).solutions;
     expect(only).toEqual(f.intended.map((c) => cellIndex(board, c)).sort((a, b) => a - b));
   });
@@ -57,6 +61,13 @@ describe('solve', () => {
     // Both cells moonlit, no clues: empty, left, right are all valid.
     const level: Level = { id: 'x', w: 2, h: 1, mask: ['##'], bushes: [], twists: { moonlit: [[0, 0], [0, 1]] } };
     expect(solve(buildBoard(level), { limit: 10 }).count).toBe(3);
+  });
+
+  it('stops at the node budget and reports it', () => {
+    const board = buildBoard(MOCKUPS[3]!.level);
+    const result = solve(board, { limit: 10_000, maxNodes: 5 });
+    expect(result).toMatchObject({ exhaustive: false, budgetExceeded: true, nodes: 5 });
+    expect(solve(board, { limit: 10_000 }).budgetExceeded).toBe(false);
   });
 
   it('rejects a non-positive limit', () => {

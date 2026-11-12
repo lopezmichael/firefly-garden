@@ -2,6 +2,9 @@ import type { BushSpec, Coord, Level, LevelTwists } from './types.ts';
 
 /** Largest board edge we accept. Generous: phone layouts cap far lower. */
 export const MAX_BOARD_EDGE = 32;
+/** No list in a level can sensibly be longer than the largest board has cells. */
+const MAX_LIST = MAX_BOARD_EDGE * MAX_BOARD_EDGE;
+const MAX_TEXT = 128;
 
 const TWIST_KEYS = ['mushrooms', 'moonlit', 'lanterns'] as const;
 const LEVEL_KEYS = new Set([
@@ -25,8 +28,22 @@ export class LevelError extends Error {
 export function parseLevel(json: unknown): Level {
   const problems: string[] = [];
   if (!isRecord(json)) throw new LevelError('?', ['level is not an object']);
-  const id = typeof json.id === 'string' && json.id.length > 0 ? json.id : '?';
-  if (id === '?') problems.push('id must be a non-empty string');
+  const id = typeof json.id === 'string' && json.id.length > 0 && json.id.length <= MAX_TEXT ? json.id : '?';
+  if (id === '?') problems.push(`id must be a string of 1..${MAX_TEXT} chars`);
+
+  // Size caps first, so oversized input is rejected before any per-item work.
+  const lists: [string, unknown][] = [
+    ['mask', json.mask], ['bushes', json.bushes], ['solution', json.solution], ['techniques', json.techniques],
+    ...(isRecord(json.twists) ? Object.entries(json.twists).map(([k, v]): [string, unknown] => [`twists.${k}`, v]) : []),
+  ];
+  for (const [name, v] of lists) {
+    if (Array.isArray(v) && v.length > MAX_LIST) problems.push(`${name} has more than ${MAX_LIST} entries`);
+  }
+  if (typeof json.area === 'string' && json.area.length > MAX_TEXT) problems.push(`area is longer than ${MAX_TEXT} chars`);
+  if (Array.isArray(json.mask) && json.mask.some((row) => typeof row === 'string' && row.length > MAX_BOARD_EDGE)) {
+    problems.push(`mask rows may not exceed ${MAX_BOARD_EDGE} chars`);
+  }
+  if (problems.length > 0) throw new LevelError(id, problems);
 
   for (const key of Object.keys(json)) {
     if (!LEVEL_KEYS.has(key)) problems.push(`unknown key "${key}"`);

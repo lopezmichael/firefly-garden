@@ -3,7 +3,7 @@
  * ARCHITECTURE.md is crossed. Fix the code, never loosen these.
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const ROOT = join(import.meta.dirname, '..');
@@ -20,8 +20,8 @@ function files(dir: string, exts: readonly string[]): string[] {
 
 /** Every module specifier in import/export-from statements and dynamic imports. */
 function specifiers(source: string): string[] {
-  const re = /(?:import|export)\s[^'"]*?from\s*['"]([^'"]+)['"]|import\s*['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)/g;
-  return [...source.matchAll(re)].map((m) => m[1] ?? m[2] ?? m[3]!);
+  const re = /(?:import|export)\s[^'"`]*?from\s*['"]([^'"]+)['"]|import\s*['"]([^'"]+)['"]|import\(\s*['"`]([^'"`]+)['"`]\s*\)|require\(\s*['"`]([^'"`]+)['"`]\s*\)/g;
+  return [...source.matchAll(re)].map((m) => m[1] ?? m[2] ?? m[3] ?? m[4]!);
 }
 
 describe('packages/core stays pure', () => {
@@ -31,12 +31,20 @@ describe('packages/core stays pure', () => {
     expect(coreFiles.length).toBeGreaterThan(0);
   });
 
-  it('imports only its own modules (no DOM, renderer, SDK or Node packages)', () => {
+  it('imports only its own modules (no DOM, renderer, SDK, Node or other workspace code)', () => {
+    const CORE_SRC = join(ROOT, 'packages/core/src') + sep;
+    const insideCore = (from: string, spec: string) =>
+      (spec.startsWith('./') || spec.startsWith('../')) && resolve(dirname(from), spec).startsWith(CORE_SRC);
     const bad = coreFiles.flatMap((f) =>
       specifiers(readFileSync(f, 'utf8'))
-        .filter((s) => !s.startsWith('./') && !s.startsWith('../'))
+        .filter((s) => !insideCore(f, s))
         .map((s) => `${relative(ROOT, f)} imports "${s}"`));
     expect(bad).toEqual([]);
+  });
+
+  it('has no dynamic import or require with a computed specifier', () => {
+    const bad = coreFiles.filter((f) => /\b(?:import|require)\(\s*[^'"`\s)]/.test(readFileSync(f, 'utf8')));
+    expect(bad.map((f) => relative(ROOT, f))).toEqual([]);
   });
 
   it('compiles without DOM or ambient Node types', () => {
@@ -48,12 +56,12 @@ describe('packages/core stays pure', () => {
 });
 
 describe('portal and ad SDKs stay behind the platform adapter', () => {
-  const SDK = /\bPokiSDK\b|\bCrazyGames\b|playgama|@capacitor\/|admob|revenuecat|googletag|adsbygoogle/i;
-  const PLATFORM_DIR = join(ROOT, 'apps/game/src/platform');
+  const SDK = /\bPokiSDK\b|poki-sdk|\bCrazyGames\b|crazygames-sdk|playgama|@capacitor\/|admob|revenuecat|googletag|adsbygoogle/i;
+  const PLATFORM_DIR = join(ROOT, 'apps/game/src/platform') + sep;
 
   it('mentions no SDK outside apps/game/src/platform/', () => {
     const candidates = [
-      ...files(join(ROOT, 'apps/game/src'), ['.ts', '.tsx', '.js', '.html', '.css']),
+      ...files(join(ROOT, 'apps/game/src'), ['.ts', '.tsx', '.mts', '.js', '.jsx', '.mjs', '.json', '.html', '.css']),
       join(ROOT, 'apps/game/index.html'),
     ].filter((f) => !f.startsWith(PLATFORM_DIR));
     const bad = candidates.filter((f) => SDK.test(readFileSync(f, 'utf8'))).map((f) => relative(ROOT, f));

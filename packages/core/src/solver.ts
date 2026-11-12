@@ -10,6 +10,12 @@ import type { Board } from './board.ts';
 export interface SolveOptions {
   /** Stop after this many solutions. Default 2, which is all a uniqueness check needs. */
   readonly limit?: number;
+  /**
+   * Give up after visiting this many search nodes. Unset means no budget,
+   * which is right for shipped levels; set it for anything generated on the
+   * fly so a pathological board cannot hang the caller.
+   */
+  readonly maxNodes?: number;
 }
 
 export interface SolveResult {
@@ -17,8 +23,14 @@ export interface SolveResult {
   readonly solutions: readonly (readonly number[])[];
   /** Number of solutions found (equals `solutions.length`). */
   readonly count: number;
-  /** True if the search finished, so `count` is the exact total. False if it stopped at the limit. */
+  /**
+   * True if the search finished, so `count` is the exact total. False once
+   * `count` reaches the limit (even if no more solutions exist) or the node
+   * budget runs out; then `count` is only a lower bound.
+   */
   readonly exhaustive: boolean;
+  /** True if the search stopped because `maxNodes` ran out. */
+  readonly budgetExceeded: boolean;
   /** Search nodes visited; a rough cost measure for comparing boards. */
   readonly nodes: number;
 }
@@ -37,6 +49,11 @@ interface State {
 export function solve(board: Board, options: SolveOptions = {}): SolveResult {
   const limit = options.limit ?? 2;
   if (!Number.isInteger(limit) || limit < 1) throw new RangeError('limit must be a positive integer');
+  const maxNodes = options.maxNodes ?? Infinity;
+  if (maxNodes !== Infinity && (!Number.isInteger(maxNodes) || maxNodes < 1)) {
+    throw new RangeError('maxNodes must be a positive integer');
+  }
+  let budgetExceeded = false;
 
   const solutions: number[][] = [];
   let nodes = 0;
@@ -112,6 +129,11 @@ export function solve(board: Board, options: SolveOptions = {}): SolveResult {
 
   const search = (s: State): void => {
     if (stopped) return;
+    if (nodes >= maxNodes) {
+      budgetExceeded = true;
+      stopped = true;
+      return;
+    }
     nodes++;
     if (!propagate(s)) return;
 
@@ -156,10 +178,11 @@ export function solve(board: Board, options: SolveOptions = {}): SolveResult {
   for (const l of board.lanterns) ok = ok && place(start, l);
   if (ok) search(start);
 
-  return { solutions, count: solutions.length, exhaustive: !stopped, nodes };
+  return { solutions, count: solutions.length, exhaustive: !stopped, budgetExceeded, nodes };
 }
 
 /** True if the board has exactly one solution. */
 export function isUnique(board: Board): boolean {
-  return solve(board, { limit: 2 }).count === 1;
+  const result = solve(board, { limit: 2 });
+  return result.count === 1 && result.exhaustive;
 }

@@ -46,6 +46,9 @@ describe('parseLevel', () => {
     ['a malformed bush', withChanges({ bushes: [[0, 4]] }), /bushes must be/],
     ['a solution firefly on a bush', withChanges({ solution: [[0, 4]] }), /sits on a bush/],
     ['a repeated solution cell', withChanges({ solution: [[0, 0], [0, 0]] }), /twice/],
+    ['an oversized bush list', withChanges({ bushes: Array.from({ length: 1025 }, () => [0, 4, 0]) }), /more than 1024/],
+    ['an overlong mask row', withChanges({ mask: ['#'.repeat(33), ...PLAN_SAMPLE.mask.slice(1)] }), /may not exceed 32/],
+    ['an overlong id', withChanges({ id: 'x'.repeat(129) }), /id must be/],
     ['a solution missing a lantern', withChanges({ twists: { lanterns: [[0, 8]] } }), /missing the lantern/],
   ])('rejects %s', (_name, json, pattern) => {
     expect(problemsOf(json).join('\n')).toMatch(pattern);

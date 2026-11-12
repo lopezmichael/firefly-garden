@@ -36,6 +36,16 @@ solution") could not pass: the mockups have 9, 40, 2 and 289 solutions.
 - [x] Mutation check: disabling branch exclusion fails 3 tests; counting 4 neighbors
       instead of 8 fails 16
 
+## Review (correctness + security reviewers, 2026-11-12)
+
+- [x] Core engine: no defects; independently fuzzed on 3,000 dense-twist boards, all limits and orientations
+- [x] Ratchets tightened: relative imports must stay inside `packages/core/src`, computed
+      dynamic imports banned, platform-dir prefix bug fixed, more file types and SDK loader names scanned
+- [x] `.claude/settings.json` was missing from the first commit (shell chain bug); added
+- [x] Gate test now re-derives every fixture with the naive enumerator, as its comment claims
+- [x] Hardening: level size caps, solver node budget, CI checkout credentials
+- [ ] Deferred: pin GitHub Actions to commit SHAs (needs Dependabot set up first)
+
 ## Left for later
 
 - Two-color fireflies (Phase 4 twist chapter)
