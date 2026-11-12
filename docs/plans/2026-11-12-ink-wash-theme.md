@@ -20,14 +20,14 @@ In scope (screens that exist in the build today):
   ruled out, bushes (wanting, happy with roses, too many, no number, wants none), hint reason
   outline, solve moment
 - Hint sheet and settings sheet, icons, coin, the jar-to-tile flight
-- **Level complete** (added 2026-11-12): the card that follows the solve moment
+- **Level complete** and the **garden map**: both were built in the old look on `develop`
+  (`ui/complete.ts`, `ui/map.ts`, PR #4) while this exploration ran; here they are restyled,
+  and the map gains its two designed motions
 - Reduced motion per the motion table
 
 Out of scope here (each gets its own plan, using the designs already on the canvas):
 
 - **Sound** (a separate chat with fresh context; `docs/design/assets.md` lists the planned set)
-- **Garden map**: a new screen with its own navigation and progress questions; see
-  `docs/plans/2026-11-12-garden-map.md`
 - **Twist art** (mushrooms, moonlit, lanterns, ponds, two-colour fireflies, chapter blooms):
   Phase 4, with the twist chapters
 - Michael's optional painting kit
@@ -150,23 +150,37 @@ milestone that changes what's on screen.
       every state change still lands)
 - [ ] Performance: 60 fps check on a throttled profile with the largest launch board
 
-### 7b. Level complete
+### 7b. Level complete (restyle `ui/complete.ts`)
 
-The build already shows a "Next garden" button in the status card on solve, credits coins,
-tracks the solve time and auto-advances after 3 s (`ui/app.ts`). This step gives that moment the
-designed card (canvas board "Level complete"):
+The card exists: garden, time and hints, a +10 chip, Garden map, and Next garden with a ring
+counting down the auto-advance, plus a spark burst; it covers the status card so the board never
+resizes, and the last garden shows no Next. Restyle it to the canvas board "Level complete":
 
-- [ ] After the bloom, a paper card slides up over the lower screen: "The garden is glowing",
-      "Garden N of 10 in the <area>. Solved in m:ss.", the coin reward badge, **Next garden**
-      (seal red) and a thin bar that fills toward the auto-advance, with "The next garden opens
-      by itself in a moment."
-- [ ] The **Garden map** button on the card is hidden until the map exists (see the map plan),
-      so the card shows Next garden alone; nothing else in the flow changes
-- [ ] Auto-advance keeps its current timing and its hidden-tab rule; the bar is decoration
-      (reduced motion: no bar animation, the card simply appears)
-- [ ] Tests: the card's text from the session (garden number, area title, solve time, coins) in
-      the state layer, where the rest of the status text is tested
+- [ ] Paper card, "The garden is glowing" in Young Serif, the sub-line with garden, area and
+      time, the coin badge with the rose-stamp coin, Garden map (paper, map icon) and Next garden
+      (seal red, next arrow); the countdown becomes the thin seal-red bar (keep the ring if
+      playtests prefer it), with "The next garden opens by itself in a moment."
+- [ ] The spark burst becomes the solve moment from milestone 7 (bloom ripple, petals, motes)
+- [ ] Behaviour unchanged: timing, hidden-tab and settings-sheet waits, last-garden rule
 - [ ] Evidence: clips of solve to card to next garden, motion on and off, in all three bands
+
+### 7c. Garden map (restyle `ui/map.ts`) and its motion
+
+The map exists: area card with gardens solved ("15 of 30"), one bed per chapter (glowing,
+you are here, still dark), the next area as a teaser, Continue; the top bar's map button leaves
+a level (a quit, as decided in the Phase 2 plan). Restyle it to the canvas board "Garden map":
+
+- [ ] Paper area card with the rose-pink progress bar; chapter stops along a dotted ink path
+      (glowing with a bush and roses, current half-lit with a dashed gold ring and a hovering
+      firefly, dark and locked); the teaser as a faded stop; Continue in seal red; hills behind
+- [ ] Top bar map button uses the map icon from the Components board
+- [ ] **New motion:** fireflies circle every finished chapter, heads along their path, two rings
+      at different speeds; when a chapter is newly finished, the first map open after it plays
+      one firefly flying the path to the next stop, which lights with a gold ring as it lands
+      (needs a "seen" flag per chapter in the save, validated like the rest of it)
+- [ ] Reduced motion: no circling, no flight; the new stop simply appears lit
+- [ ] Evidence: screenshots in all three bands; a clip of the unlock flight; a test that the
+      flight plays once per newly finished chapter
 
 ### 8. Ship
 
