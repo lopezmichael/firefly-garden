@@ -128,6 +128,9 @@ plus mark), the jar with its slots, one button, one sheet, and one full tall-pho
 - [x] Screens in ink and wash (2026-11-12): garden map, level complete (the board's real unique
       solution, all bushes blooming), hint sheet and settings with play log. Same contents and
       copy as the Phase 2 baseline; the play log stays one line (look pass 1 decision).
+      Map motion (Michael): fireflies circle every finished chapter; on unlock, one firefly flies
+      the dotted path to the new chapter and its stop lights as it lands (once per unlock; none
+      under reduced motion, where the stop just appears lit).
 
 ### 4. Full screen set, chosen direction (canvas row 3)
 
