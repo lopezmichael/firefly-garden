@@ -92,9 +92,15 @@ describe('generate', () => {
   });
 
   it('respects maxSeconds', () => {
-    for (let i = 0; i < 6; i++) {
-      const gen = generate({ id: `ms${i}`, seed: 600 + i, w: 10, h: 10, bushDensity: 0.16, hide: 'max', maxSeconds: 150 });
-      if (gen) expect(gen.difficulty.estimatedSeconds).toBeLessThanOrEqual(150);
+    // Seeds chosen so the capped spec succeeds and the same spec without the cap lands well over
+    // 150 s, so the cap is what keeps each one under. Seeds that give up (null) cost a full
+    // attempt budget and prove nothing, so none are included.
+    for (const seed of [601, 602, 604]) {
+      const spec = { id: `ms${seed}`, seed, w: 10, h: 10, bushDensity: 0.16, hide: 'max' as const };
+      expect(generate(spec)!.difficulty.estimatedSeconds).toBeGreaterThan(150);
+      const gen = generate({ ...spec, maxSeconds: 150 });
+      expect(gen).not.toBeNull();
+      expect(gen!.difficulty.estimatedSeconds).toBeLessThanOrEqual(150);
     }
   });
 });

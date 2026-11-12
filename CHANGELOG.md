@@ -13,6 +13,10 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 ### Fixed
 - The board no longer jumps on the first move: the status card keeps a steady height (its
   wording changed length and the board resized to fill the space).
+- The `generate > respects maxSeconds` test no longer flirts with Vitest's 5 s timeout (it took
+  ~5.3 s on a 4-core container, blocking the pre-commit hook). Half its seeds gave up and returned
+  null, burning a full attempt budget while asserting nothing; it now uses three seeds that
+  succeed, checks each exceeds 150 s without the cap, and runs in ~0.7 s.
 
 ### Changed
 - Shipped grading is count-aware: the game will show how many fireflies each garden needs (the
