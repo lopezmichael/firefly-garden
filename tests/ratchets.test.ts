@@ -118,3 +118,13 @@ describe('colors come only from theme tokens', () => {
     expect(bad).toEqual([]);
   });
 });
+
+describe('hosting keeps a strict content security policy', () => {
+  it('vercel.json forbids eval and outside origins', () => {
+    const cfg = JSON.parse(readFileSync(join(ROOT, 'vercel.json'), 'utf8')) as { headers: { headers: { key: string; value: string }[] }[] };
+    const csp = cfg.headers.flatMap((h) => h.headers).find((h) => h.key.toLowerCase() === 'content-security-policy')?.value ?? '';
+    expect(csp).toContain("default-src 'self'");
+    expect(csp).toContain("script-src 'self'");
+    expect(csp).not.toMatch(/unsafe-eval|https?:|\*/);
+  });
+});

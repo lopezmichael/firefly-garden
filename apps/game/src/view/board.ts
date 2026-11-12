@@ -1,3 +1,5 @@
+// Pixi's CSP-safe shader path: our pages (and portals) forbid eval; this module replaces it.
+import 'pixi.js/unsafe-eval';
 import { Application, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js';
 import type { Board, Evaluation, Transform } from '@firefly/core';
 import { fitBoard } from './layout.ts';

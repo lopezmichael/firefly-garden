@@ -11,6 +11,8 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
   through the next-level policy; tall, square (iPhone Duo) and wide layouts; reduced motion.
   Game state is DOM-free and unit-tested (`apps/game/test`). Ratchets: game state imports only
   core; no color literals outside `theme.css`. Fonts self-hosted; bundle 1.05 MB.
+- Vercel hosting config (`vercel.json`) with a strict content security policy, tested by
+  replaying the game under those headers; Pixi switched to its eval-free path.
 - Phase 2 design baseline (`docs/design/phase-2/`).
 - Phase 2 core: `hint` (`packages/core/src/hints.ts`) removes a wrong firefly or places the
   grader's next one from the player's position, with a one-line reason, the `because` cells
