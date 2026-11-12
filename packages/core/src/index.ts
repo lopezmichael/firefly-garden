@@ -2,7 +2,7 @@ export type { BushSpec, Coord, Level, LevelTwists } from './types.ts';
 export { LevelError, MAX_BOARD_EDGE, MAX_LEVEL_SECONDS, parseLevel, validateLevel } from './level.ts';
 export { buildBoard, cellCoord, cellIndex } from './board.ts';
 export type { Board, CellKind } from './board.ts';
-export { canPlace, evaluate } from './rules.ts';
+export { canPlace, conflictPairs, crossings, evaluate, lightCounts } from './rules.ts';
 export type { BushState, BushStatus, Evaluation } from './rules.ts';
 export { isUnique, solve } from './solver.ts';
 export type { SolveOptions, SolveResult } from './solver.ts';

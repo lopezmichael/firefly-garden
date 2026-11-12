@@ -72,3 +72,59 @@ export function evaluate(board: Board, placed: Iterable<number>): Evaluation {
   const solved = unlit === 0 && conflicts.length === 0 && bushes.every((b) => b.state === 'met');
   return { fireflies, lit, conflicts, bushes, unlit, solved };
 }
+
+/**
+ * Pairs of fireflies that see each other, nearest neighbours only: three in an
+ * open row give two pairs (left-middle, middle-right), never the outer pair,
+ * so a line drawn per pair covers the broken stretch exactly once. Lanterns
+ * count as fireflies, as in `evaluate`. Each pair is `[low, high]`, sorted.
+ * Used to show the broken rule itself (the conflict beam), not only the
+ * fireflies that break it.
+ */
+export function conflictPairs(board: Board, fireflies: Iterable<number>): [number, number][] {
+  const has = new Set<number>(board.lanterns);
+  for (const f of fireflies) has.add(f);
+  const pairs: [number, number][] = [];
+  for (const f of [...has].sort((a, b) => a - b)) {
+    const r = Math.floor(f / board.w), c = f % board.w;
+    // Looking right and down from each firefly finds every pair exactly once.
+    for (const [dr, dc] of [[0, 1], [1, 0]] as const) {
+      for (let rr = r + dr, cc = c + dc; rr < board.h && cc < board.w; rr += dr, cc += dc) {
+        const j = rr * board.w + cc;
+        if (board.kind[j] !== 'path') break;
+        if (has.has(j)) {
+          pairs.push([f, j]);
+          break;
+        }
+      }
+    }
+  }
+  return pairs.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+}
+
+/**
+ * How many fireflies light each cell (a firefly lights its own tile too).
+ * Lanterns count; moonlight does not. A path tile with no firefly on it and a
+ * count of two or more is a crossing: beams from a row and a column meeting,
+ * which is allowed (only fireflies may not see each other).
+ */
+export function lightCounts(board: Board, fireflies: Iterable<number>): number[] {
+  const has = new Set<number>(board.lanterns);
+  for (const f of fireflies) has.add(f);
+  const counts = new Array<number>(board.kind.length).fill(0);
+  for (const f of has) {
+    counts[f]!++;
+    for (const j of board.rays[f]!) counts[j]!++;
+  }
+  return counts;
+}
+
+/** Path tiles where light crosses: no firefly on them, lit by two or more. Ascending. */
+export function crossings(board: Board, fireflies: Iterable<number>): number[] {
+  const has = new Set<number>(board.lanterns);
+  for (const f of fireflies) has.add(f);
+  const counts = lightCounts(board, has);
+  const out: number[] = [];
+  for (const i of board.paths) if (!has.has(i) && counts[i]! >= 2) out.push(i);
+  return out;
+}
