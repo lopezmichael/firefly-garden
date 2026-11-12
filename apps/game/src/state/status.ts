@@ -25,7 +25,7 @@ export type Notice =
 export function boardStatus(ev: Evaluation, firstMove: boolean, coinsPerSolve: number, jarLeft = 1): StatusText {
   if (ev.solved) return { title: 'The garden is glowing!', sub: `Solved · +${coinsPerSolve} coins`, tone: 'solved' };
   if (ev.conflicts.length > 0) {
-    return { title: 'Two fireflies can see each other', sub: 'Fireflies in the same row or column need a bush between them.', tone: 'warn' };
+    return { title: 'Fireflies can see each other', sub: 'Fireflies in the same row or column need a bush between them.', tone: 'warn' };
   }
   if (ev.bushes.some((b) => b.state === 'over')) {
     return { title: 'A bush has too many fireflies', sub: "Diagonals count too. Its number turns pink when it's over.", tone: 'warn' };
@@ -37,7 +37,7 @@ export function boardStatus(ev: Evaluation, firstMove: boolean, coinsPerSolve: n
     return {
       title: `${ev.unlit} path ${ev.unlit === 1 ? 'tile' : 'tiles'} still dark`,
       sub: firstMove
-        ? 'Tap a tile to send out a firefly. A bush\u2019s dots fill as fireflies land around it.'
+        ? 'Tap a tile to send out a firefly. Bush dots fill as fireflies land.'
         : 'A bush is done when all its dots are gold.',
       tone: 'plain',
     };
@@ -58,16 +58,19 @@ export function noticeStatus(n: Notice, ev: Evaluation): StatusText {
     case 'reset':
       return { title: 'Board cleared', sub: 'Your hint fireflies stay.', tone: 'plain' };
     case 'hint': {
+      // A short one-line heading per kind; the reason goes in the sub-line, so a long reason
+      // never grows the card (see the status-length test).
       const h = n.hint;
       if (h.kind === 'remove') return { title: "That firefly can't stay", sub: h.reason, tone: 'glow' };
-      if (h.kind === 'try-here') return { title: h.reason, sub: dark, tone: 'glow' };
-      return {
-        title: h.reason,
-        sub: h.ruledOut.length > 0 ? 'The crossed-out tiles can’t hold a firefly.' : dark,
-        tone: 'glow',
-      };
+      if (h.kind === 'try-here') return { title: 'Try a firefly here', sub: dark, tone: 'glow' };
+      return { title: h.ruledOut.length > 0 ? 'Crossed-out tiles stay empty' : 'A firefly goes here', sub: h.reason, tone: 'glow' };
     }
   }
+}
+
+/** The end of the build: every garden is lit. */
+export function finishedStatus(): StatusText {
+  return { title: 'Every garden is glowing!', sub: 'You lit every garden in this build. More gardens are on the way.', tone: 'solved' };
 }
 
 /** Share of path tiles that need light and have it, 0 to 100. */

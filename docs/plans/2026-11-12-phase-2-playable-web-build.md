@@ -258,8 +258,11 @@ the same transitions are tested in Node and in Playwright.
       countdown waits while a sheet is open or the tab is hidden and restarts from full. On the
       last garden there is no Next and no countdown. No preloading was needed: building the next
       board is synchronous and takes a frame.
-      *Follow-up:* on a 320 px phone the opening status line wraps to three lines, so the board
-      still steps once on the first move (the card itself never resizes the board).
+      *Follow-up, done:* the status card could still grow on 320–360 px phones (long hint reasons
+      were the card's title). Hints now have short one-line titles with the reason below; the card
+      reserves three sub-lines when it is narrower than 290 px; a test holds every message to one
+      title line and two sub-lines at a 360 px phone (72 characters, a proxy for width). Browser check at 320/360/390: no board change
+      through a tap and two hints. Still to come: the same check in the CI browser smoke test.
 - [ ] Settings: sound, reduced motion (defaults to `prefers-reduced-motion`, overridable),
       play log.
 - [ ] First-level teaching: the one-line hint from the plan ("Tap a tile to place a

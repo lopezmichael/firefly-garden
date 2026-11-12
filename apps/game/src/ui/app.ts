@@ -9,7 +9,7 @@ import type { ShownHint } from '../state/play.ts';
 import { DEFAULT_SETTINGS, MAX_PARKED, newInstallId, parseSave, SAVE_KEY, serializeSave } from '../state/save.ts';
 import type { CurrentPlay, MotionSetting, SaveData, Settings } from '../state/save.ts';
 import { Session } from '../state/session.ts';
-import { boardStatus, completeLine, noticeStatus } from '../state/status.ts';
+import { boardStatus, completeLine, finishedStatus, noticeStatus } from '../state/status.ts';
 import type { Notice } from '../state/status.ts';
 import { Wallet } from '../state/wallet.ts';
 import { BoardView } from '../view/board.ts';
@@ -621,7 +621,7 @@ export class GameApp {
     this.play = null;
     this.current = null;
     this.screen.hideComplete();
-    this.screen.setStatus({ title: 'The Rose Bed is glowing!', sub: 'You lit every garden in this build. More gardens are on the way.', tone: 'solved' });
+    this.screen.setStatus(finishedStatus());
     this.screen.setMoves(false, false, true);
     this.screen.setJar(0, 0);
     this.scheduleSave();

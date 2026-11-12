@@ -204,9 +204,14 @@
 .ff-gear .ff-icon { width: 20px; height: 20px; }
 
 /* The status card keeps its height from move to move (room for a one-line title and a two-line
-   sub-line), so the board above it never jumps when the wording changes. */
+   sub-line; three on the narrowest phones), so the board above it never jumps when the wording
+   changes. The wording is held to that budget by test/status.test.ts ("fits the card"). */
+.ff-status { container: ff-status / inline-size; }
 .ff-app[data-band='tall'] .ff-status-text, .ff-app[data-band='square'] .ff-status-text {
   min-height: calc(18px * 1.2 + 2px + 15px * 1.4 * 2);
+}
+@container ff-status (max-width: 289px) {
+  .ff-app:not([data-band='wide']) .ff-status-text { min-height: calc(18px * 1.2 + 2px + 15px * 1.4 * 3); }
 }
 
 /* Garden map (design baseline: Map artboard). A screen over the play screen. */

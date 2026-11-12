@@ -18,6 +18,14 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
   called back, and hints send a gold one; saves holding more fireflies than the jar are dropped.
 
 ### Fixed
+- The board no longer jumps when a hint appears on a narrow phone (320–360 px): hint reasons were
+  the status card's title in the large font and wrapped to three lines. Hints now have a short
+  one-line heading ("A firefly goes here", "Crossed-out tiles stay empty", "Try a firefly here",
+  "That firefly can't stay") with the reason in the sub-line; the card reserves a third sub-line
+  when it is under 290 px wide; a test holds every status message to one title line and two
+  sub-lines at a 360 px phone. To fit: the conflict heading is "Fireflies can see each other",
+  the end-of-build heading "Every garden is glowing!", and the first-move line and two hint
+  reasons (T3 overlap, T3 count bound) are a few words shorter.
 - The auto-advance no longer opens the next garden behind an open settings sheet: it waits, and
   restarts from full when the sheet closes (as it already did for a hidden tab).
 - The board no longer jumps on the first move: the status card keeps a steady height (its
