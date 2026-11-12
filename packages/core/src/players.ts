@@ -52,6 +52,8 @@ export interface Economy {
   readonly startingCoins: number;
   readonly coinsPerSolve: number;
   readonly hintCost: number;
+  /** Hints one rewarded ad grants: one used now, the rest saved for later. */
+  readonly hintsPerAd: number;
 }
 
 export const PLAYER_CONFIG = {
@@ -87,12 +89,23 @@ export const PLAYER_CONFIG = {
    * price that still makes a hint cost three solves. Retention first; see the
    * difficulty report for the rewarded-ad tradeoff.
    */
-  economy: { startingCoins: 60, coinsPerSolve: 10, hintCost: 30 } as Economy,
+  economy: { startingCoins: 60, coinsPerSolve: 10, hintCost: 30, hintsPerAd: 3 } as Economy,
+  /** Ad pacing from the project plan (Monetization, Ad placements). */
+  ads: {
+    /** No midgame ad until this many levels are complete (first session protection). */
+    midgameAfterLevels: 5,
+    /** Portal cap on midgame ads (CrazyGames: at most one per three minutes). */
+    midgameMinGapSeconds: 180,
+    /** Seconds between levels (celebration, auto-advance). */
+    levelTransitionSeconds: 5,
+  },
   /** Economies compared in the report's sweep. */
   sweep: {
     startingCoins: [30, 60, 90],
     coinsPerSolve: [10, 15],
     hintCost: [30, 45, 60],
+    /** Hints per rewarded ad, compared at the shipped and a tight economy. */
+    hintsPerAd: [1, 2, 3, 5],
   },
   /** Simulated players per profile. */
   runs: 1000,
@@ -116,6 +129,10 @@ export interface LevelOutcome {
   readonly adHints: number;
   /** Times a stuck player wanted a hint but had no coins and skipped the ad. */
   readonly refusedHints: number;
+  /** Hints taken from the bank an earlier rewarded ad filled. */
+  readonly bankedHints: number;
+  /** Midgame ads shown on this level's complete screen. */
+  readonly interstitials: number;
   /** Mean seconds of solved attempts. */
   readonly meanSolveSeconds: number;
 }
@@ -128,25 +145,46 @@ export interface SimResult {
   readonly meanEndCoins: number;
   /** Players who finished every level. */
   readonly finished: number;
+  /** Midgame ads per simulated player (everyone who started). */
+  readonly interstitialsPerPlayer: number;
+  /** Rewarded hint ads per simulated player. */
+  readonly rewardedPerPlayer: number;
+  /** Minutes played per simulated player. */
+  readonly minutesPerPlayer: number;
 }
 
 interface Tally {
   reached: number; plays: number; solved: number; quits: number; churned: number;
-  hintedPlays: number; coinHints: number; adHints: number; refusedHints: number; solveSeconds: number;
+  hintedPlays: number; coinHints: number; adHints: number; refusedHints: number; bankedHints: number;
+  interstitials: number; solveSeconds: number;
+}
+
+interface PlayerState {
+  skill: number;
+  xp: number;
+  coins: number;
+  /** Hints saved from rewarded ads. */
+  bank: number;
 }
 
 /** Simulate `runs` players of one profile through the levels in order. Deterministic for a seed. */
 export function simulate(levels: readonly SimLevel[], profile: PlayerProfile, economy: Economy, runs: number, seed: number): SimResult {
   const tallies: Tally[] = levels.map(() => ({
-    reached: 0, plays: 0, solved: 0, quits: 0, churned: 0, hintedPlays: 0, coinHints: 0, adHints: 0, refusedHints: 0, solveSeconds: 0,
+    reached: 0, plays: 0, solved: 0, quits: 0, churned: 0, hintedPlays: 0, coinHints: 0, adHints: 0, refusedHints: 0, bankedHints: 0,
+    interstitials: 0, solveSeconds: 0,
   }));
   let endCoins = 0;
   let finished = 0;
+  let totalSeconds = 0;
+  const ads = PLAYER_CONFIG.ads;
 
   for (let run = 0; run < runs; run++) {
     const rng = createRng(deriveSeed(seed, run));
-    const state = { skill: profile.skill, xp: 0, coins: economy.startingCoins };
+    const state: PlayerState = { skill: profile.skill, xp: 0, coins: economy.startingCoins, bank: 0 };
     let alive = true;
+    let clock = 0;
+    let completed = 0;
+    let lastMidgame = -Infinity;
     for (let i = 0; i < levels.length && alive; i++) {
       const t = tallies[i]!;
       t.reached++;
@@ -156,11 +194,19 @@ export function simulate(levels: readonly SimLevel[], profile: PlayerProfile, ec
         t.coinHints += r.coinHints;
         t.adHints += r.adHints;
         t.refusedHints += r.refusedHints;
-        if (r.coinHints + r.adHints > 0) t.hintedPlays++;
+        t.bankedHints += r.bankedHints;
+        if (r.coinHints + r.adHints + r.bankedHints > 0) t.hintedPlays++;
+        clock += r.seconds + ads.levelTransitionSeconds;
         if (r.solved) {
           t.solved++;
           t.solveSeconds += r.seconds;
           state.coins += economy.coinsPerSolve;
+          completed++;
+          // Midgame ad on the level-complete screen, paced by the portal cap.
+          if (completed > ads.midgameAfterLevels && clock - lastMidgame >= ads.midgameMinGapSeconds) {
+            t.interstitials++;
+            lastMidgame = clock;
+          }
           break;
         }
         t.quits++;
@@ -175,19 +221,25 @@ export function simulate(levels: readonly SimLevel[], profile: PlayerProfile, ec
       finished++;
       endCoins += state.coins;
     }
+    totalSeconds += clock;
   }
+  const sumOf = (f: (t: Tally) => number) => tallies.reduce((a, t) => a + f(t), 0);
 
   return {
     profile: profile.id,
     runs,
     finished,
     meanEndCoins: finished ? endCoins / finished : 0,
+    interstitialsPerPlayer: runs ? sumOf((t) => t.interstitials) / runs : 0,
+    rewardedPerPlayer: runs ? sumOf((t) => t.adHints) / runs : 0,
+    minutesPerPlayer: runs ? totalSeconds / runs / 60 : 0,
     levels: levels.map((l, i) => {
       const t = tallies[i]!;
       return {
         id: l.id, chapter: l.chapter, role: l.role,
         reached: t.reached, plays: t.plays, solved: t.solved, quits: t.quits, churned: t.churned,
         hintedPlays: t.hintedPlays, coinHints: t.coinHints, adHints: t.adHints, refusedHints: t.refusedHints,
+        bankedHints: t.bankedHints, interstitials: t.interstitials,
         meanSolveSeconds: t.solved ? t.solveSeconds / t.solved : 0,
       };
     }),
@@ -200,13 +252,14 @@ interface PlayResult {
   coinHints: number;
   adHints: number;
   refusedHints: number;
+  bankedHints: number;
 }
 
-function playOnce(level: SimLevel, profile: PlayerProfile, economy: Economy, state: { skill: number; xp: number; coins: number }, rng: Rng): PlayResult {
+function playOnce(level: SimLevel, profile: PlayerProfile, economy: Economy, state: PlayerState, rng: Rng): PlayResult {
   const cfg = PLAYER_CONFIG;
   const time = DIFFICULTY_CONFIG.time;
   const [n0, n1] = cfg.noise;
-  const out: PlayResult = { solved: false, seconds: level.fireflies * time.secondsPerTap * profile.speed, coinHints: 0, adHints: 0, refusedHints: 0 };
+  const out: PlayResult = { solved: false, seconds: level.fireflies * time.secondsPerTap * profile.speed, coinHints: 0, adHints: 0, refusedHints: 0, bankedHints: 0 };
 
   for (const [k, step] of level.steps.entries()) {
     // Give up between steps once far past patience; finishing the last step always counts.
@@ -227,12 +280,16 @@ function playOnce(level: SimLevel, profile: PlayerProfile, economy: Economy, sta
     if (rng.next() < stuckChance) {
       const frustrated = out.seconds > profile.patience;
       if (rng.next() < cfg.quitWhenStuck[frustrated ? 1 : 0]!) return out;
-      if (state.coins >= economy.hintCost) {
+      if (state.bank > 0) {
+        state.bank--;
+        out.bankedHints++;
+      } else if (state.coins >= economy.hintCost) {
         state.coins -= economy.hintCost;
         out.coinHints++;
       } else if (rng.next() < profile.adWillingness) {
         out.adHints++;
         out.seconds += cfg.adSeconds;
+        state.bank += Math.max(0, economy.hintsPerAd - 1); // one used now, the rest saved
       } else {
         out.refusedHints++;
         if (rng.next() < cfg.quitWithoutHelp) return out;
@@ -249,7 +306,7 @@ function playOnce(level: SimLevel, profile: PlayerProfile, economy: Economy, sta
   return out;
 }
 
-function learn(state: { skill: number; xp: number }, profile: PlayerProfile, amount: number): void {
+function learn(state: PlayerState, profile: PlayerProfile, amount: number): void {
   state.xp += amount;
   if (state.xp >= profile.learnSteps) {
     state.skill++;

@@ -167,4 +167,10 @@ better game.
 - **Hint economy:** price barely moves hint demand; it moves who pays. Shipped 60 starting
   coins, 10 per solve, 30 per hint (retention first). Tradeoff for later: established players
   bank coins and rarely watch rewarded ads for hints, so a coin sink matters.
+- **Ad views (2026-11-12):** about 13 midgame ads per simulated player through chapter 3,
+  0.01 rewarded hint ads. A tight economy (30 starting coins, 60 per hint) gains ~0.2
+  rewarded ads per player but loses ~0.8 to 1.0 midgame ads because fewer keep playing, so
+  the generous economy wins on revenue too. Rewarded ads grant 3 hints (one now, two saved).
+- **Note for Phase 2:** hint-placed fireflies are locked and visually distinct; see the Hints
+  section of `docs/references/rules.md`.
 

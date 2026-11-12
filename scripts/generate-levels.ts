@@ -175,34 +175,69 @@ writeFileSync('reports/dash/players.json', JSON.stringify(simLevels.flatMap((l, 
     profile: 'all', label: 'Everyone', survival: p.survival, cleared, hintRate: p.hintRate, quitRate: p.quitRate,
   }];
 })));
+/** Population-weighted summary of one economy across every profile. */
+function summarize(economy: Economy) {
+  const res = runAll(economy);
+  let coin = 0, ad = 0, refused = 0, banked = 0, finish = 0, interstitials = 0, rewarded = 0, minutes = 0;
+  res.forEach((r, k) => {
+    const w = PLAYER_CONFIG.profiles[k]!.share;
+    finish += (w * r.finished) / r.runs;
+    interstitials += w * r.interstitialsPerPlayer;
+    rewarded += w * r.rewardedPerPlayer;
+    minutes += w * r.minutesPerPlayer;
+    for (const o of r.levels) {
+      coin += (w * o.coinHints) / r.runs;
+      ad += (w * o.adHints) / r.runs;
+      refused += (w * o.refusedHints) / r.runs;
+      banked += (w * o.bankedHints) / r.runs;
+    }
+  });
+  const asked = coin + ad + refused + banked;
+  const s = PLAYER_CONFIG.economy;
+  return {
+    ...economy,
+    shipped: economy.startingCoins === s.startingCoins && economy.coinsPerSolve === s.coinsPerSolve
+      && economy.hintCost === s.hintCost && economy.hintsPerAd === s.hintsPerAd,
+    finish, newcomerFinish: res[0]!.finished / res[0]!.runs,
+    coinShare: asked ? coin / asked : 0, adShare: asked ? ad / asked : 0,
+    bankedShare: asked ? banked / asked : 0, refusedShare: asked ? refused / asked : 0,
+    casualEndCoins: Math.round(res[1]!.meanEndCoins),
+    interstitialsPerPlayer: interstitials, rewardedPerPlayer: rewarded,
+    adViewsPerPlayer: interstitials + rewarded, minutesPerPlayer: minutes,
+  };
+}
+
+const hintsPerAd = PLAYER_CONFIG.economy.hintsPerAd;
 const economyRows = [];
 for (const startingCoins of PLAYER_CONFIG.sweep.startingCoins) {
   for (const coinsPerSolve of PLAYER_CONFIG.sweep.coinsPerSolve) {
     for (const hintCost of PLAYER_CONFIG.sweep.hintCost) {
-      const economy = { startingCoins, coinsPerSolve, hintCost };
-      const res = runAll(economy);
-      let coin = 0, ad = 0, refused = 0, finish = 0;
-      res.forEach((r, k) => {
-        const w = PLAYER_CONFIG.profiles[k]!.share;
-        finish += (w * r.finished) / r.runs;
-        for (const o of r.levels) {
-          coin += (w * o.coinHints) / r.runs;
-          ad += (w * o.adHints) / r.runs;
-          refused += (w * o.refusedHints) / r.runs;
-        }
-      });
-      const asked = coin + ad + refused;
-      const s = PLAYER_CONFIG.economy;
-      economyRows.push({
-        key: `${startingCoins}-${coinsPerSolve}-${hintCost}`, startingCoins, coinsPerSolve, hintCost,
-        shipped: startingCoins === s.startingCoins && coinsPerSolve === s.coinsPerSolve && hintCost === s.hintCost,
-        finish, newcomerFinish: res[0]!.finished / res[0]!.runs,
-        coinShare: asked ? coin / asked : 0, adShare: asked ? ad / asked : 0, refusedShare: asked ? refused / asked : 0,
-        casualEndCoins: Math.round(res[1]!.meanEndCoins),
-      });
+      economyRows.push({ key: `${startingCoins}-${coinsPerSolve}-${hintCost}`, group: 'sweep', ...summarize({ startingCoins, coinsPerSolve, hintCost, hintsPerAd }) });
     }
   }
 }
+// Hints per rewarded ad, at the shipped economy and at a tight one where ads matter.
+const TIGHT: Omit<Economy, 'hintsPerAd'> = { startingCoins: 30, coinsPerSolve: 10, hintCost: 60 };
+for (const [name, base] of [['shipped', PLAYER_CONFIG.economy], ['tight', TIGHT]] as const) {
+  for (const n of PLAYER_CONFIG.sweep.hintsPerAd) {
+    economyRows.push({ key: `perAd-${name}-${n}`, group: `perAd-${name}`, ...summarize({ ...base, hintsPerAd: n }) });
+  }
+}
+// Ad views per player under the shipped economy, by kind of player.
+writeFileSync('reports/dash/ads.json', JSON.stringify([
+  ...shipped.map((r, k) => ({
+    profile: r.profile, label: PLAYER_CONFIG.profiles[k]!.label, share: PLAYER_CONFIG.profiles[k]!.share,
+    interstitials: r.interstitialsPerPlayer, rewarded: r.rewardedPerPlayer, minutes: r.minutesPerPlayer,
+    finished: r.finished / r.runs,
+  })),
+  (() => {
+    const w = (f: (r: (typeof shipped)[number]) => number) => shipped.reduce((a, r, k) => a + PLAYER_CONFIG.profiles[k]!.share * f(r), 0);
+    return {
+      profile: 'all', label: 'Everyone', share: 1, interstitials: w((r) => r.interstitialsPerPlayer),
+      rewarded: w((r) => r.rewardedPerPlayer), minutes: w((r) => r.minutesPerPlayer), finished: w((r) => r.finished / r.runs),
+    };
+  })(),
+]));
 writeFileSync('reports/dash/economy.json', JSON.stringify(economyRows));
 
 console.log(`census: ${census.length} levels (${censusFailures} specs failed)`);

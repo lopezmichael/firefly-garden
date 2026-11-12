@@ -79,6 +79,23 @@ land) and a "sporecap" (a 4-neighbor numbered blocker) on the same 40 seeds.
 The sporecap took part in 33% of deduction steps, the toadstool in 2%, so the
 sporecap became the mushroom. Data: `reports/archive/mushroom-experiment-2026-11-12.json`.
 
+## Hints
+
+A hint is the grader's next step on the player's current board: it either
+places one correct firefly or removes one wrong one, with a one-line reason
+("This tile can only be lit from here"). Hints are bought with coins or
+granted by a rewarded ad; one ad grants **3 hints** (one used now, two saved),
+because a single firefly is thin pay for a 30 to 60 second video.
+
+**Presentation (Phase 2 requirement).** A firefly placed by a hint is locked:
+the player cannot remove it, and it looks different from both their own
+fireflies and lanterns (for example a gold ring or a small sparkle), so it is
+always clear which move came from the hint. A "fix a wrong firefly" hint
+animates the removal so the player sees what changed. In the rules engine a
+locked hint firefly behaves like a lantern for that play (fixed, counts, can
+conflict), so `canPlace` must refuse it; this needs a per-play "locked" set
+alongside the level's lanterns when the game is built.
+
 ## Not yet implemented
 
 - **Two-color fireflies** (late twist): needs a color per firefly and per-color
