@@ -84,7 +84,8 @@ export function nextLevel(input: PolicyInput): NextLevel | null {
     const quitBefore = input.history.some((h) => h.levelId === nextMain && !h.solved);
     return { id: nextMain, reason: quitBefore ? 'retry' : 'main' };
   };
-  if (!last) return main();
+  // Done, or nothing played yet: no detours.
+  if (!last || nextMain === undefined) return main();
 
   // Never two detours in a row.
   if (isDetour(last.reason)) return main();
@@ -108,8 +109,10 @@ export function nextLevel(input: PolicyInput): NextLevel | null {
     return detour('breather-after-long', pickBreather(input, lastLevel));
   }
 
-  // Hints on several main-path levels running.
-  const recentMain = input.history.filter((h) => !isDetour(h.reason)).slice(-cfg.hintStreak);
+  // Hints on several main-path levels running, counted since the last hint breather
+  // (so one breather does not set off the next).
+  const lastHintBreather = input.history.map((h) => h.reason).lastIndexOf('breather-after-hints');
+  const recentMain = input.history.slice(lastHintBreather + 1).filter((h) => !isDetour(h.reason)).slice(-cfg.hintStreak);
   if (recentMain.length === cfg.hintStreak && recentMain.every((h) => h.hints > 0)) {
     return detour('breather-after-hints', pickBreather(input, lastLevel));
   }

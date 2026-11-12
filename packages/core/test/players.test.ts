@@ -135,6 +135,21 @@ describe('simulateWithPolicy', () => {
     expect(withPolicy.minutesPerPlayer).toBeGreaterThan(without.minutesPerPlayer);
   });
 
+  it('leaves after quitting the same main level twice, even if quits never cause churn', () => {
+    const wall = [{ ...level('wall', [5, 5, 5, 5, 5]), tier: 5, score: 140, estimatedSeconds: 60 }];
+    const p = profile({ skill: 1, churnOnQuit: 0, adWillingness: 0, patience: 1 });
+    const r = simulateWithPolicy(wall, p, { ...economy, startingCoins: 0 }, 100, 34, opts);
+    expect(r.levels[0]!.churned).toBe(r.levels[0]!.reached - r.levels[0]!.solved);
+  });
+
+  it('only softens quits when an easier level is actually served next', () => {
+    // With no reserve there is never a breather, so the assumed factor must change nothing.
+    const p = profile({ skill: 1, churnOnQuit: 0.8 });
+    const empty = { reserve: [], churnFactorWithBreather: 1 };
+    expect(simulateWithPolicy(mainLv, p, economy, 300, 35, { ...empty, churnFactorWithBreather: 0.3 }))
+      .toEqual(simulateWithPolicy(mainLv, p, economy, 300, 35, empty));
+  });
+
   it('keeps more players when breathers are assumed to soften quits', () => {
     const p = profile({ skill: 1, churnOnQuit: 0.8 });
     const none = simulateWithPolicy(mainLv, p, economy, 400, 33, opts);

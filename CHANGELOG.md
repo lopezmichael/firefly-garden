@@ -48,9 +48,9 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
   when needed: a warm-up after a break of 8+ hours, a breather after a quit (then the quit
   level returns), a long solve, or hints on two levels running. Never two detours in a row.
 - `simulateWithPolicy`: the same players in 8 to 20 minute sittings, served by `nextLevel`.
-  With no assumed effect on quitting, completion is unchanged but players get ~10 more
+  With no assumed effect on quitting, completion is unchanged but players get ~9 more
   minutes and ~2.4 more ad views each; assuming 30% fewer leave after a quit when a breather
-  follows, 83% finish chapter 3 instead of 78.5% (newcomers 62% instead of 53%).
+  follows, 82.7% finish chapter 3 instead of 78.5% (newcomers 60% instead of 53%).
 - `canonicalKey` and a level ratchet: no committed level is a rotation or mirror of another.
 
 ### Added (debut placement)

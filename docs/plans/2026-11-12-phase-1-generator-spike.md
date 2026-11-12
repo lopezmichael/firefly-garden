@@ -181,10 +181,11 @@ better game.
   it stays under the 40% guardrail. Placing debuts alone barely moved the numbers; ordering
   practice gentlest-first is what brought breathers under 5%.
 - **Next-level policy (2026-11-12):** `nextLevel` in core, used by the simulator now and by
-  the game in Phase 2. Detours average ~6.6 per player over chapters 1 to 3 (3.4 warm-ups,
-  3.2 breathers). No assumed effect: completion unchanged, +10 minutes and +2.4 ad views per
-  player. Assumed 30% fewer leave after a quit with a breather next: 83% finish (from
-  78.5%), newcomers 62% (from 53%). The real effect is a Phase 3 measurement.
+  the game in Phase 2. Detours average ~6 per player over chapters 1 to 3 (3.2 warm-ups,
+  2.9 breathers). No assumed effect: completion unchanged, +9 minutes and +2.4 ad views per
+  player. Assumed 30% fewer leave after a quit when a breather is actually served next:
+  82.7% finish (from 78.5%), newcomers 60% (from 53%). The real effect is a Phase 3
+  measurement (compare players who were served a breather after a quit with those who were not).
 
 ## Launch pack size (target 500 to 1,000 levels)
 

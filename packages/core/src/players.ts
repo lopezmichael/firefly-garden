@@ -352,7 +352,8 @@ export interface PolicyOptions {
   readonly reserve: readonly SimLevel[];
   /**
    * ASSUMPTION, not evidence: multiplier on the chance of leaving the game
-   * after a quit when the policy offers an easier level next (1 = no effect).
+   * after quitting a main-path level, applied only when the policy serves an
+   * easier level next (1 = no effect).
    */
   readonly churnFactorWithBreather: number;
 }
@@ -455,13 +456,15 @@ export function simulateWithPolicy(
         t.quits++;
         const n = (quits.get(level.id) ?? 0) + 1;
         quits.set(level.id, n);
-        const churn = profile.churnOnQuit * options.churnFactorWithBreather;
+        const peek = nextLevel({ mainPath, reserve, levels: policyLevels, solved, history, now: clock * 1000 + gaps });
+        const softened = peek !== null && isDetour(peek.reason);
+        const churn = profile.churnOnQuit * (softened ? options.churnFactorWithBreather : 1);
         if (n > PLAYER_CONFIG.retries || rng.next() < churn) {
           t.churned++;
           alive = false;
           break;
         }
-      } else if (rng.next() < profile.churnOnQuit * options.churnFactorWithBreather) {
+      } else if (rng.next() < profile.churnOnQuit) {
         // Quitting a detour can end the game too (the policy then goes back to the main path).
         detours['left during a detour'] = (detours['left during a detour'] ?? 0) + 1;
         alive = false;

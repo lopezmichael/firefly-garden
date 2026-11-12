@@ -43,6 +43,12 @@ describe('canonicalKey', () => {
     for (const t of TRANSFORMS) expect(canonicalKey({ ...transformLevel(mockupKoi.level, t), id: `other-${t}` })).toBe(base);
   });
 
+  it('differs when only the twists differ', () => {
+    const plain = { ...mockup6.level, id: 'p' };
+    const moon = { ...mockup6.level, id: 'q', twists: { moonlit: [[0, 0]] as const } };
+    expect(canonicalKey(moon)).not.toBe(canonicalKey(plain));
+  });
+
   it('differs when a clue differs', () => {
     const changed = { ...mockup6.level, bushes: mockup6.level.bushes.map(([r, c, n], i) => [r, c, i === 0 ? (n ?? 0) + 1 : n] as const) };
     expect(canonicalKey(changed)).not.toBe(canonicalKey(mockup6.level));

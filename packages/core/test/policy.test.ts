@@ -61,7 +61,44 @@ describe('nextLevel', () => {
     expect(nextLevel(input(h))).toEqual({ id: 'm2', reason: 'retry' });
   });
 
-  it('returns null when the main path is done', () => {
-    expect(nextLevel(input(main.map((l) => play(l.id))))).toBeNull();
+  it('returns null when the main path is done, whatever happened on the last level', () => {
+    const done = main.map((l) => play(l.id));
+    expect(nextLevel(input(done))).toBeNull();
+    const slowHinted = [...done.slice(0, -2), play('m3', { hints: 1 }), play('m4', { hints: 1, seconds: 999 })];
+    expect(nextLevel(input(slowHinted))).toBeNull();
+    expect(nextLevel(input(done, { now: 100 * HOUR }))).toBeNull();
+  });
+
+  it('counts a solve as long past 1.75x its estimate even when under four minutes', () => {
+    // m2 is estimated at 40 s; 100 s is past 70 s but well under 240 s.
+    expect(nextLevel(input([play('m1'), play('m2', { seconds: 100 })]))?.reason).toBe('breather-after-long');
+  });
+
+  it('ignores detours when counting hinted levels in a row, and resets after a hint breather', () => {
+    const hinted = [play('m1', { hints: 1 }), play('r-hard', { reason: 'warm-up' }), play('m2', { hints: 1 })];
+    expect(nextLevel(input(hinted))?.reason).toBe('breather-after-hints');
+    const after = [play('m1', { hints: 1 }), play('m2', { hints: 1 }), play('r-easy', { reason: 'breather-after-hints' }), play('m3', { hints: 1 })];
+    expect(nextLevel(input(after))).toEqual({ id: 'm4', reason: 'main' });
+  });
+
+  it('sets the warm-up tier from levels solved without hints only', () => {
+    // m3 (T2) solved cleanly, m4 (T3) solved only with hints: the comfortable tier is 2,
+    // so the warm-up is T1 (r-easy), not the T2 r-mid it would be if hinted solves counted.
+    const extra = L('m5', 3, 90);
+    const h = [play('m1'), play('m2'), play('m3'), play('m4', { hints: 1, endedAt: 0 })];
+    const warm = nextLevel(input(h, {
+      mainPath: [...main.map((l) => l.id), 'm5'], levels: new Map([...levels, ['m5', extra]]), now: 9 * HOUR,
+    }))!;
+    expect(warm).toEqual({ id: 'r-easy', reason: 'warm-up' });
+  });
+
+  it('never serves the same reserve level twice', () => {
+    // r-mid (52) is the only fitting breather after m4 (85 × 0.8 = 68, T2 or lower, under 90 s)... once.
+    const first = [play('m1'), play('m2'), play('m3'), play('m4', { solved: false })];
+    expect(nextLevel(input(first))?.id).toBe('r-mid');
+    // The player quit that breather too, so only "already played" keeps it from coming back.
+    const second = [...first, play('r-mid', { reason: 'breather-after-quit', solved: false }), play('m4', { solved: false })];
+    const next = nextLevel(input(second))!;
+    expect(next.id).not.toBe('r-mid');
   });
 });

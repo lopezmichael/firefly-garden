@@ -105,6 +105,19 @@ alongside the level's lanterns when the game is built.
 - Hints are credited only after `Platform.showRewarded()` resolves `true` (the ad
   finished). A failed or skipped ad credits nothing and charges nothing.
 
+## Saved progress and the next-level policy (Phase 2 requirements)
+
+`nextLevel` (see `packages/core/src/policy.ts`) takes the player's history from saved
+progress, which is untrusted. Before calling it the game must:
+
+- schema-validate the save: `history` is an array of objects with a capped length; each
+  `levelId` is a known level, `reason` is a known value, `solved` is a boolean, `seconds`
+  and `hints` are finite and non-negative, and `endedAt` is finite and no later than now;
+  the `solved` set holds only known level ids.
+- persist compact facts rather than truncating history: the set of reserve levels already
+  played (so detours never repeat) and the main levels quit at least once (for "retry").
+- fall back to the next unsolved main-path level if validation fails.
+
 ## Not yet implemented
 
 - **Two-color fireflies** (late twist): needs a color per firefly and per-color
