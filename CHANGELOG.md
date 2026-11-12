@@ -43,6 +43,13 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 - A rewarded ad grants 3 hints (one now, two saved); at a tight economy this keeps more
   newcomers than one per ad, and five adds nothing over three.
 
+### Added (debut placement)
+- Ramp builder places each new tier's debut about 30% into its chapter (`debutAt`), then
+  alternates practice of the new tier (gentlest first) with easier levels before the peak,
+  instead of stacking the new tier's levels at the end. Simulated breather hint use fell to
+  4.5% (plan target: under 5%), now a CI guardrail; chapter 2's peak sits at 17% and later
+  chapters' peaks average 12% (target 10 to 25%).
+
 ### Changed (Phase 1 decisions, 2026-11-12)
 - Technique tiers: overlapping bushes is now T3 and one-step lookahead T4.
 - Mushrooms are numbered blockers counting only their 4 side neighbors

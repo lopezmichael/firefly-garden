@@ -76,7 +76,8 @@ about the code today.
   tier and score (`tests/levels.test.ts`)
 - No level in chapter 1 requires a technique above T2
 - Hint economy (simulated, `tests/economy.test.ts`): at most 5% of hint requests refused,
-  at least 95% of players clear chapter 1, no level above 40% hint use
+  at least 95% of players clear chapter 1, breathers under 5% hint use on average, no level
+  above 40% hint use
 - No committed level is estimated over 5:00; chapter 1 levels stay under 1:00 and chapter 3
   under 4:00 (`DIFFICULTY_CONFIG.limits`)
 

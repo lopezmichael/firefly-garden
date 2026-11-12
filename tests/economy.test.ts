@@ -50,6 +50,13 @@ describe('hint economy (simulated, shipped economy)', () => {
     expect(cleared).toBeGreaterThanOrEqual(0.95);
   });
 
+  it('keeps breathers under 5% hint use on average (project plan target)', () => {
+    const breathers = population.filter((_, i) => simLevels[i]!.role === 'breather');
+    const mean = breathers.reduce((a, l) => a + l.hintRate, 0) / breathers.length;
+    expect(breathers.length).toBeGreaterThan(0);
+    expect(mean).toBeLessThan(0.05);
+  });
+
   it('has no level where more than 40% of plays need a hint', () => {
     const worst = population.reduce((m, l) => Math.max(m, l.hintRate), 0);
     expect(worst).toBeLessThanOrEqual(0.4);

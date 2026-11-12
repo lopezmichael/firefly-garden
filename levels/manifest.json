@@ -12,13 +12,13 @@
       "levels": [
         "spike-4x4-none-17",
         "spike-4x4-none-04",
-        "spike-4x4-none-09",
-        "spike-4x4-none-03",
         "spike-4x4-none-15",
-        "spike-4x4-max-05",
-        "spike-5x5-none-07",
-        "spike-4x4-max-07",
         "spike-5x5-none-05",
+        "spike-4x4-none-03",
+        "spike-4x4-max-07",
+        "spike-4x4-none-09",
+        "spike-5x5-none-07",
+        "spike-4x4-max-05",
         "spike-5x5-none-13"
       ]
     },
@@ -27,16 +27,16 @@
       "title": "The Orchard",
       "levels": [
         "spike-5x5-none-06",
-        "spike-5x5-max-13",
-        "spike-6x6-none-17",
         "spike-7x7-none-16",
+        "spike-5x5-max-12",
+        "spike-5x5-max-06",
+        "spike-5x5-max-13",
+        "spike-6x6-none-14",
+        "spike-6x6-none-17",
         "spike-6x6-none-12",
         "spike-6x6-max-01",
         "spike-7x7-none-14",
-        "spike-5x5-max-12",
         "spike-7x7-max-15",
-        "spike-5x5-max-06",
-        "spike-6x6-none-14",
         "spike-6x6-max-16"
       ]
     },
@@ -45,16 +45,16 @@
       "title": "The Koi Pond",
       "levels": [
         "spike-7x7-max-10",
-        "spike-9x9-none-09",
-        "spike-8x8-max-01",
         "spike-6x6-none-16",
-        "spike-8x8-none-17",
-        "spike-9x9-max-03",
-        "spike-8x8-max-05",
         "spike-8x8-none-10",
+        "spike-8x8-max-05",
+        "spike-9x9-none-09",
         "spike-8x8-none-13",
+        "spike-8x8-max-01",
         "spike-10x10-max-16",
+        "spike-8x8-none-17",
         "spike-6x6-none-00",
+        "spike-9x9-max-03",
         "spike-9x9-none-06"
       ]
     }

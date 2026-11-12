@@ -7,7 +7,10 @@
  * The first level that needs a tier the player has not met yet is swapped
  * for a teaching level: the candidate that needs that tier's technique the
  * fewest times. Simulated players showed hint demand spiking where a new
- * technique first appears, not at chapter peaks.
+ * technique first appears, not at chapter peaks. That debut is then moved
+ * early in the chapter (`debutAt`), with practice of the new tier alternating
+ * with easier levels before the peak, instead of the new tier's levels piling
+ * up at the end in score order.
  */
 
 export interface RampLevel {
@@ -35,6 +38,12 @@ export interface ChapterSpec {
   readonly requires?: readonly string[];
   /** Longest estimated solve time allowed in this chapter, in seconds. */
   readonly maxSeconds?: number;
+  /**
+   * Where a new tier debuts, as a fraction of the chapter (default 0.3). After
+   * the debut, practice levels of the new tier alternate with easier ones,
+   * and the chapter still ends on its hardest level.
+   */
+  readonly debutAt?: number;
   /** A breather after every `breatherEvery` climbing levels. Default 3. */
   readonly breatherEvery?: number;
 }
@@ -65,6 +74,7 @@ export function buildRamp(pool: readonly RampLevel[], specs: readonly ChapterSpe
     const picked = spreadPick(candidates, spec.count);
     for (const l of picked) used.add(l.id);
     const ordered = sawtooth(picked, spec.breatherEvery ?? 3);
+    const introducedBefore = new Set(introduced);
 
     // Teaching levels: the first appearance of each new tier gets the gentlest
     // available introduction to it. A debut on the chapter's peak keeps the
@@ -94,8 +104,46 @@ export function buildRamp(pool: readonly RampLevel[], specs: readonly ChapterSpe
         ordered[slot] = teacher;
       }
     }
-    return { id: spec.id, title: spec.title, levels: ordered, shortfall: spec.count - picked.length };
+    const minTier = Math.min(...ordered.map((l) => l.tier));
+    const newTiers = [...new Set(ordered.map((l) => l.tier))]
+      .filter((t) => t > minTier && !introducedBefore.has(t))
+      .sort((a, b) => a - b);
+    let levels = ordered;
+    for (const t of newTiers) levels = placeDebut(levels, t, spec.debutAt ?? 0.3);
+    return { id: spec.id, title: spec.title, levels, shortfall: spec.count - picked.length };
   });
+}
+
+/**
+ * Reorder one chapter around the debut of tier `t`: easier levels first, the
+ * teaching level (the first level of tier `t`) at `debutAt` of the way in,
+ * then practice of the new tier (gentlest first: fewest steps needing it)
+ * alternating with easier levels, and the hardest level last. Leaves the chapter alone if the new tier has only its
+ * teaching level, or there is nothing easier to open with.
+ */
+export function placeDebut<T extends { readonly id: string; readonly tier: number; readonly score: number }>(
+  levels: readonly T[], t: number, debutAt: number,
+): T[] {
+  const teacher = levels.find((l) => l.tier === t);
+  if (!teacher) return levels.slice();
+  const byScore = (a: T, b: T) => a.score - b.score || a.id.localeCompare(b.id);
+  const easier = levels.filter((l) => l.tier < t).sort(byScore);
+  const harderByScore = levels.filter((l) => l.tier >= t && l.id !== teacher.id).sort(byScore);
+  if (harderByScore.length === 0 || easier.length === 0) return levels.slice();
+  const peak = harderByScore.pop()!;
+  const steps = (l: T) => ((l as { tierSteps?: readonly number[] }).tierSteps?.[t] ?? 0);
+  const harder = harderByScore.sort((a, b) => steps(a) - steps(b) || byScore(a, b));
+
+  const p = Math.min(easier.length, Math.max(1, Math.round(debutAt * (levels.length - 1))));
+  const out: T[] = [...easier.slice(0, p), teacher];
+  const restEasy = easier.slice(p);
+  // After the debut: an easier level, then practice of the new tier, alternating.
+  while (restEasy.length > 0 || harder.length > 0) {
+    if (restEasy.length > 0) out.push(restEasy.shift()!);
+    if (harder.length > 0) out.push(harder.shift()!);
+  }
+  out.push(peak);
+  return out;
 }
 
 /** Pick `n` levels spread evenly across the difficulty range of a sorted list. */

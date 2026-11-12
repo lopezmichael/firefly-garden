@@ -173,4 +173,11 @@ better game.
   the generous economy wins on revenue too. Rewarded ads grant 3 hints (one now, two saved).
 - **Note for Phase 2:** hint-placed fireflies are locked and visually distinct; see the Hints
   section of `docs/references/rules.md`.
+- **Debut placement (2026-11-12):** each new tier debuts ~30% into its chapter on its
+  gentlest level, then practice of it (gentlest first) alternates with easier levels before
+  the peak. Breathers 4.5% (target met; now a CI guardrail). Peaks 8.8% overall: chapter 1's
+  is kept easy for the first session (3%); later chapters average 12% (target 10 to 25%).
+  Debut levels still draw about a third of plays to a hint; that is where help belongs and
+  it stays under the 40% guardrail. Placing debuts alone barely moved the numbers; ordering
+  practice gentlest-first is what brought breathers under 5%.
 

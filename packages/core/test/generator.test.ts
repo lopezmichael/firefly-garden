@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildBoard, buildRamp, cellIndex, evaluate, generate, isUnique, makeMask, parseLevel, sawtooth, SHAPES,
+  buildBoard, buildRamp, cellIndex, evaluate, generate, isUnique, makeMask, parseLevel, placeDebut, sawtooth, SHAPES,
   type RampLevel,
 } from '../src/index.ts';
 
@@ -121,6 +121,40 @@ describe('ramp', () => {
     const [ch] = buildRamp(pool, [{ id: 'c', title: 'C', count: 4, tiers: [1, 3] }]);
     const firstT2 = ch!.levels.find((l) => l.tier === 2);
     expect(firstT2?.id).toBe('t2soft');
+  });
+
+  describe('placeDebut', () => {
+    const L = (id: string, tier: number, score: number, newSteps = 1) => {
+      const tierSteps = [0, 0, 0, 0, 0, 0];
+      tierSteps[tier] = newSteps;
+      return { id, tier, score, tierSteps };
+    };
+    // Sawtooth order would stack the T3s at the end.
+    const chapter = [
+      L('e1', 2, 50), L('e2', 2, 52), L('e3', 2, 54), L('e4', 2, 56), L('e5', 2, 58), L('e6', 2, 60),
+      L('teach', 3, 76, 1), L('hard', 3, 85, 4), L('gentle', 3, 88, 1), L('peak', 3, 95, 5),
+    ];
+    const out = placeDebut(chapter, 3, 0.3);
+    const ids = out.map((l) => l.id);
+
+    it('moves the teaching level about 30% of the way in, after easier levels', () => {
+      expect(ids.indexOf('teach')).toBe(3);
+      expect(out.slice(0, 3).every((l) => l.tier < 3)).toBe(true);
+    });
+
+    it('alternates practice with easier levels, gentlest practice first, and ends on the peak', () => {
+      expect(ids.at(-1)).toBe('peak');
+      expect(ids.indexOf('gentle')).toBeLessThan(ids.indexOf('hard')); // fewer T3 steps first
+      for (let i = 1; i < out.length - 1; i++) {
+        if (out[i]!.tier === 3 && out[i - 1]!.tier === 3) throw new Error(`T3 levels back to back at ${i}: ${ids.join(' ')}`);
+      }
+      expect(new Set(ids).size).toBe(chapter.length);
+    });
+
+    it('leaves a chapter alone when the new tier has only its teaching level', () => {
+      const only = [L('a', 2, 50), L('b', 2, 52), L('t', 3, 80)];
+      expect(placeDebut(only, 3, 0.3).map((l) => l.id)).toEqual(['a', 'b', 't']);
+    });
   });
 
   it('builds chapters from matching levels without reusing any', () => {
