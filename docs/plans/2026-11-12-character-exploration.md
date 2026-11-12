@@ -144,6 +144,9 @@ plus mark), the jar with its slots, one button, one sheet, and one full tall-pho
       and round examples), with irregular stepping stones, notched lily pads and a koi seen from
       above; outside-the-garden squares are plain night ground with grass, no tile; Mushroom
       Glade bloom has two options (A bluebells, B foxfire). Michael likes the mint firefly.
+      Mushrooms redrawn from Michael's reference sheet (feel only, our own drawing): a broad rust
+      cap with gills and a frilled ring, a slender lilac cone and a small bolete, speckled cream
+      stems, thick ink outline; number on the broad cap (paper 5.8:1, gold 4.3:1).
 
 ### 4. Full screen set, chosen direction (canvas row 3)
 
