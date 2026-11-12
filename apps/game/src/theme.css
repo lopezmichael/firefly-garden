@@ -1,0 +1,31 @@
+/* Design tokens. Components use these, never raw colors or font names, so the
+   placeholder-to-painted art swap is a theme change. */
+:root {
+  --ff-night: #0f1a2e;
+  --ff-night-raised: #1c2742;
+  --ff-ink: #f3eedc;
+  --ff-ink-quiet: #c9d1e3;
+  --ff-glow: #ffe7a3;
+  --ff-font-display: 'Fredoka', ui-rounded, system-ui, sans-serif;
+  --ff-font-body: 'Nunito', system-ui, sans-serif;
+}
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--ff-night);
+  color: var(--ff-ink);
+  font-family: var(--ff-font-body);
+}
+
+main {
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+
+h1 {
+  font-family: var(--ff-font-display);
+  color: var(--ff-glow);
+}
+
+p { color: var(--ff-ink-quiet); }

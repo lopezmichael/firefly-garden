@@ -119,7 +119,7 @@ Web portals first, iOS second, one codebase for both. The web build is the produ
 
 A pure TypeScript core holds the rules, solvers and generator; one Vite app renders the game; every platform difference sits behind a single adapter. Switching from a web portal to iOS means writing a new adapter, not touching game code.
 
-&#91;embedded content: architecture · shared core, one game app, one adapter per platform\]
+The diagram (shared core, one game app, one adapter per platform) lives in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 The core feeds both the offline level script and the game itself, so hints and validation always match how levels were built. Everything below the adapter line is swappable.
 
@@ -311,7 +311,7 @@ firefly-garden/
 
 Six phases, each closed by a gate that has to pass before the next starts. Phase 1 is the real risk check: it proves the eight-neighbor rule makes good puzzles at scale before any art or SDK work.
 
-&#91;embedded content: roadmap · 6 phases, 5 gates\]
+The phases and gates (6 phases, 5 gates) live in [ROADMAP.md](ROADMAP.md). Gate 0 was reworded on 2026-11-12 because the mockup gardens turned out not to be unique.
 
 No dates yet; each phase becomes a `docs/plans/` file with checkboxes when it starts. The first Claude Code session should cover Phase 0 and open the plan for Phase 1.
 
