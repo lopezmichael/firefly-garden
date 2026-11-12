@@ -27,6 +27,7 @@ describe('validateEvent', () => {
     ['an unknown policy reason', { ...good[2], reason: 'bonus' }, /reason must be/],
     ['a huge install id', { ...good[0], install: 'a'.repeat(65) }, /install must be/],
     ['a non-random install id', { ...good[0], install: 'jane.doe@example.com' }, /install must be/],
+    ['an install id of only dashes', { ...good[0], install: '-'.repeat(20) }, /install must be/],
     ['an extra field', { ...good[1], email: 'x' }, /unknown field "email"/],
     ['a timestamp far in the future', { ...good[1], at: 9e15 }, /at must be/],
     ['a missing outcome', { ...good[3], outcome: undefined }, /outcome must be/],

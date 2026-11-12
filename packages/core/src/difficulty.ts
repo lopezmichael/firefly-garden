@@ -44,7 +44,7 @@ export const DIFFICULTY_CONFIG = {
      */
     maxSecondsMainPath: 240,
     /** Tighter limits for particular chapters, by chapter id. */
-    chapterMaxSeconds: { c1: 60, c3: 240 } as Readonly<Record<string, number>>,
+    chapterMaxSeconds: { c1: 60 } as Readonly<Record<string, number>>,
   },
 } as const;
 

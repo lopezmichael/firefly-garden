@@ -89,8 +89,8 @@ describe('committed levels', () => {
 
   it('chapter limits stay at 1 minute for chapter 1 and 4 minutes on the rest of the main path', () => {
     expect(chapterMaxSeconds['c1']).toBe(60);
-    expect(chapterMaxSeconds['c3'] ?? maxSecondsMainPath).toBeLessThanOrEqual(240);
     expect(maxSecondsMainPath).toBeLessThanOrEqual(240);
+    for (const [id, s] of Object.entries(chapterMaxSeconds)) expect(s, id).toBeLessThanOrEqual(maxSecondsMainPath);
   });
 
   it('each chapter introduces at most one new tier above its easiest level', () => {

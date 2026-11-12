@@ -57,7 +57,8 @@ const isCount = (v: unknown) => typeof v === 'number' && Number.isInteger(v) && 
 /** Durations up to a week (a tab left open for days still logs a valid session_end). */
 const isSeconds = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v < 7 * 86_400;
 /** The install id is random: 16 to 64 hex characters (or a UUID's hex with dashes). */
-const isInstallId = (v: unknown) => typeof v === 'string' && /^[0-9a-f-]{16,64}$/i.test(v);
+const isInstallId = (v: unknown) =>
+  typeof v === 'string' && /^[0-9a-f-]{16,64}$/i.test(v) && (v.match(/[0-9a-f]/gi) ?? []).length >= 16;
 /** Timestamps from 2020 to 2100, whole milliseconds. */
 const isTimestamp = (v: unknown) => typeof v === 'number' && Number.isInteger(v) && v > 1_577_836_800_000 && v < 4_102_444_800_000;
 
