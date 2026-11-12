@@ -105,11 +105,13 @@ export function buildRamp(pool: readonly RampLevel[], specs: readonly ChapterSpe
       }
     }
     const minTier = Math.min(...ordered.map((l) => l.tier));
-    const newTiers = [...new Set(ordered.map((l) => l.tier))]
+    // The plan allows one new technique per chapter: debut the lowest new tier.
+    // (A second new tier would reshuffle the first one's placement; the level
+    // ratchets fail if a committed chapter introduces more than one.)
+    const debutTier = [...new Set(ordered.map((l) => l.tier))]
       .filter((t) => t > minTier && !introducedBefore.has(t))
-      .sort((a, b) => a - b);
-    let levels = ordered;
-    for (const t of newTiers) levels = placeDebut(levels, t, spec.debutAt ?? 0.3);
+      .sort((a, b) => a - b)[0];
+    const levels = debutTier === undefined ? ordered : placeDebut(ordered, debutTier, spec.debutAt ?? 0.3);
     return { id: spec.id, title: spec.title, levels, shortfall: spec.count - picked.length };
   });
 }
@@ -121,18 +123,19 @@ export function buildRamp(pool: readonly RampLevel[], specs: readonly ChapterSpe
  * alternating with easier levels, and the hardest level last. Leaves the chapter alone if the new tier has only its
  * teaching level, or there is nothing easier to open with.
  */
-export function placeDebut<T extends { readonly id: string; readonly tier: number; readonly score: number }>(
+export function placeDebut<T extends { readonly id: string; readonly tier: number; readonly score: number; readonly tierSteps?: readonly number[] }>(
   levels: readonly T[], t: number, debutAt: number,
 ): T[] {
   const teacher = levels.find((l) => l.tier === t);
   if (!teacher) return levels.slice();
   const byScore = (a: T, b: T) => a.score - b.score || a.id.localeCompare(b.id);
-  const easier = levels.filter((l) => l.tier < t).sort(byScore);
-  const harderByScore = levels.filter((l) => l.tier >= t && l.id !== teacher.id).sort(byScore);
-  if (harderByScore.length === 0 || easier.length === 0) return levels.slice();
-  const peak = harderByScore.pop()!;
-  const steps = (l: T) => ((l as { tierSteps?: readonly number[] }).tierSteps?.[t] ?? 0);
-  const harder = harderByScore.sort((a, b) => steps(a) - steps(b) || byScore(a, b));
+  // The peak is the chapter's highest score, whatever its tier.
+  const peak = levels.filter((l) => l.id !== teacher.id).sort(byScore).pop();
+  const easier = levels.filter((l) => l.tier < t && l !== peak).sort(byScore);
+  const steps = (l: T) => l.tierSteps?.[t] ?? 0;
+  const harder = levels.filter((l) => l.tier >= t && l.id !== teacher.id && l !== peak)
+    .sort((a, b) => steps(a) - steps(b) || byScore(a, b));
+  if (!peak || peak.tier < t || easier.length === 0) return levels.slice();
 
   const p = Math.min(easier.length, Math.max(1, Math.round(debutAt * (levels.length - 1))));
   const out: T[] = [...easier.slice(0, p), teacher];

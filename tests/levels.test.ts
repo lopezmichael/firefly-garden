@@ -80,6 +80,24 @@ describe('committed levels', () => {
     expect(chapterMaxSeconds['c3']).toBe(240);
   });
 
+  it('each chapter introduces at most one new tier above its easiest level', () => {
+    const seen = new Set<number>();
+    for (const c of manifest.chapters) {
+      const tiers = c.levels.map((id) => byId.get(id)!.tier!);
+      const base = Math.min(...tiers);
+      const fresh = [...new Set(tiers)].filter((t) => t > base && !seen.has(t));
+      expect(fresh.length, `${c.id} introduces ${fresh.join(', ')}`).toBeLessThanOrEqual(1);
+      for (const t of tiers) seen.add(t);
+    }
+  });
+
+  it('every chapter ends on its highest-scoring level', () => {
+    for (const c of manifest.chapters) {
+      const scores = c.levels.map((id) => byId.get(id)!.score!);
+      expect(scores.at(-1), c.id).toBe(Math.max(...scores));
+    }
+  });
+
   it('chapter 1 needs nothing above T2', () => {
     const first = manifest.chapters[0];
     expect(first).toBeDefined();

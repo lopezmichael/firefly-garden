@@ -151,6 +151,15 @@ describe('ramp', () => {
       expect(new Set(ids).size).toBe(chapter.length);
     });
 
+    it('ends on the chapter\'s highest score', () => {
+      expect(out.at(-1)?.score).toBe(Math.max(...chapter.map((l) => l.score)));
+    });
+
+    it('leaves the order alone if a lower tier outscores the new one (score bands broken)', () => {
+      const odd = [L('e1', 2, 50), L('e2', 2, 99), L('t', 3, 70), L('x', 3, 80)];
+      expect(placeDebut(odd, 3, 0.3).map((l) => l.id)).toEqual(['e1', 'e2', 't', 'x']);
+    });
+
     it('leaves a chapter alone when the new tier has only its teaching level', () => {
       const only = [L('a', 2, 50), L('b', 2, 52), L('t', 3, 80)];
       expect(placeDebut(only, 3, 0.3).map((l) => l.id)).toEqual(['a', 'b', 't']);
