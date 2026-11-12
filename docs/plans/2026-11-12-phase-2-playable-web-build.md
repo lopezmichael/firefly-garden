@@ -8,7 +8,7 @@ the first real data.
 
 **Gate:** friends play 20+ levels without being asked.
 
-**Status:** draft, waiting for Michael's review (see "Decisions to confirm").
+**Status:** reviewed 2026-11-12; one decision open (3, rewarded ads in the friends build).
 
 ## Scope
 
@@ -32,33 +32,105 @@ first-session rule (Phase 3); coin doubler, streak saver, daily puzzle, painted
 art, chapters 4+ (Phase 4); haptics and purchases (Phase 5). Ambient night loop
 is a stretch goal for this phase.
 
-## Decisions to confirm
+## Decisions
 
-1. **The mockup.** The "Puzzle Game Mockups" canvas is not in the repo (only its boards,
-   as test fixtures). Please share it (HTML, screenshots or an export) so the port matches
-   it. Without it I build from the project plan's art direction (dusky teal/plum/moss,
-   warm gold light, raised 2.5D tiles, Fredoka and Nunito) and show screenshots early.
-2. **Leaving a level counts as a quit.** Going back to the garden map mid-level ends the
-   play as `quit` (so the policy can serve a breather and then a retry), but the board is
-   kept and the retry resumes it. Closing the tab mid-level resumes on reload and is not a
-   quit. There is no "skip level" button.
-3. **Fake ads in the friends build.** The local adapter shows a 5-second placeholder card
-   ("an ad would play here") with a cancel button, instead of resolving instantly, so hint
-   flows, the no-credit-on-cancel rule and audio muting are exercised and rewarded hints
-   are not free. Midgame placeholders follow the plan's rule: none in the first session's
-   first 5 levels.
-4. **Playtest distribution.** Friends need a URL. Recommendation: a Vercel preview of the
-   `develop` branch (the plan already picks Vercel for the own site), password-free but
-   unlisted. Alternative: GitHub Pages. This is outward-facing, so it waits for your go.
-5. **How we see the gate.** No backend, so play logs stay on each friend's device. A
-   "Play log" panel in settings shows levels played and copies the event log as JSON for
-   friends to send back. The gate is judged from those logs plus what friends tell us.
-6. **Playwright in CI.** An end-to-end smoke test (load, solve level 1 by tapping, take a
-   hint, reload and resume) in CI needs `@playwright/test` as a dev dependency and a
-   browser download in the CI job (~1 minute). Recommendation: yes, as a separate CI job.
-7. **PixiJS 8.22.0, pinned exactly** (8.23.0 shipped yesterday; we take the newest
-   release at least two weeks old). Fonts self-hosted from `@fontsource` (Latin subset,
-   OFL), since levels and everything else must work offline.
+Reviewed with Michael on 2026-11-12.
+
+1. **The mockup is the starting point, not the spec.** The "Puzzle Game Mockups" canvas
+   (claude.ai artifact, boards "Firefly Garden" 390x844 and "landscape, shaped garden"
+   844x390) sets the look; the game builds up from it. See "From the mockup" below.
+2. **Leaving a level counts as a quit.** *Agreed.* Going back to the garden map mid-level
+   ends the play as `quit` (the policy can serve a breather, then a retry), but the board
+   is kept and the retry resumes it. Closing the tab mid-level resumes on reload and is not
+   a quit. No "skip level" button.
+3. **Rewarded ads in the friends build.** *Open, see the note below.*
+4. **Playtest distribution:** an unlisted Vercel preview of `develop`. *Agreed.* Deploying
+   is still done only when Michael gives the go for that specific deploy.
+5. **Gate evidence:** a "Play log" panel in settings that copies the event log as JSON for
+   friends to send back. *Agreed.*
+6. **Playwright in CI** as a separate job, `@playwright/test` as a dev dependency. *Agreed.*
+7. **PixiJS 8.23.0, pinned exactly.** *Decided:* it will be over two weeks old before any
+   release. Fonts self-hosted from `@fontsource` (Latin subset, OFL) so the game works offline.
+8. **Built with the iPhone Duo in mind.** *Added by Michael.* See "Foldables" below.
+
+**Note on 3 (why rewarded ads need a decision).** Today the local adapter's
+`showRewarded()` resolves `true` immediately. In a friends build that makes "Watch an ad
+for 3 hints" a free button, so the hint and coin data the playtest produces would not
+reflect the real economy, and the paths that matter most in Phase 3 (ad cancelled → no
+credit, sound muted during the ad) would never run in front of real players. Two ways out:
+
+- **(a) Hide the ad option in the friends build.** Coins only (60 to start, +10 per solve,
+  30 per hint is plenty for 30 levels). Simplest. The ad paths are covered by unit tests
+  and the Playwright test with a test adapter, not by friends.
+- **(b) A placeholder ad card** (5 s, with cancel) so friends walk through the real flow.
+
+Recommendation: **(a)**. It keeps the playtest honest with less to build; the placeholder
+card is only needed if we want to see whether friends choose ads over coins, and Phase 1's
+simulation says they almost never need to this early.
+
+## From the mockup
+
+Keep (it already reads well):
+
+- Night sky gradient, twinkling stars, a moon with craters; warm gold for everything lit
+- Path tiles as raised rounded squares with a solid front edge (dark moss when unlit, a
+  gold radial when lit), slight `rotateX` tilt on the board tray
+- Bushes as moss-green blobs (irregular border radius) with the clue in Fredoka and a pip
+  row that fills gold as fireflies land; pink number and pips when over; a twinkling star
+  when met; flowers blooming on solve
+- The firefly sprite: white wings that flutter, a cream body, a dark head with eyes, a
+  halo that breathes, a shadow that breathes under it, drop-with-bounce on placement,
+  nervous flicker and pink tint on conflict
+- Light ripple: newly lit tiles brighten in order of distance from the new firefly
+- Motes drifting up from lit tiles; a coloured sparkle burst on solve
+- Status card under the board that teaches by reacting ("Two fireflies can see each
+  other", "A bush has too many fireflies, diagonals count too", "3 path tiles still dark")
+  plus a lit-tiles progress bar
+- Controls: Undo, Reset, and a larger gold Hint; in landscape a left info panel and a
+  right control column; the shaped-garden board's pond with lily pads and a koi
+
+Build up (where the mockup stops):
+
+- Rendered in PixiJS instead of DOM/CSS so glow, bloom and many particles stay at 60 fps;
+  the CSS keyframes become the timing reference for each effect
+- Light ripple along row and column with a bloom per tile, not just a brightness pop
+- Hint fireflies (gold ring and sparkle, locked) and the hint dialog; the mockup's Hint
+  button cheats from the stored answer, ours asks the grader
+- Coins from `PLAYER_CONFIG` (the mockup shows 120 coins and +15 per solve; we ship 60 and +10)
+- The level-dot row becomes chapter progress toward the next garden area; a garden map
+  screen, level complete, settings and play log screens, which the mockup does not have
+- The rules paragraph under the title shows on the first levels only, then gives way to
+  the area name, as in the landscape board ("The Koi Pond")
+- Every mockup color becomes a token in `theme.css`; nothing is copied in as a literal
+
+## Foldables (iPhone Duo)
+
+The iPhone Duo (September 2026) has a 7.6-inch inner screen and a 5.4-inch outer screen
+with nearly the same aspect ratio, close to 4:3 (about 1.42:1 by one developer's count).
+Derived sizes, not official: inner about 626x890 pt, outer about 470x670 pt. What
+changes for us:
+
+- **Layout follows aspect ratio, not orientation.** Phones are about 0.46 wide-to-tall;
+  the Duo is about 0.70 in portrait and 1.42 in landscape. Three layout bands: tall
+  (stacked, as the portrait mockup), near-square (board as large as possible, HUD in a
+  compact strip on top, controls in a row below or a column beside, whichever leaves the
+  bigger board), wide (side panels, as the landscape mockup). Band thresholds are chosen
+  from screenshots at every target size, not guessed.
+- **Folding and unfolding is a live resize.** The game must reflow mid-level without
+  reloading, without losing the board, the undo stack or the active timer, and without
+  replaying placement animations. The board's rotation (`transformLevel`) is picked when
+  a level starts and kept through a resize unless the board would no longer fit with
+  44 pt cells; then it re-fits with one short rotate animation (instant in reduced motion).
+- **More room, bigger targets.** An 8x8 board gets about 55 pt cells on the outer screen
+  and over 70 pt unfolded, so the Duo is not the tight case (360 pt-wide Android phones
+  are), but large cells need the art to scale up cleanly: sprites and glow textures are
+  generated at the device pixel ratio of the largest cell size, not stretched.
+- **Crease.** The inner screen is one continuous display; the board will often sit over the
+  fold. Nothing is done about it unless testing on a device shows taps or readability
+  suffer there.
+- **Checks:** Playwright screenshots at 626x890, 890x626 and 470x670, and a test that
+  resizes from 470x670 to 626x890 mid-level and asserts the board, undo stack and timer
+  survive. A real device check before the playtest if one is available.
 
 ## Architecture for the game app
 
@@ -164,8 +236,9 @@ the same transitions are tested in Node and in Playwright.
 
 ### E. UI, layout, accessibility (`ui/`)
 
-- [ ] Portrait: top bar (area, chapter progress, coins) above the board, controls (undo,
-      reset, hint with bank count) below. Landscape: the same in side panels.
+- [ ] Tall band: top bar (area, chapter progress, coins) above the board, status card and
+      controls (undo, reset, hint with bank count) below. Wide band: the same in side
+      panels. Near-square band for foldables and tablets (see "Foldables").
 - [ ] Safe-area insets; every button at least 44 px; the board's cells sized from the
       viewport. **Known squeeze:** 8x8 on a 360 px-wide phone gives about 42 px cells, so
       the board gets no outer gutter in portrait; checked in a 360x740 screenshot.
@@ -201,15 +274,18 @@ the same transitions are tested in Node and in Playwright.
 
 ### H. Platform adapter
 
-- [ ] Local adapter: placeholder ad card (decision 3), `gameplayStart/Stop` around active
-      play, everything else unchanged. Interface unchanged unless a need shows up.
+- [ ] Local adapter: rewarded ads per decision 3, `gameplayStart/Stop` around active play,
+      everything else unchanged. A scriptable test adapter (ad completes, ad cancelled)
+      for unit and Playwright tests. Interface unchanged unless a need shows up.
 
 ### I. Evidence and checks
 
 - [ ] Playwright smoke test (decision 6): load, solve level 1 by tapping its solution, buy a
-      hint, cancel an ad (no credit), reload and resume, rotate to landscape.
-- [ ] Screenshots for review: portrait 390x844 and 360x740, landscape 1280x720, reduced
-      motion on, each juice moment; a short clip of a solve.
+      hint, cancel an ad with the test adapter (no credit), reload and resume, rotate to
+      landscape, fold/unfold resize mid-level.
+- [ ] Screenshots for review: 390x844, 360x740, 844x390, 1280x720, iPhone Duo inner
+      626x890 and 890x626, outer 470x670; reduced motion on; each juice moment; a short
+      clip of a solve; the fold/unfold resize test.
 - [ ] Bundle stays well under 8 MB (expect ~1 MB with Pixi and fonts).
 - [ ] New ratchets in `tests/ratchets.test.ts`:
       - `apps/game/src/state` imports only `@firefly/core` and itself
@@ -233,7 +309,7 @@ Each milestone ends with typecheck, tests, build, screenshots and a commit (when
 
 1. **Playable and plain:** A (locked cells, grader start, hints), B, the board drawn with
    flat shapes, tap to place, solve, auto-advance through chapter 1. Screenshot.
-2. **Economy and memory:** wallet, hint bank, hint dialog, placeholder ads, saves with
+2. **Economy and memory:** wallet, hint bank, hint dialog, rewarded-ad flow (decision 3), saves with
    validation, the policy (A's compact facts and `seconds`), analytics log.
 3. **Look and juice:** the mockup look, every juice item, audio, reduced motion, both
    layouts, keyboard.
