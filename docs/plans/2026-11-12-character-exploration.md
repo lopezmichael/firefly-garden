@@ -31,7 +31,15 @@ Each checkpoint is a stop: I show the work and wait.
 
 ### 1. References (now)
 
-- [ ] **Michael's references first.** Ask now (see the questions at the end).
+- [x] **Michael's references first.** Hunting list: `docs/design/reference-sources.md`.
+      Michael's picks (2026-11-12), all board games: **Arboretum, Kanagawa, Photosynthesis, Root,
+      Lanterns: The Harvest Festival, Parks.** Proposed reading of them, waiting for his OK:
+  - Ink and wash (direction 1, from Kanagawa and Arboretum): cream paper, ink line, controlled
+    washes and seal stamps, instead of loose wet watercolour
+  - Stand-up diorama (direction 2, from Photosynthesis): bushes as stand-up card pieces whose
+    shadows react to firefly light
+  - Night print (direction 3, from Parks, Lanterns and Root): screenprint with a few inks plus gold,
+    print grain and bold silhouettes, instead of heavy woodcut gouges
 - [ ] Gather a moodboard per direction, 10 to 15 images each, covering four things: a palette
       and light, surface and material, how creatures, plants and objects are drawn, and game UI
       that treats the interface as part of the world.
