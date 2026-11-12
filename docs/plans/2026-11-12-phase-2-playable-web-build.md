@@ -251,7 +251,15 @@ the same transitions are tested in Node and in Playwright.
       straight to garden 1; a returning player without an unfinished board opens on the map.
 - [x] Hint dialog: bank count, "Use 30 coins", "Watch an ad for 3 hints" (video icon),
       equal-size "No thanks".
-- [ ] Level complete: celebration, +10 coins, auto-advance with the next board preloaded.
+- [x] Level complete: celebration, +10 coins, auto-advance with the next board preloaded.
+      *Done (milestone 3):* a card takes the place of the status card and moves (they keep their
+      space, so the board never resizes): the garden, time and hints, a +10 chip, Garden map, and
+      Next garden with a ring counting down the 3 s auto-advance. Sparks burst from the board. The
+      countdown waits while a sheet is open or the tab is hidden and restarts from full. On the
+      last garden there is no Next and no countdown. No preloading was needed: building the next
+      board is synchronous and takes a frame.
+      *Follow-up:* on a 320 px phone the opening status line wraps to three lines, so the board
+      still steps once on the first move (the card itself never resizes the board).
 - [ ] Settings: sound, reduced motion (defaults to `prefers-reduced-motion`, overridable),
       play log.
 - [ ] First-level teaching: the one-line hint from the plan ("Tap a tile to place a

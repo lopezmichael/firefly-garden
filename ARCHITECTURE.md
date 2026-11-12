@@ -81,7 +81,7 @@ The look follows the Phase 2 design baseline (`docs/design/phase-2/`).
 | --- | --- | --- |
 | `src/state/` | Level catalog (`catalog.ts`), one play with undo, reset, hints and active time (`play.ts`), coins and hint bank (`wallet.ts`), progress and the next-level policy (`session.ts`), status-card wording (`status.ts`), saved progress and its validation (`save.ts`), the local analytics log (`events.ts`) | `@firefly/core` only, no browser globals (ratchet) |
 | `src/view/` | Pure layout math: bands, board fit, orientation (`layout.ts`); the PixiJS board (`board.ts`); CSS tokens read into a Pixi palette (`theme.ts`) | `state/`, `pixi.js` |
-| `src/ui/` | The play screen's DOM (`screen.ts`, `game.css`) including the firefly jar, the hint and settings sheets (`sheets.ts`), jar-to-tile flights (`flight.ts`) and the controller (`app.ts`) | `state/`, `view/`, `platform/` |
+| `src/ui/` | The play screen's DOM (`screen.ts`, `game.css`) including the firefly jar, the hint and settings sheets (`sheets.ts`), the garden map (`map.ts`), the level-complete card and solve burst (`complete.ts`), jar-to-tile flights (`flight.ts`) and the controller (`app.ts`) | `state/`, `view/`, `platform/` |
 | `src/platform/` | The `Platform` interface and adapters; the only door to SDKs (ratchet) | |
 
 - **Layout follows the screen's shape** (`bandFor`): tall (phones in portrait), square

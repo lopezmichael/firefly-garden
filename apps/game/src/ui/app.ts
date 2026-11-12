@@ -9,7 +9,7 @@ import type { ShownHint } from '../state/play.ts';
 import { DEFAULT_SETTINGS, MAX_PARKED, newInstallId, parseSave, SAVE_KEY, serializeSave } from '../state/save.ts';
 import type { CurrentPlay, MotionSetting, SaveData, Settings } from '../state/save.ts';
 import { Session } from '../state/session.ts';
-import { boardStatus, noticeStatus } from '../state/status.ts';
+import { boardStatus, completeLine, noticeStatus } from '../state/status.ts';
 import type { Notice } from '../state/status.ts';
 import { Wallet } from '../state/wallet.ts';
 import { BoardView } from '../view/board.ts';
@@ -105,7 +105,10 @@ export class GameApp {
       motion: (m) => this.setMotion(m),
       copyLog: () => this.copyLog(),
     });
-    this.settingsSheet.onClose = () => this.resumeClock();
+    this.settingsSheet.onClose = () => {
+      this.resumeClock();
+      if (this.advancePending) this.scheduleAdvance();
+    };
   }
 
   async start(): Promise<void> {
@@ -227,11 +230,7 @@ export class GameApp {
       this.emit({ type: 'session_end', seconds: this.sessionSeconds() });
       if (this.visibleSince !== null) this.sessionVisibleMs += Date.now() - this.visibleSince;
       this.visibleSince = null;
-      if (this.advanceTimer !== null) {
-        clearTimeout(this.advanceTimer);
-        this.advanceTimer = null;
-        this.advancePending = true;
-      }
+      this.holdAdvance();
       this.flushSave();
       return;
     }
@@ -277,6 +276,7 @@ export class GameApp {
   private openSettings(): void {
     if (this.adShowing || this.hintSheet.isOpen || this.settingsSheet.isOpen) return;
     this.play?.pause();
+    this.holdAdvance();
     const s = this.log.summary();
     this.settingsSheet.open({ motion: this.settings.motion, played: s.played, solved: s.solved, hints: s.hints });
   }
@@ -314,13 +314,28 @@ export class GameApp {
 
   // ---------------------------------------------------------------- levels
 
+  /** Arm the auto-advance (the complete card's ring counts it down), unless the tab is hidden or a
+   *  sheet is open: then it waits, and is re-armed from full when the player is back. */
   private scheduleAdvance(): void {
+    if (this.advanceTimer !== null) clearTimeout(this.advanceTimer);
+    this.advanceTimer = null;
     this.advancePending = false;
-    if (document.hidden) {
+    if (document.hidden || this.blocked()) {
       this.advancePending = true;
+      this.screen.holdCountdown();
       return;
     }
     this.advanceTimer = setTimeout(() => this.advance(), AUTO_ADVANCE_MS);
+    this.screen.countdown(AUTO_ADVANCE_MS);
+  }
+
+  /** Put an armed auto-advance on hold (the tab hid, a sheet opened). */
+  private holdAdvance(): void {
+    if (this.advanceTimer === null) return;
+    clearTimeout(this.advanceTimer);
+    this.advanceTimer = null;
+    this.advancePending = true;
+    this.screen.holdCountdown();
   }
 
   private advance(): void {
@@ -460,6 +475,7 @@ export class GameApp {
 
   private show(next: NextLevel, play: Play): void {
     cancelFlights();
+    this.screen.hideComplete();
     this.current = next;
     this.play = play;
     this.notice = null;
@@ -574,6 +590,7 @@ export class GameApp {
     play.pause();
     this.platform.gameplayStop();
     this.platform.haptic?.('success');
+    const before = this.wallet.coins;
     this.wallet.creditSolve();
     this.session.record({ levelId: cur.id, reason: cur.reason, solved: true, seconds: play.seconds, hints: play.hints, endedAt: Date.now() });
     this.emit({
@@ -582,15 +599,29 @@ export class GameApp {
     });
     this.refresh();
     this.flushSave();
-    this.screen.announce('Solved! The garden is glowing.');
+    const sub = this.solvedLine(cur.id, play.seconds, play.hints);
+    const coins = this.wallet.coins - before;
+    // The policy is pure: peek whether another garden follows (none after the last one).
+    const more = this.session.next(Date.now()) !== null;
+    this.screen.showComplete({ sub, coins, more }, true);
+    this.screen.announce(`Solved! The garden is glowing. ${sub} ${coins} coins earned.`);
     this.screen.focusNext();
-    this.scheduleAdvance();
+    if (more) this.scheduleAdvance();
+  }
+
+  /** The complete card's line: which garden, how long, and any hints. */
+  private solvedLine(levelId: string, seconds: number, hints: number): string {
+    const place = this.catalog.place(levelId);
+    return completeLine(place
+      ? { kind: 'main', index: place.index, total: place.chapter.levels.length, area: place.chapter.area }
+      : { kind: 'bonus', area: this.chapterForProgress().area }, seconds, hints);
   }
 
   private finished(): void {
     this.play = null;
     this.current = null;
-    this.screen.setStatus({ title: 'The Rose Bed is glowing!', sub: 'You lit every garden in this build. More gardens are on the way.', tone: 'solved' }, false);
+    this.screen.hideComplete();
+    this.screen.setStatus({ title: 'The Rose Bed is glowing!', sub: 'You lit every garden in this build. More gardens are on the way.', tone: 'solved' });
     this.screen.setMoves(false, false, true);
     this.screen.setJar(0, 0);
     this.scheduleSave();
@@ -623,7 +654,7 @@ export class GameApp {
     const status = ev.solved || !this.notice
       ? boardStatus(ev, play.placements === 0 && play.locked.size === 0, PLAYER_CONFIG.economy.coinsPerSolve, play.remaining)
       : noticeStatus(this.notice, ev);
-    this.screen.setStatus(status, ev.solved);
+    this.screen.setStatus(status);
     this.screen.setJar(play.remaining, play.jarSize);
     this.screen.setMoves(play.canUndo, play.placed.size > 0, ev.solved);
     this.screen.setCoins(this.wallet.coins, this.wallet.economy.hintCost, this.wallet.bank);

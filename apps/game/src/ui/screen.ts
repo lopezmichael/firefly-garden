@@ -1,4 +1,6 @@
 import type { Band } from '../view/layout.ts';
+import { CompleteCard } from './complete.ts';
+import type { CompleteView } from './complete.ts';
 
 /**
  * The play screen's DOM: top bar, title, status card and controls around the
@@ -69,7 +71,6 @@ export class PlayScreen {
   private readonly status = el('div', 'ff-status');
   private readonly statusTitle = el('div', 'ff-status-title');
   private readonly statusSub = el('div', 'ff-status-sub');
-  private readonly nextButton = el('button', 'ff-next', 'Next garden');
   private readonly jar = el('div', 'ff-jar');
   private readonly jarLine = el('div', 'ff-jar-line');
   private readonly slots = el('div', 'ff-slots');
@@ -79,6 +80,7 @@ export class PlayScreen {
   private readonly hintCost = el('span');
   private readonly announcer = el('div', 'ff-sr');
   private mapButton: HTMLButtonElement | null = null;
+  private readonly complete: CompleteCard;
 
   constructor(handlers: ScreenHandlers) {
     const sky = el('div', 'ff-sky');
@@ -122,14 +124,13 @@ export class PlayScreen {
     this.slots.setAttribute('aria-hidden', 'true');
     count.append(this.jarLine, this.slots);
     const row = el('div', 'ff-status-row');
-    this.nextButton.type = 'button';
-    this.nextButton.hidden = true;
-    this.nextButton.addEventListener('click', () => handlers.next());
-    row.append(this.jar, count, this.nextButton);
+    row.append(this.jar, count);
     const text = el('div', 'ff-status-text');
     text.append(this.statusTitle, this.statusSub);
     this.status.append(row, text);
-    side.append(top, this.title, this.status);
+    // The level-complete card sits where the status card and moves are (see game.css).
+    this.complete = new CompleteCard({ next: () => handlers.next(), map: () => handlers.map() });
+    side.append(top, this.title, this.status, this.complete.root);
 
     this.boardHost.setAttribute('role', 'application');
     this.boardHost.setAttribute('aria-label', 'Garden board');
@@ -184,11 +185,30 @@ export class PlayScreen {
     this.hintButton.setAttribute('aria-label', bank > 0 ? `Hint, ${bank} saved` : `Hint, ${hintCost} coins`);
   }
 
-  setStatus(s: Status, solved: boolean): void {
+  setStatus(s: Status): void {
     this.status.dataset.tone = s.tone;
     this.statusTitle.textContent = s.title;
     this.statusSub.textContent = s.sub;
-    this.nextButton.hidden = !solved;
+  }
+
+  /** Swap the status card and moves for the level-complete card; `burst` throws sparks. */
+  showComplete(view: CompleteView, withBurst: boolean): void {
+    this.root.dataset.complete = 'true';
+    this.complete.show(view);
+    if (withBurst && !this.reduced()) this.complete.burst(this.boardHost);
+  }
+
+  hideComplete(): void {
+    delete this.root.dataset.complete;
+    this.complete.hide();
+  }
+
+  countdown(ms: number): void {
+    this.complete.countdown(ms);
+  }
+
+  holdCountdown(): void {
+    this.complete.holdCountdown();
   }
 
   /** The jar's count: one slot per firefly the garden needs, lit while it is still in the jar. */
@@ -248,6 +268,6 @@ export class PlayScreen {
   }
 
   focusNext(): void {
-    this.nextButton.focus({ preventScroll: true });
+    this.complete.focus();
   }
 }

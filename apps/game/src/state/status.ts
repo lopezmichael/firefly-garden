@@ -75,3 +75,23 @@ export function litPercent(ev: Evaluation, needsLight: number): number {
   if (needsLight === 0) return 100;
   return Math.round(((needsLight - ev.unlit) / needsLight) * 100);
 }
+
+/** Where a solved garden sits: its place in a chapter, or a bonus (reserve) garden in an area. */
+export type GardenPlace =
+  | { readonly kind: 'main'; readonly index: number; readonly total: number; readonly area: string }
+  | { readonly kind: 'bonus'; readonly area: string };
+
+/** "m:ss" for a level clock in seconds. */
+export function clockText(seconds: number): string {
+  const s = Math.max(0, Math.floor(seconds));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+/** The level-complete card's line: which garden, how long, and any hints. */
+export function completeLine(place: GardenPlace, seconds: number, hints: number): string {
+  const where = place.kind === 'main'
+    ? `Garden ${place.index + 1} of ${place.total} in the ${place.area}.`
+    : `A bonus garden in the ${place.area}.`;
+  const help = hints === 0 ? '' : ` with ${hints} ${hints === 1 ? 'hint' : 'hints'}`;
+  return `${where} Solved in ${clockText(seconds)}${help}.`;
+}

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { PLAYER_CONFIG } from '@firefly/core';
 import { createCatalog } from '../src/state/catalog.ts';
 import { Play } from '../src/state/play.ts';
-import { boardStatus, litPercent, noticeStatus } from '../src/state/status.ts';
+import { boardStatus, clockText, completeLine, litPercent, noticeStatus } from '../src/state/status.ts';
 
 const LEVELS = join(import.meta.dirname, '../../../levels');
 const read = (f: string): unknown => JSON.parse(readFileSync(join(LEVELS, f), 'utf8'));
@@ -50,5 +50,21 @@ describe('status card', () => {
     const p = new Play(catalog.board(id), catalog.solution(id), clock);
     expect(boardStatus(p.evaluation, false, coins, 0).sub).toMatch(/Every firefly is out/);
     expect(boardStatus(p.evaluation, false, coins, 2).title).toMatch(/still dark/);
+  });
+});
+
+describe('level-complete line', () => {
+  it('names the garden, the time and any hints', () => {
+    const main = { kind: 'main', index: 5, total: 10, area: 'Rose Bed' } as const;
+    expect(completeLine(main, 48, 0)).toBe('Garden 6 of 10 in the Rose Bed. Solved in 0:48.');
+    expect(completeLine(main, 125, 1)).toBe('Garden 6 of 10 in the Rose Bed. Solved in 2:05 with 1 hint.');
+    expect(completeLine({ kind: 'bonus', area: 'Rose Bed' }, 61, 3)).toBe('A bonus garden in the Rose Bed. Solved in 1:01 with 3 hints.');
+  });
+
+  it('formats the clock as m:ss, whole seconds, never negative', () => {
+    expect(clockText(0)).toBe('0:00');
+    expect(clockText(9.9)).toBe('0:09');
+    expect(clockText(600)).toBe('10:00');
+    expect(clockText(-4)).toBe('0:00');
   });
 });

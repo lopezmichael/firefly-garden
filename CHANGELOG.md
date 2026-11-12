@@ -5,6 +5,10 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Added
+- The level-complete card (milestone 3): replaces the status card and moves once a garden is
+  solved, with the garden, time and hints used, a +10 coin chip, Garden map, and Next garden with
+  a ring that counts down the auto-advance (no Next on the last garden); sparks burst from the
+  board (not in reduced motion). Screen readers hear the whole line and the coins.
 - The garden map (milestone 3): chapter beds glowing, in progress or still dark, the area's
   progress, the next area as a teaser and Continue. Leaving a level for the map is a quit (the
   policy can serve a breather); its board is parked in the save so the retry resumes it.
@@ -14,6 +18,8 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
   called back, and hints send a gold one; saves holding more fireflies than the jar are dropped.
 
 ### Fixed
+- The auto-advance no longer opens the next garden behind an open settings sheet: it waits, and
+  restarts from full when the sheet closes (as it already did for a hidden tab).
 - The board no longer jumps on the first move: the status card keeps a steady height (its
   wording changed length and the board resized to fill the space).
 
