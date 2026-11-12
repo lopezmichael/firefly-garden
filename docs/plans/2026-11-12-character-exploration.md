@@ -132,6 +132,14 @@ plus mark), the jar with its slots, one button, one sheet, and one full tall-pho
       the dotted path to the new chapter and its stop lights as it lands (once per unlock; none
       under reduced motion, where the stop just appears lit).
 
+- [x] Twists and chapter pieces (2026-11-12, Michael asked for future level pieces): mushrooms
+      (wanting, happy with glowing spores, too many; side notches show it counts 4 sides),
+      moonlit tiles (silver-blue wash with a crescent), lanterns (the jar's paper lantern planted
+      on a stake), ponds (slate water, lily pads, koi, stone rim) and outside-the-garden hedge for
+      shaped beds, two-colour fireflies (gold round tail, mint diamond tail; bush dots match the
+      tail shape) and the coloured-beams idea, plus a bloom per chapter (rose, apple blossom, glow
+      caps, moonflower, lantern plant, lotus, ivy stars, mixed posy). Board Twists.
+
 ### 4. Full screen set, chosen direction (canvas row 3)
 
 - [ ] Play in all three bands: tall (390×844), square (iPhone Duo inner, 626×890) and wide
