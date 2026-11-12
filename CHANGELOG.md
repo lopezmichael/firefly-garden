@@ -4,6 +4,16 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+- The firefly jar (milestone 3, first item): the status card shows a jar plus one slot per firefly
+  the garden needs, replacing the progress bar; placements are capped by the jar (an empty-jar tap
+  shakes it and places nothing); a firefly flies out of the jar to the tile and home again when
+  called back, and hints send a gold one; saves holding more fireflies than the jar are dropped.
+
+### Fixed
+- The board no longer jumps on the first move: the status card keeps a steady height (its
+  wording changed length and the board resized to fill the space).
+
 ### Changed
 - Shipped grading is count-aware: the game will show how many fireflies each garden needs (the
   firefly jar), so `gradeLevel(level, board)` (new, core) grades with the count known, and the

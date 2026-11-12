@@ -9,12 +9,13 @@ import type { ShownHint } from '../state/play.ts';
 import { DEFAULT_SETTINGS, newInstallId, parseSave, SAVE_KEY, serializeSave } from '../state/save.ts';
 import type { CurrentPlay, MotionSetting, SaveData, Settings } from '../state/save.ts';
 import { Session } from '../state/session.ts';
-import { boardStatus, litPercent, noticeStatus } from '../state/status.ts';
+import { boardStatus, noticeStatus } from '../state/status.ts';
 import type { Notice } from '../state/status.ts';
 import { Wallet } from '../state/wallet.ts';
 import { BoardView } from '../view/board.ts';
 import { bandFor, keepOrTurn, orientFor } from '../view/layout.ts';
 import type { Palette } from '../view/theme.ts';
+import { cancelFlights, fly, FLIGHT_MS } from './flight.ts';
 import { PlayScreen } from './screen.ts';
 import { HintSheet, SettingsSheet } from './sheets.ts';
 
@@ -62,6 +63,7 @@ export class GameApp {
   private hiddenAt: number | null = null;
   /** True while a rewarded ad plays: the board, moves, hints and the level clock all wait. */
   private adShowing = false;
+  private boardArea = { w: 0, h: 0 };
   private readonly clock = { now: () => performance.now() };
   private readonly wallClock = { now: () => Date.now() };
   private readonly reducedQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -73,7 +75,12 @@ export class GameApp {
     private readonly palette: Palette,
   ) {
     this.screen = new PlayScreen({
-      undo: () => this.move(() => this.play?.undo()),
+      undo: () => this.move(() => {
+        if (this.play?.undo() === 'jar-full') {
+          this.notice = { kind: 'jar-empty' };
+          this.screen.shakeJar();
+        }
+      }),
       reset: () => this.move(() => {
         if (this.play?.placed.size) {
           this.play.reset();
@@ -275,6 +282,9 @@ export class GameApp {
 
   private layout(): void {
     const { clientWidth: w, clientHeight: h } = this.screen.boardHost;
+    // Flights aim at screen positions: only a real change of the board area invalidates them.
+    if (w !== this.boardArea.w || h !== this.boardArea.h) cancelFlights();
+    this.boardArea = { w, h };
     if (this.play) {
       const lvl = this.play.board;
       const next = keepOrTurn(this.transform, lvl.w, lvl.h, w, h);
@@ -330,6 +340,7 @@ export class GameApp {
   }
 
   private show(next: NextLevel, play: Play): void {
+    cancelFlights();
     this.current = next;
     this.play = play;
     this.notice = null;
@@ -365,8 +376,16 @@ export class GameApp {
     if (!play || play.solved || this.blocked()) return;
     const r = play.tap(cell);
     if (r === 'blocked') return;
+    if (r === 'jar-empty') {
+      this.notice = { kind: 'jar-empty' };
+      this.screen.shakeJar();
+      this.refresh();
+      return;
+    }
     this.notice = r === 'locked' ? { kind: 'locked' } : null;
-    this.refresh();
+    // A placed firefly flies out of the jar and lands when it arrives; a lifted one flies home.
+    const flew = r === 'placed' ? this.flight(cell, 'out', false) : r === 'removed' ? this.flight(cell, 'home', false) : false;
+    this.refresh(false, null, flew && r === 'placed' ? cell : null);
     if (r === 'placed') this.platform.haptic?.('light');
     if (play.solved) this.solved();
     else this.scheduleSave();
@@ -423,7 +442,9 @@ export class GameApp {
     if (h.kind === 'none') return;
     this.emit({ type: 'hint', level: this.current!.id, source, step: hintStep(this.catalog.grade(this.current!.id), h.cell) });
     this.notice = { kind: 'hint', hint: h };
-    this.refresh(false, h.kind === 'remove' ? h.cell : null);
+    // A placing hint sends a gold firefly from the jar; a removal sends the wrong one home.
+    const flew = this.flight(h.cell, h.kind === 'remove' ? 'home' : 'out', h.kind !== 'remove');
+    this.refresh(false, flew ? null : h.kind === 'remove' ? h.cell : null, flew && h.kind !== 'remove' ? h.cell : null);
     if (play.solved) this.solved();
     else this.scheduleSave();
   }
@@ -450,12 +471,25 @@ export class GameApp {
   private finished(): void {
     this.play = null;
     this.current = null;
-    this.screen.setStatus({ title: 'The Rose Bed is glowing!', sub: 'You lit every garden in this build. More gardens are on the way.', tone: 'solved' }, 100, false);
+    this.screen.setStatus({ title: 'The Rose Bed is glowing!', sub: 'You lit every garden in this build. More gardens are on the way.', tone: 'solved' }, false);
     this.screen.setMoves(false, false, true);
+    this.screen.setJar(0, 0);
     this.scheduleSave();
   }
 
-  private refresh(quiet = false, removed: number | null = null): void {
+  /** Animate a firefly between the jar and a tile. False when skipped (reduced motion, no layout). */
+  private flight(cell: number, direction: 'out' | 'home', gold: boolean): boolean {
+    if (this.reducedMotion()) return false;
+    const tile = this.board.cellScreenCenter(cell);
+    if (!tile) return false;
+    const mouth = this.screen.jarMouth();
+    this.screen.openJar();
+    if (direction === 'out') fly(this.screen.root, mouth, tile, gold);
+    else fly(this.screen.root, tile, mouth, gold);
+    return true;
+  }
+
+  private refresh(quiet = false, removed: number | null = null, arriving: number | null = null): void {
     const play = this.play;
     if (!play) return;
     const ev = play.evaluation;
@@ -466,11 +500,12 @@ export class GameApp {
       because: new Set(shown?.kind === 'place' ? shown.because : []),
       ruledOut: new Set(shown?.kind === 'place' ? shown.ruledOut : []),
       solved: ev.solved,
-    }, { quiet, removed });
+    }, { quiet, removed, arriving, arrivalMs: FLIGHT_MS - 80 });
     const status = ev.solved || !this.notice
-      ? boardStatus(ev, play.placements === 0 && play.locked.size === 0, PLAYER_CONFIG.economy.coinsPerSolve)
+      ? boardStatus(ev, play.placements === 0 && play.locked.size === 0, PLAYER_CONFIG.economy.coinsPerSolve, play.remaining)
       : noticeStatus(this.notice, ev);
-    this.screen.setStatus(status, litPercent(ev, play.board.needsLight.length), ev.solved);
+    this.screen.setStatus(status, ev.solved);
+    this.screen.setJar(play.remaining, play.jarSize);
     this.screen.setMoves(play.canUndo, play.placed.size > 0, ev.solved);
     this.screen.setCoins(this.wallet.coins, this.wallet.economy.hintCost, this.wallet.bank);
   }

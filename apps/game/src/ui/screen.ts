@@ -14,6 +14,11 @@ const ICONS = {
   hint: '<ellipse cx="7.5" cy="9" rx="4.5" ry="3" transform="rotate(-25 7.5 9)"></ellipse><ellipse cx="16.5" cy="9" rx="4.5" ry="3" transform="rotate(25 16.5 9)"></ellipse><circle cx="12" cy="15" r="4.6" fill="currentColor"></circle><circle cx="12" cy="8.6" r="2.4" fill="currentColor" stroke="none"></circle>',
 } as const;
 
+const JAR_SVG = '<svg viewBox="0 0 64 80"><ellipse class="ff-jar-glow" cx="32" cy="52" rx="26" ry="24"></ellipse>'
+  + '<path class="ff-jar-glass" d="M18 18 h28 v6 c8 4 12 12 12 22 v18 c0 8 -6 13 -14 13 h-24 c-8 0 -14 -5 -14 -13 v-18 c0 -10 4 -18 12 -22 z"></path>'
+  + '<path class="ff-jar-shine" d="M14 40 c0 -6 2 -10 6 -13"></path>'
+  + '<g class="ff-jar-lid"><rect class="ff-jar-cork" x="16" y="9" width="32" height="10" rx="3"></rect><rect class="ff-jar-cork-hi" x="16" y="9" width="32" height="4" rx="2"></rect></g></svg>';
+
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
   if (className) e.className = className;
@@ -63,7 +68,9 @@ export class PlayScreen {
   private readonly statusTitle = el('div', 'ff-status-title');
   private readonly statusSub = el('div', 'ff-status-sub');
   private readonly nextButton = el('button', 'ff-next', 'Next garden');
-  private readonly barFill = el('div', 'ff-bar-fill');
+  private readonly jar = el('div', 'ff-jar');
+  private readonly jarLine = el('div', 'ff-jar-line');
+  private readonly slots = el('div', 'ff-slots');
   private readonly undoButton = el('button', 'ff-quiet');
   private readonly resetButton = el('button', 'ff-quiet');
   private readonly hintButton = el('button', 'ff-hint');
@@ -97,16 +104,22 @@ export class PlayScreen {
 
     this.status.setAttribute('role', 'status');
     this.status.setAttribute('aria-live', 'polite');
+    // The firefly jar (design: jar plus a slot per firefly). The jar is where fireflies fly
+    // from and back to; the slots make the count exact at a glance.
+    this.jar.setAttribute('aria-hidden', 'true');
+    // Constant markup, never game or player data.
+    this.jar.innerHTML = JAR_SVG;
+    const count = el('div', 'ff-jar-count');
+    this.slots.setAttribute('aria-hidden', 'true');
+    count.append(this.jarLine, this.slots);
     const row = el('div', 'ff-status-row');
-    const text = el('div', 'ff-status-text');
-    text.append(this.statusTitle, this.statusSub);
     this.nextButton.type = 'button';
     this.nextButton.hidden = true;
     this.nextButton.addEventListener('click', () => handlers.next());
-    row.append(text, this.nextButton);
-    const bar = el('div', 'ff-bar');
-    bar.append(this.barFill);
-    this.status.append(row, bar);
+    row.append(this.jar, count, this.nextButton);
+    const text = el('div', 'ff-status-text');
+    text.append(this.statusTitle, this.statusSub);
+    this.status.append(row, text);
     side.append(top, this.title, this.status);
 
     this.boardHost.setAttribute('role', 'application');
@@ -162,12 +175,52 @@ export class PlayScreen {
     this.hintButton.setAttribute('aria-label', bank > 0 ? `Hint, ${bank} saved` : `Hint, ${hintCost} coins`);
   }
 
-  setStatus(s: Status, litPercent: number, solved: boolean): void {
+  setStatus(s: Status, solved: boolean): void {
     this.status.dataset.tone = s.tone;
     this.statusTitle.textContent = s.title;
     this.statusSub.textContent = s.sub;
-    this.barFill.style.width = `${Math.max(0, Math.min(100, litPercent))}%`;
     this.nextButton.hidden = !solved;
+  }
+
+  /** The jar's count: one slot per firefly the garden needs, lit while it is still in the jar. */
+  setJar(remaining: number, size: number): void {
+    // No garden on the board (the end of the build): no jar.
+    this.jar.parentElement!.hidden = size === 0;
+    if (this.slots.childElementCount !== size) {
+      this.slots.replaceChildren(...Array.from({ length: size }, () => el('span', 'ff-slot')));
+    }
+    [...this.slots.children].forEach((slot, i) => {
+      (slot as HTMLElement).dataset.on = String(i < remaining);
+    });
+    this.jarLine.textContent = remaining === 0 ? `All ${size} fireflies are out` : `${remaining} of ${size} fireflies left`;
+    this.jar.style.setProperty('--ff-jar-fill', String(size === 0 ? 0 : remaining / size));
+    this.jar.dataset.empty = String(remaining === 0);
+  }
+
+  /** Lift the cork for a firefly leaving or coming home. */
+  openJar(): void {
+    if (!this.reduced()) this.restartClass(this.jar, 'ff-jar-open');
+  }
+
+  shakeJar(): void {
+    if (!this.reduced()) this.restartClass(this.jar, 'ff-jar-shake');
+  }
+
+  /** Whether the screen is in reduced motion (device setting or the in-game one). */
+  private reduced(): boolean {
+    return this.root.dataset.motion === 'reduced';
+  }
+
+  /** The jar's mouth in viewport pixels: where flights start and end. */
+  jarMouth(): { x: number; y: number } {
+    const r = this.jar.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height * 0.3 };
+  }
+
+  private restartClass(node: HTMLElement, name: string): void {
+    node.classList.remove(name);
+    void node.offsetWidth; // restart the CSS animation
+    node.classList.add(name);
   }
 
   setMoves(canUndo: boolean, canReset: boolean, solved: boolean): void {

@@ -77,3 +77,21 @@ export function keepOrTurn(current: Transform, levelW: number, levelH: number, a
   const [bw, bh] = best === 'rot90' ? [levelH, levelW] : [levelW, levelH];
   return fitBoard(bw, bh, areaW, areaH).cell > fitBoard(cw, ch, areaW, areaH).cell ? best : current;
 }
+
+export interface Point {
+  readonly x: number;
+  readonly y: number;
+}
+
+/** Points along a quadratic curve that rises above both ends (pure, so it is tested). */
+export function flightPath(from: Point, to: Point, steps = 16, lift = 110): Point[] {
+  const cx = (from.x + to.x) / 2;
+  const cy = Math.min(from.y, to.y) - lift;
+  const out: Point[] = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const a = (1 - t) * (1 - t), b = 2 * (1 - t) * t, c = t * t;
+    out.push({ x: a * from.x + b * cx + c * to.x, y: a * from.y + b * cy + c * to.y });
+  }
+  return out;
+}

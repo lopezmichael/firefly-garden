@@ -74,6 +74,33 @@ describe('save validation (rules.md)', () => {
     expect(problems.join()).toMatch(/install id/);
   });
 
+  it('never locks a lantern, even though lanterns are part of the answer', () => {
+    // Chapters 1 to 3 have no lanterns: use a catalog that includes the first lantern chapter.
+    const manifest = read('manifest.json') as { chapters: { id: string; levels: string[] }[] };
+    const launch = read('launch.json') as { levels: { id: string; twists?: { lanterns?: unknown[] } }[] };
+    const lanternLevel = launch.levels.find((l) => (l.twists?.lanterns?.length ?? 0) > 0)!;
+    const chapter = manifest.chapters.find((c) => c.levels.includes(lanternLevel.id))!;
+    const cat = createCatalog({ launch, reserve: read('reserve.json'), manifest }, ['c1', chapter.id]);
+    const withLantern = lanternLevel.id;
+    const b = cat.board(withLantern);
+    const lantern = b.lanterns[0]!;
+    const raw = tamper((o) => {
+      o.current = { levelId: withLantern, key: cat.levelKey(withLantern), reason: 'main', placed: [], locked: [cellCoord(b, lantern)], seconds: 0, placements: 0, undos: 0, restarts: 0, hints: 0 };
+    });
+    const parsed = parseSave(raw, cat, NOW, fresh);
+    expect(parsed.data!.current).not.toBeNull();
+    expect(parsed.data!.current!.locked).toEqual([]);
+    expect(parsed.problems.join()).toMatch(/not a placeable answer cell/);
+  });
+
+  it('drops a saved board holding more fireflies than the jar', () => {
+    const tooMany = board.paths.filter((c) => !board.lantern[c] && c !== solution[0]).slice(0, solution.length).map((c) => cellCoord(board, c));
+    const { data, problems } = parseSave(tamper((o) => { (o.current as Record<string, unknown>).placed = tooMany; }), catalog, NOW, fresh);
+    expect(data!.current!.placed).toEqual([]);
+    expect(data!.current!.locked).toEqual([solution[0]]);
+    expect(problems.join()).toMatch(/more fireflies than the jar/);
+  });
+
   it('drops the saved board when the level changed under the same id', () => {
     const { data, problems } = parseSave(tamper((o) => { (o.current as Record<string, unknown>).key = 'deadbeef'; }), catalog, NOW, fresh);
     expect(data!.current).toBeNull();
@@ -92,7 +119,7 @@ describe('save validation (rules.md)', () => {
     const raw = tamper((o) => { (o.current as Record<string, unknown>).locked = [cellCoord(board, solution[0]!), cellCoord(board, wrong)]; });
     const { data, problems } = parseSave(raw, catalog, NOW, fresh);
     expect(data!.current!.locked).toEqual([]);
-    expect(problems.join()).toMatch(/not part of the answer/);
+    expect(problems.join()).toMatch(/not a placeable answer cell/);
   });
 
   it('drops player fireflies on bushes, off the board, or on a locked cell', () => {

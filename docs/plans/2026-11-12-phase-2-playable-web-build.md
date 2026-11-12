@@ -335,9 +335,11 @@ Two things confused him on first play, plus two ideas worth keeping.
          decisions for Michael (does the jar cap placements; status card or top bar).
          *Decided:* the jar caps placements, and it lives in the status card. Open: jar with a
          number (A), jar plus a slot per firefly (B, recommended) or a lantern tube (C).
-   - [ ] **Ship the jar before the friends playtest.** Hints are already count-aware, so a hint's
-         crossed-out tiles can rest on the count; until the jar is on screen the player cannot
-         follow those. The jar lands with milestone 3.
+   - [x] **Ship the jar before the friends playtest.** *Done 2026-11-12 (milestone 3):* the jar
+         plus a slot per firefly in the status card (design option B), capped placements with an
+         empty-jar shake, fireflies flying out of the jar to the tile and home again (hints send a
+         gold one), saves validated against the jar size. Follow-up for the juice pass: light the
+         tile when the firefly lands, not on tap.
    - [ ] After launch, a level whose content changes gets a new id (saves also carry a level
          fingerprint, so a stale board is dropped, but `solved` would still credit the old one).
    - Framing to explore with it: the jar holds exactly the fireflies the garden needs; a hint sends

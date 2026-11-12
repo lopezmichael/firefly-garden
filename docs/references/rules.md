@@ -68,8 +68,8 @@ coordinates, two things on one cell (including a lantern on a moonlit tile),
 clues outside 0 to 8 (0 to 4 for mushrooms), and solutions that sit on blockers, repeat a cell, or
 omit a lantern. Coordinates are `[row, col]` with row 0 at the top.
 
-**Grading is count-aware (decided 2026-11-12).** The game will show how many fireflies each
-garden needs (the jar lands with Phase 2 milestone 3) (the "firefly jar" countdown), so every shipped level is graded as players
+**Grading is count-aware (decided 2026-11-12).** The game shows how many fireflies each
+garden needs (the firefly jar) (the "firefly jar" countdown), so every shipped level is graded as players
 experience it: `gradeLevel(level, board)`, which is `grade` with `knownCount` set to the
 length of `solution` (lanterns included). That enables the count techniques
 (T1 count complete, T3 count bound). The generator (clue removal and tier targeting), the
@@ -143,6 +143,12 @@ firefly (they count for bushes and can conflict), and `hint` throws if a locked 
 a solution cell (saves are validated before this point). For analytics, `hintStep(grade, cell)`
 is the index in the level's full grader trace (`gradeLevel(level, board)`, the count-aware
 trace the level was rated with) of the step that decides the hinted cell.
+
+**The firefly jar (Phase 2, milestone 3).** The game shows how many fireflies the garden needs:
+the jar holds the answer's count minus its lanterns (which are already on the board). Player and
+locked hint fireflies together never exceed it: a tap with an empty jar places nothing, undo
+brings back only what fits, and a saved board holding more than the jar is dropped on load.
+A full but wrong jar always gets a removal hint first, so hints never overfill it.
 
 **Rules for the game build (from the Phase 1 security review):**
 - Saved progress stores the locked hint cells per level and the banked hint count, and

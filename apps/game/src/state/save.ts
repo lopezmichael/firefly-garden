@@ -170,8 +170,9 @@ function parseCurrent(v: unknown, catalog: Catalog, problems: string[]): Current
   const lockedCoords = parseCells(own(v, 'locked') ?? [], board.w, board.h);
   if (lockedCoords) {
     const cells = [...new Set(lockedCoords.map((c) => cellIndex(board, c)))];
-    if (cells.every((c) => solution.has(c))) locked = cells;
-    else problems.push('current.locked: a cell is not part of the answer; dropped');
+    // A lantern is part of the answer but is never a hint firefly (it would also steal a jar slot).
+    if (cells.every((c) => solution.has(c) && !board.lantern[c])) locked = cells;
+    else problems.push('current.locked: a cell is not a placeable answer cell; dropped');
   } else problems.push('current.locked is malformed; dropped');
 
   // Player fireflies: path cells, not lanterns, not locked; otherwise the whole set is dropped.
@@ -180,8 +181,11 @@ function parseCurrent(v: unknown, catalog: Catalog, problems: string[]): Current
   const placedCoords = parseCells(own(v, 'placed') ?? [], board.w, board.h);
   if (placedCoords) {
     const cells = [...new Set(placedCoords.map((c) => cellIndex(board, c)))];
-    if (cells.every((c) => canPlace(board, c, lockedSet))) placed = cells;
-    else problems.push('current.placed: a cell cannot hold a firefly; dropped');
+    const lanterns = board.lanterns.filter((l) => solution.has(l)).length;
+    const jarSize = solution.size - lanterns;
+    if (!cells.every((c) => canPlace(board, c, lockedSet))) problems.push('current.placed: a cell cannot hold a firefly; dropped');
+    else if (cells.length + locked.length > jarSize) problems.push('current.placed: more fireflies than the jar holds; dropped');
+    else placed = cells;
   } else problems.push('current.placed is malformed; dropped');
 
   const count = (k: string) => {
