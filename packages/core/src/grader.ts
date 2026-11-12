@@ -1,4 +1,5 @@
 import type { Board } from './board.ts';
+import type { Level } from './types.ts';
 
 /**
  * The technique grader: solves the way a person would, always trying the
@@ -18,8 +19,9 @@ import type { Board } from './board.ts';
  *   T5 deep trial         an assumption followed several deductions ahead to a contradiction
  * A level the grader cannot finish even with T5 is graded tier 6 ("beyond").
  *
- * Count techniques (only with `GradeOptions.knownCount`, the "firefly jar"
- * experiment; default grading never uses them):
+ * Count techniques (only with `GradeOptions.knownCount`; plain `grade()` never uses them).
+ * The game shows the count (the "firefly jar"), so every shipped level is graded with it
+ * through `gradeLevel`, which always passes it:
  *   T1 count complete     the jar is empty: every undecided tile is empty. Pure bookkeeping,
  *                         the same move as a satisfied bush, so tier 1, tried right after T1.
  *   T3 count bound        bushes and dark tiles that cannot share a firefly already need every
@@ -107,8 +109,9 @@ export interface GradeOptions {
    */
   readonly stopAtFirefly?: boolean;
   /**
-   * Experiment ("firefly jar"): the player is told the total number of
-   * fireflies in the answer, lanterns included. Enables the count techniques
+   * The "firefly jar": the player is told the total number of fireflies in
+   * the answer, lanterns included. Shipped levels always pass it (use
+   * `gradeLevel`, or `hint` from a position). Enables the count techniques
    * (see the header). Absent: grading is exactly the default. Throws
    * RangeError unless it is an integer from the fireflies already placed
    * (lanterns plus `start`) to the path count. A grade with a count is solved
@@ -174,6 +177,19 @@ export function grade(board: Board, options: GradeOptions = {}): Grade {
   for (const st of steps) tierCounts[st.tier]!++;
   const maxTier = solved ? steps.reduce((m, st) => Math.max(m, st.tier), 0) : 6;
   return { solved, steps, maxTier, tierCounts, fireflies };
+}
+
+/**
+ * Grade a level as players experience it: the game shows how many fireflies
+ * the garden needs, so the count (the stored solution's length, lanterns
+ * included) is always known. Every place that decides a shipped level's
+ * difficulty (generator, report, simulated players, level ratchets) grades
+ * through this, so they cannot drift apart. Throws RangeError for a level
+ * without a stored solution.
+ */
+export function gradeLevel(level: Level, board: Board, options: Omit<GradeOptions, 'knownCount'> = {}): Grade {
+  if (!level.solution) throw new RangeError(`level ${level.id} has no stored solution, so its firefly count is unknown`);
+  return grade(board, { ...options, knownCount: level.solution.length });
 }
 
 // ---------------------------------------------------------------------------

@@ -60,13 +60,23 @@ rocks is wanted later, it is a skin for a hidden bush, not a new rule.
 | `bushes` | Yes | `[row, col, clue]`, clue 0 to 8 or `null` (hidden) |
 | `twists` | | `mushrooms`: `[row, col, n]` with n 0 to 4; `moonlit`, `lanterns`: `[row, col]`. Unknown keys are rejected |
 | `solution` | | Every firefly in the answer, **lanterns included** |
-| `tier`, `score`, `techniques` | | Written by the grader |
+| `tier`, `score`, `techniques` | | Written by the grader, count-aware (see below) |
 | `seconds` | | Estimated solve time, whole seconds 1 to 3600 (`measure`); written by the generator, checked against a fresh grade in CI. The game feeds it to the next-level policy |
 
 Validation (`parseLevel`) rejects unknown keys, off-board or outside-mask
 coordinates, two things on one cell (including a lantern on a moonlit tile),
 clues outside 0 to 8 (0 to 4 for mushrooms), and solutions that sit on blockers, repeat a cell, or
 omit a lantern. Coordinates are `[row, col]` with row 0 at the top.
+
+**Grading is count-aware (decided 2026-11-12).** The game will show how many fireflies each
+garden needs (the jar lands with Phase 2 milestone 3) (the "firefly jar" countdown), so every shipped level is graded as players
+experience it: `gradeLevel(level, board)`, which is `grade` with `knownCount` set to the
+length of `solution` (lanterns included). That enables the count techniques
+(T1 count complete, T3 count bound). The generator (clue removal and tier targeting), the
+stored `tier`/`score`/`techniques`/`seconds`, the ramp builder's inputs, the simulated
+players and the level ratchets all use it. Plain `grade(board)` stays the count-free
+default for other callers. Evidence: `reports/archive/count-experiment-2026-11-12.json`
+(the experiment) and `reports/archive/count-aware-pack-2026-11-12.json` (the regenerated pack).
 
 Levels are stored in one canonical orientation. `transformLevel` gives any of
 the 8 rotations/mirrors; the rules are symmetric, so the solution count never
@@ -100,19 +110,25 @@ animates the removal so the player sees what changed.
    firefly ("This firefly can see another one."), else one that gives a bush too many
    ("This firefly gives a bush too many."), else the lowest such cell ("This firefly can't
    be part of the answer.").
-2. Otherwise the grader runs from the current position (`grade(board, { start, stopAtFirefly })`;
-   every firefly on the board is then part of the answer, so its deductions are sound) and the
+2. Otherwise the grader runs from the current position
+   (`grade(board, { start, stopAtFirefly, knownCount })`, with the count shown on the jar, the
+   solution's size, as the level was rated; every firefly on the board is then part of the
+   answer, so its deductions are sound) and the
    first step that places a firefly is the hint, with a reason per technique (`HINT_REASONS`),
    e.g. "That dark tile can only be lit from here." The cell is placed only if it is a
    solution cell (defense in depth); otherwise step 3 applies.
    **Ruled-out cells.** Before that firefly the grader often decides cells empty that the
-   player cannot see are empty yet (a satisfied bush's other neighbors, a bush-room or overlap
-   step): 54% of place hints in the property test. The hint returns them as `ruledOut`, and the
+   player cannot see are empty yet (a satisfied bush's other neighbors, a bush-room, overlap
+   or count step): 55% of place hints in the property test. The count techniques only ever
+   rule cells out, so a count step is never the hinted firefly; it ends up in `ruledOut` and
+   the grader carries on to the next firefly. The hint returns them as `ruledOut`, and the
    game must draw them as faint "no firefly here" marks while it shows the hint, or the reason
    can read false ("needs every open spot" while other spots still look open). `because` is the
    firefly step's own cells first (the bush or dark tile), then the cells behind each ruled-out
    step. A test checks the reason holds on the visible board plus these marks for every
-   T1-needs-all and T2-one-source hint.
+   T1-needs-all and T2-one-source hint, and that every count step among the ruled-out cells
+   reads true at its point in the trace (count bound: the bushes and dark tiles behind it need
+   disjoint open cells whose needs add up to exactly the fireflies left on the jar).
 3. If the grader is stuck from that position, a missing solution cell is placed anyway
    ("Try a firefly here."), so a paid hint always does something. On every chapter 1 to 3
    and reserve level this never happened in the property test.
@@ -125,7 +141,8 @@ placed set and keep only the valid locked cells.
 Locked cells: `canPlace(board, cell, locked)` refuses them, `evaluate` counts them like any
 firefly (they count for bushes and can conflict), and `hint` throws if a locked cell is not
 a solution cell (saves are validated before this point). For analytics, `hintStep(grade, cell)`
-is the index in the level's full grader trace of the step that decides the hinted cell.
+is the index in the level's full grader trace (`gradeLevel(level, board)`, the count-aware
+trace the level was rated with) of the step that decides the hinted cell.
 
 **Rules for the game build (from the Phase 1 security review):**
 - Saved progress stores the locked hint cells per level and the banked hint count, and

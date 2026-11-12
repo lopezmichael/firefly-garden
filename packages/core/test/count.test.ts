@@ -1,13 +1,13 @@
 /**
- * The "firefly jar" experiment: grading with the total firefly count known.
- * Every count deduction must agree with the unique solution on every shipped
- * level, and grading without the option must be untouched (the level
- * ratchets in tests/levels.test.ts re-grade every level the default way).
+ * The "firefly jar": grading with the total firefly count known, as the game
+ * shows it. Every count deduction must agree with the unique solution on every
+ * shipped level, and grading without the option must be untouched. Shipped
+ * levels are graded through `gradeLevel` (tests/levels.test.ts re-grades them).
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { buildBoard, cellIndex, grade, parseLevel, type Level } from '../src/index.ts';
+import { buildBoard, cellIndex, grade, gradeLevel, parseLevel, type Level } from '../src/index.ts';
 
 const DIR = join(import.meta.dirname, '..', '..', '..', 'levels');
 const load = (file: string): Level[] =>
@@ -75,5 +75,16 @@ describe('grade with a known firefly count', () => {
     expect(g.solved).toBe(true);
     expect(g.steps.map((st) => st.technique)).toContain('T1-count-complete');
     expect(g.fireflies).toEqual([0]);
+  });
+
+  it('gradeLevel always passes the stored solution\'s length, lanterns included, and needs a solution', () => {
+    const lit = levels.filter((l) => (l.twists?.lanterns?.length ?? 0) > 0).slice(0, 5);
+    expect(lit.length).toBeGreaterThan(0);
+    for (const level of [...levels.slice(0, 20), ...lit]) {
+      const board = buildBoard(level);
+      expect(gradeLevel(level, board)).toEqual(grade(board, { knownCount: level.solution!.length }));
+    }
+    const bare: Level = { id: 'bare', w: 3, h: 1, mask: ['###'], bushes: [] };
+    expect(() => gradeLevel(bare, buildBoard(bare))).toThrow(RangeError);
   });
 });

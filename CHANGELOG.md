@@ -5,6 +5,13 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Changed
+- Shipped grading is count-aware: the game will show how many fireflies each garden needs (the
+  firefly jar), so `gradeLevel(level, board)` (new, core) grades with the count known, and the
+  generator, stored tier/score/seconds, ramp inputs, simulated players, level ratchets and `hint`
+  all use it. Plain `grade()` is unchanged. Packs regenerated: chapter 1 unchanged; launch T4
+  levels 159 → 107, T3 59 → 117; every ratchet holds without changes. Hints may now rule cells
+  out by count, and the property test checks those steps read true. Before/after in
+  `reports/archive/count-aware-pack-2026-11-12.json`.
 - Look pass 1 (`docs/design/phase-2/README.md`): teal and plum night, glow only on the board, an
   outlined Hint button, sentence-case labels, visible gold on satisfied bushes, the firefly mark in
   place of a stock sparkle, a crescent moon placed per layout band, and plainer copy.

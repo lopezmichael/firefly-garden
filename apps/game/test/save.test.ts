@@ -26,7 +26,7 @@ function good(): SaveData {
     history: catalog.mainPath.slice(0, 4).map((l, i) => ({ levelId: l, reason: 'main' as const, solved: true, seconds: 30 + i, hints: 0, endedAt: NOW - 1000 * (4 - i) })),
     playedReserve: new Set([catalog.reserve[0]!.id]),
     quitMain: new Set([catalog.mainPath[3]!]),
-    current: { levelId: id, reason: 'main', placed: [solution[1]!], locked: [solution[0]!], seconds: 12, placements: 3, undos: 1, restarts: 0, hints: 1 },
+    current: { levelId: id, key: catalog.levelKey(id), reason: 'main', placed: [solution[1]!], locked: [solution[0]!], seconds: 12, placements: 3, undos: 1, restarts: 0, hints: 1 },
     settings: { sound: false, motion: 'off' },
   };
 }
@@ -72,6 +72,15 @@ describe('save validation (rules.md)', () => {
     expect(data!.solved).toEqual(good().solved);
     expect(data!.coins).toBe(70);
     expect(problems.join()).toMatch(/install id/);
+  });
+
+  it('drops the saved board when the level changed under the same id', () => {
+    const { data, problems } = parseSave(tamper((o) => { (o.current as Record<string, unknown>).key = 'deadbeef'; }), catalog, NOW, fresh);
+    expect(data!.current).toBeNull();
+    expect(data!.coins).toBe(70); // the rest of the save is kept
+    expect(problems.join()).toMatch(/level changed/);
+    const old = parseSave(tamper((o) => { delete (o.current as Record<string, unknown>).key; }), catalog, NOW, fresh);
+    expect(old.data!.current).toBeNull();
   });
 
   it('refuses an oversized save before parsing it', () => {
@@ -167,6 +176,8 @@ describe('save fuzz', () => {
         if (rng.next() < 0.3 && o.current && typeof o.current === 'object') {
           const cur = o.current as Record<string, unknown>;
           cur.levelId = pick([...catalog.mainPath, catalog.reserve[0]!.id, 'nope']);
+          // Keep the fingerprint in step so the fuzz reaches the cell checks, not the early drop.
+          if (catalog.has(cur.levelId as string)) cur.key = catalog.levelKey(cur.levelId as string);
           cur.locked = Array.from({ length: Math.floor(rng.next() * 4) }, () => [Math.floor(rng.next() * 9) - 1, Math.floor(rng.next() * 9) - 1]);
         }
       });

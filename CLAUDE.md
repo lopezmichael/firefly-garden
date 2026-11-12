@@ -30,6 +30,9 @@ about the code today.
   (`buildBoard`). Coordinates in level files are `[row, col]`.
 - `solve()` is the exact solver (uniqueness, validation). `grade()` is the human-style
   technique grader (difficulty, hints). Keep them separate.
+- Players will see each garden's firefly count (the firefly jar, landing with Phase 2 milestone 3),
+  so shipped levels and hints are graded count-aware: use `gradeLevel(level, board)` (it passes `knownCount`) for anything that
+  decides or reports a shipped level's difficulty; plain `grade()` is the count-blind default.
 - The generator, grader, difficulty model, ramp builder and player simulator are all
   seeded/pure; difficulty weights live only in `DIFFICULTY_CONFIG` (`difficulty.ts`), player
   model assumptions and the shipped economy only in `PLAYER_CONFIG` (`players.ts`).

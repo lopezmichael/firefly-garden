@@ -7,7 +7,8 @@ import { evaluate } from './rules.ts';
  * removes one wrong firefly or places one correct one, with a one-line reason
  * (docs/references/rules.md, "Hints"). The game calls this; it is the same
  * grader that rated the level, so a hint is always a move a person could have
- * found.
+ * found. Like the level's rating, it grades with the firefly count known (the
+ * game shows it in the firefly jar), so count deductions can feed a hint.
  */
 export type Hint =
   /** A player firefly that is not part of the answer. */
@@ -15,7 +16,7 @@ export type Hint =
   /**
    * The grader's next firefly from this position. The grader may first rule
    * out cells the player cannot yet see are empty (a satisfied bush's other
-   * neighbors, a bush-room or overlap deduction); those are `ruledOut`, and
+   * neighbors, a bush-room, overlap or count deduction); those are `ruledOut`, and
    * the game marks them "no firefly here" while showing the hint so that
    * `reason` reads true on screen. `because` is the firefly step's own cells
    * first (the bush, the dark tile...), then the cells behind each ruled-out
@@ -34,7 +35,11 @@ export type Hint =
   /** Already solved: nothing to hint. */
   | { readonly kind: 'none' };
 
-/** What the player reads for each placing technique. */
+/**
+ * What the player reads for each technique. A place hint's reason is always
+ * its firefly step's; the count techniques only rule cells out, so their text
+ * explains a `ruledOut` cell, never the placed one.
+ */
 export const HINT_REASONS: Readonly<Record<TechniqueId, string>> = {
   'T1-needs-all': 'This bush needs a firefly in every open spot around it.',
   'T1-satisfied': 'This bush already has all its fireflies.',
@@ -43,8 +48,6 @@ export const HINT_REASONS: Readonly<Record<TechniqueId, string>> = {
   'T3-overlap': 'These two bushes share neighbors, and together their numbers need this spot.',
   'T4-lookahead': 'Leaving this spot empty runs into trouble one move later.',
   'T5-trial': 'Leaving this spot empty leads to a dead end a few moves later.',
-  // Count techniques only rule cells out and only run with a known count (an experiment);
-  // they never produce a place hint today.
   'T1-count-complete': 'Every firefly is already placed.',
   'T3-count-bound': 'The dark tiles and bushes that still need fireflies use up every one left.',
 };
@@ -100,8 +103,9 @@ export function hint(
   if (ev.solved) return { kind: 'none' };
 
   // Every firefly on the board is part of the answer, so the grader's
-  // deductions from here are sound.
-  const steps = grade(board, { start: on, stopAtFirefly: true }).steps;
+  // deductions from here are sound. The player sees the firefly count, so the
+  // grader uses it too (lanterns are in `answer`, as in the level's rating).
+  const steps = grade(board, { start: on, stopAtFirefly: true, knownCount: answer.size }).steps;
   const next = steps.at(-1);
   // Defense in depth: never place a cell outside the answer, whatever the grader says.
   if (next && next.value === 'firefly' && answer.has(next.cell)) {
@@ -123,7 +127,8 @@ export function hint(
 /**
  * For analytics (`hint.step`): the index, in the level's full grader trace
  * from an empty board, of the step that decides `cell`, so Phase 4 can tie
- * each hint to a technique. Pass `grade(board)` (computed once per level).
+ * each hint to a technique. Pass `gradeLevel(level, board)` (computed once per
+ * level), the same count-aware trace the level was rated with.
  * A cell no step decides (a lantern, or past where the grader got stuck)
  * maps to the trace length.
  */

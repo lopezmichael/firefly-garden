@@ -10,7 +10,7 @@ export { canonicalKey, TRANSFORMS, transformLevel } from './transform.ts';
 export type { Transform } from './transform.ts';
 export { createRng, deriveSeed } from './rng.ts';
 export type { Rng } from './rng.ts';
-export { grade, TECHNIQUE_TIER } from './grader.ts';
+export { grade, gradeLevel, TECHNIQUE_TIER } from './grader.ts';
 export type { Grade, GradeOptions, Step, TechniqueId } from './grader.ts';
 export { hint, HINT_REASONS, hintStep, REMOVE_REASONS, TRY_HERE_REASON } from './hints.ts';
 export type { Hint } from './hints.ts';

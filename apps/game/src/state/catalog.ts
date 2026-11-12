@@ -1,4 +1,4 @@
-import { buildBoard, cellIndex, grade, parseLevel } from '@firefly/core';
+import { buildBoard, cellIndex, gradeLevel, parseLevel } from '@firefly/core';
 import type { Board, Grade, Level, PolicyLevel } from '@firefly/core';
 
 /**
@@ -31,8 +31,13 @@ export interface Catalog {
   board(id: string): Board;
   /** The unique answer as cell indices (lanterns included). */
   solution(id: string): ReadonlySet<number>;
-  /** The level's full grader trace from an empty board (for `hintStep`). */
+  /** The level's full grader trace from an empty board, graded as shipped (count known), for `hintStep`. */
   grade(id: string): Grade;
+  /**
+   * A short fingerprint of a level's content. Saves carry it with the level on the board, so a
+   * level regenerated under the same id never resumes an old board onto a new layout.
+   */
+  levelKey(id: string): string;
   /** Where a main-path level sits: its chapter and 0-based index in it. */
   place(id: string): { readonly chapter: ChapterInfo; readonly index: number } | undefined;
 }
@@ -149,11 +154,25 @@ export function createCatalog(data: PackData, chapterIds: readonly string[]): Ca
     grade(id) {
       let g = grades.get(id);
       if (!g) {
-        g = grade(board(id));
+        g = gradeLevel(level(id), board(id));
         grades.set(id, g);
       }
       return g;
     },
+    levelKey: (id) => {
+      const l = level(id);
+      return fnv1a(JSON.stringify([l.w, l.h, l.mask, l.bushes, l.twists ?? null, l.solution ?? null]));
+    },
     place: (id) => places.get(id),
   };
+}
+
+/** FNV-1a, 32-bit, as 8 hex digits: a fingerprint for change detection, not security. */
+function fnv1a(text: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, '0');
 }

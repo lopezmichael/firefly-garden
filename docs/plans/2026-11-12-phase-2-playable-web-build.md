@@ -322,10 +322,22 @@ Two things confused him on first play, plus two ideas worth keeping.
 2. **No set number of fireflies.** Every level's count is fixed by its unique answer, but the game
    never says it. Michael wants a countdown ("firefly jar"). It is extra information, so it may make
    levels easier than their grade:
-   - [ ] Experiment: an opt-in known-count mode in the grader (default grading unchanged), all 680
+   - [x] Experiment: an opt-in known-count mode in the grader (default grading unchanged), all 680
          levels regraded with and without it; data in `reports/archive/count-experiment-2026-11-12.json`.
-   - [ ] Decide from the data: show the count everywhere, only early, or retune the ramp with it.
-   - [ ] Jar mock-up on the design canvas (changes the locked top bar or status card: needs sign-off).
+   - [x] Decide from the data: show the count everywhere, only early, or retune the ramp with it.
+         **Decided (Michael, 2026-11-12): show the count on every level**, and grade every shipped
+         level as players will experience it. `gradeLevel` (core) always passes the count; the
+         generator, stored tiers/scores/seconds, ramp, simulated players, level ratchets and
+         `hint` all use it, and the packs were regenerated. Before/after:
+         `reports/archive/count-aware-pack-2026-11-12.json`. Chapter 1 is unchanged; c2 and c3
+         swapped some levels (every ratchet holds). The game's `hintStep` trace uses `gradeLevel` too.
+   - [x] Jar mock-up on the design canvas: row 3 (playable jar phone and a storyboard), with two
+         decisions for Michael (does the jar cap placements; status card or top bar).
+   - [ ] **Ship the jar before the friends playtest.** Hints are already count-aware, so a hint's
+         crossed-out tiles can rest on the count; until the jar is on screen the player cannot
+         follow those. The jar lands with milestone 3.
+   - [ ] After launch, a level whose content changes gets a new id (saves also carry a level
+         fingerprint, so a stale board is dropped, but `solved` would still credit the old one).
    - Framing to explore with it: the jar holds exactly the fireflies the garden needs; a hint sends
      one of them to the right spot (gold, locked). Hints must never be required to finish a level
      (portal rule), so a hint can't be the only way to get a firefly.

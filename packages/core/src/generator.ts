@@ -1,7 +1,7 @@
 import { buildBoard, type Board } from './board.ts';
 import { MAX_LEVEL_SECONDS } from './level.ts';
 import { measure, type Difficulty } from './difficulty.ts';
-import { grade, type Grade } from './grader.ts';
+import { gradeLevel, type Grade } from './grader.ts';
 import { createRng, deriveSeed, type Rng } from './rng.ts';
 import { evaluate } from './rules.ts';
 import { makeMask, type ShapeId } from './shapes.ts';
@@ -17,6 +17,7 @@ import type { BushSpec, Coord, Level, LevelTwists } from './types.ts';
  *  5. uniqueness via the exact solver; repair by adding a bush (or a lantern)
  *  6. clue removal: hide numbers while the level stays unique (and under maxTier)
  *  7. grade with the technique grader and keep it if it hits the target tiers
+ * Steps 6 and 7 grade with the firefly count known (`gradeLevel`), as players see it.
  * Deterministic: the same spec always yields the same level.
  */
 export interface GenSpec {
@@ -168,7 +169,7 @@ function attempt(spec: GenSpec, rng: Rng): Omit<Generated, 'attempts'> | null {
       const trialBoard = buildBoard(trial);
       let keep = isUnique(trialBoard);
       if (keep && (spec.maxTier !== undefined || spec.maxSeconds !== undefined)) {
-        const tg = grade(trialBoard);
+        const tg = gradeLevel(trial, trialBoard);
         if (spec.maxTier !== undefined && tg.maxTier > spec.maxTier) keep = false;
         if (keep && spec.maxSeconds !== undefined && measure(trial, trialBoard, tg).estimatedSeconds > spec.maxSeconds) keep = false;
       }
@@ -181,8 +182,8 @@ function attempt(spec: GenSpec, rng: Rng): Omit<Generated, 'attempts'> | null {
     }
   }
 
-  // Step 7: grade and file.
-  const g = grade(board);
+  // Step 7: grade and file, with the firefly count known as the game shows it.
+  const g = gradeLevel(level, board);
   if (g.solved && g.fireflies.join(',') !== answerKey) {
     throw new Error(`grader reached a different solution on unique level ${spec.id}; a technique is unsound`);
   }

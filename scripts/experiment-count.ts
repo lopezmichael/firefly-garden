@@ -6,7 +6,7 @@
 // Grades every launch level (chapter order from levels/manifest.json) and every
 // reserve level with and without `knownCount`, measures both with `measure`, and
 // writes reports/archive/count-experiment-2026-11-12.json. Read-only on levels/.
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildBoard, grade, measure, parseLevel, rampRoles, type Difficulty, type Level } from '../packages/core/src/index.ts';
 import { launchPlan } from './launch-plan.ts';
@@ -199,6 +199,11 @@ const summary = {
   meanFirstCountAt: round(mean(rows.filter((r) => r.firstCountAt !== null).map((r) => r.firstCountAt!)), 2),
 };
 
+// The archive is frozen: it records the pack as it was when the decision was made.
+if (existsSync(OUT)) {
+  console.error(`${OUT} exists and is archived; write a new dated file instead of overwriting it.`);
+  process.exit(1);
+}
 writeFileSync(OUT, `${JSON.stringify({
   experiment: 'firefly jar: grading with the total firefly count known (GradeOptions.knownCount)',
   date: '2026-11-12',

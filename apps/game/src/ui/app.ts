@@ -154,7 +154,7 @@ export class GameApp {
     const p = this.play;
     const current: CurrentPlay | null = p && this.current && !p.solved
       ? {
-        levelId: this.current.id, reason: this.current.reason,
+        levelId: this.current.id, key: this.catalog.levelKey(this.current.id), reason: this.current.reason,
         placed: [...p.placed], locked: [...p.locked], seconds: p.seconds,
         placements: p.placements, undos: p.undos, restarts: p.restarts, hints: p.hints,
       }

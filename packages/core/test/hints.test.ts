@@ -27,7 +27,7 @@ for (let i = 0; i < 12; i++) {
 const answerOf = (board: Board, level: Level) => new Set(level.solution!.map((c) => cellIndex(board, c)));
 
 /** Tallies for the "reason reads true" check, reported by the property test. */
-const truth = { checked: 0, needsAll: 0, oneSource: 0, withRuledOut: 0, false: [] as string[] };
+const truth = { checked: 0, needsAll: 0, oneSource: 0, withRuledOut: 0, countBound: 0, countComplete: 0, false: [] as string[] };
 
 /**
  * A place hint's reason must hold on what the player sees once the hint's
@@ -59,6 +59,44 @@ function checkReason(level: Level, board: Board, on: ReadonlySet<number>, h: Ext
     if (seen.has(dark) || fly.has(dark) || sources.length !== 1 || sources[0] !== h.cell) {
       truth.false.push(`${level.id}: "only lit from here" but tile ${dark} has sources ${sources.join(',')}`);
     }
+  }
+  checkCountSteps(level, board, fly, seen, h);
+}
+
+/**
+ * The count techniques only rule cells out. Each one in a hint's trace must
+ * read true on what the player sees at that moment: the fireflies, the count
+ * on the jar, and the cells ruled out before it.
+ */
+function checkCountSteps(level: Level, board: Board, fly: ReadonlySet<number>, seen: ReadonlySet<number>, h: Extract<Hint, { kind: 'place' }>) {
+  const total = level.solution!.length;
+  const on = [...fly].filter((c) => !board.lantern[c]);
+  const steps = grade(board, { start: on, stopAtFirefly: true, knownCount: total }).steps;
+  if (steps.slice(0, -1).map((s) => s.cell).join(',') !== h.ruledOut.join(',')) truth.false.push(`${level.id}: ruledOut is not the trace`);
+  const ruled = new Set<number>();
+  const open = (c: number) => !fly.has(c) && !seen.has(c) && !ruled.has(c);
+  for (const st of steps.slice(0, -1)) {
+    if (st.technique === 'T1-count-complete') {
+      truth.countComplete++;
+      if (fly.size !== total) truth.false.push(`${level.id}: "every firefly placed" with ${fly.size} of ${total}`);
+    } else if (st.technique === 'T3-count-bound') {
+      truth.countBound++;
+      const needs = st.because.map((src) => {
+        if (board.kind[src] === 'path') {
+          const lit = fly.has(src) || seen.has(src);
+          return { need: lit ? 0 : 1, cells: [src, ...board.rays[src]!].filter(open) };
+        }
+        const around = board.around[src]!;
+        return { need: board.clue[src]! - around.filter((c) => fly.has(c)).length, cells: around.filter(open) };
+      });
+      const cells = needs.flatMap((n) => n.cells);
+      const sum = needs.reduce((a, n) => a + n.need, 0);
+      if (needs.some((n) => n.need <= 0 || n.cells.length < n.need) || new Set(cells).size !== cells.length
+        || sum !== total - fly.size || !open(st.cell) || cells.includes(st.cell)) {
+        truth.false.push(`${level.id}: "needs use up every firefly left" does not hold for cell ${st.cell}`);
+      }
+    }
+    ruled.add(st.cell);
   }
 }
 
@@ -166,6 +204,8 @@ describe('hint', () => {
     expect(truth.false).toEqual([]);
     expect(truth.needsAll).toBeGreaterThan(100);
     expect(truth.oneSource).toBeGreaterThan(100);
+    // The count is shown, so hints use count deductions too (each checked above).
+    expect(truth.countBound).toBeGreaterThan(0);
     // Hints come from the grader; the stuck fallback should be rare.
     expect(counts['place']!).toBeGreaterThan(20 * (counts['try-here'] ?? 0));
     expect(counts['remove']!).toBeGreaterThan(0);

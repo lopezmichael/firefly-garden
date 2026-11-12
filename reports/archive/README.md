@@ -11,4 +11,10 @@ Frozen datasets behind past decisions. They are not regenerated.
   without the total firefly count known (`grade(board, { knownCount })`, the "firefly jar"),
   by `node scripts/experiment-count.ts`. Only T4 levels move: 53 of 159 drop to T3, none in
   chapters 1 and 2, and 14 chapters would lose their peak. Rows carry both measures plus a
-  "count steps free" bracket, since the time model charges every count step.
+  "count steps free" bracket, since the time model charges every count step. Graded the
+  pre-decision pack; its rows describe levels that have since been regenerated.
+- `count-aware-pack-2026-11-12.json`: after the decision to show the count, the packs
+  regenerated with count-aware grading (`gradeLevel`). Per chapter and reserve: tier histogram,
+  mean score and seconds, peak score, and level ids swapped, before vs after; simulated-player
+  headlines (chapter 1 clear rate, breather/peak hint use, pack finish) from `reports/dash`
+  before vs after; `levelsChangedInPlace` lists ids whose content changed under the same id.

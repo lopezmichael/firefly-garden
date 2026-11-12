@@ -45,3 +45,12 @@ canvas artboard (canvas version "Look pass 1"), so the two match again.
 
 Not taken yet (structure, needs Michael): filling the empty sky on tall phones, keeping the wide
 band's controls beside the board, moving the chapter label under the title.
+
+## Firefly jar proposal (2026-11-12)
+
+Michael chose to show each garden's firefly count (option 1 of the count experiment: every level
+is graded count-aware). Canvas row 3 holds the proposal: a playable phone with the jar in the
+status card (tap to release a firefly, which flies out of the jar to the tile; tap a firefly to
+call it back) and a storyboard with the release timing, the jar's states and two open decisions:
+whether the jar caps placements (recommended) and where the jar lives (status card proposed, top
+bar the alternative). Both change the locked layout and wait for Michael's sign-off.

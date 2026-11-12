@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
-  buildBoard, combine, grade, measure, parseLevel, PLAYER_CONFIG, rampRoles, simulate, type SimLevel,
+  buildBoard, combine, gradeLevel, measure, parseLevel, PLAYER_CONFIG, rampRoles, simulate, type SimLevel,
 } from '../packages/core/src/index.ts';
 
 const DIR = join(import.meta.dirname, '..', 'levels');
@@ -21,7 +21,7 @@ const simLevels: SimLevel[] = manifest.chapters.slice(0, 3).flatMap((c) => {
   const graded = c.levels.map((id) => {
     const level = byId.get(id)!;
     const board = buildBoard(level);
-    const g = grade(board);
+    const g = gradeLevel(level, board); // the count is shown, so players' traces use it
     return { id, g, score: measure(level, board, g).score };
   });
   const roles = rampRoles(graded);
