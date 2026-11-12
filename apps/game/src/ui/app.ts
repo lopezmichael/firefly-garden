@@ -344,7 +344,7 @@ export class GameApp {
     const dots = chapter.levels.map((id, i): 'done' | 'now' | 'todo' =>
       place && i === place.index ? 'now' : this.session.isSolved(id) ? 'done' : 'todo');
     const label = place
-      ? `${chapter.title.replace(/\s+\d+$/, '')} · Garden ${place.index + 1} of ${chapter.levels.length}`
+      ? `Garden ${place.index + 1} of ${chapter.levels.length}`
       : 'Bonus garden';
     this.screen.setChapter(label, `The ${chapter.area}`, dots);
     this.refresh(true);
@@ -469,7 +469,7 @@ export class GameApp {
     }, { quiet, removed });
     const status = ev.solved || !this.notice
       ? boardStatus(ev, play.placements === 0 && play.locked.size === 0, PLAYER_CONFIG.economy.coinsPerSolve)
-      : noticeStatus(this.notice);
+      : noticeStatus(this.notice, ev);
     this.screen.setStatus(status, litPercent(ev, play.board.needsLight.length), ev.solved);
     this.screen.setMoves(play.canUndo, play.placed.size > 0, ev.solved);
     this.screen.setCoins(this.wallet.coins, this.wallet.economy.hintCost, this.wallet.bank);

@@ -25,3 +25,23 @@ behaviour are locked, the look is not.
 `project/` holds source copies of the canvas files (`canvas.json` and one `.dc.html` per
 artboard). They are reference only; the game does not load them. If the canvas changes,
 re-read it and refresh these copies in the same commit.
+
+## Look pass 1 (2026-11-12)
+
+The first iteration on the open half, from an Impeccable and a Taste Skill critique (both
+applied as read-only rubrics). The game now differs from the canvas in look and copy only;
+structure is unchanged. The canvas is not updated; the build is the reference for the look.
+
+- Night and panel tokens moved from navy to the brief's teal and plum; secondary text is tinted, not grey
+- Glow only on the board and fireflies: no halos on the title, dots, progress bar or buttons
+- One filled gold action per view: Hint is outlined and dims once a garden is solved
+- Sentence-case labels; the chapter label reads "Garden 1 of 10" (the title already names the bed)
+- Sheet numbers as one line ("70 coins · no saved hints") instead of stat tiles; body text 15 px
+- A satisfied bush's number turns full gold (it was invisible); lilac petals became cream
+- The four-point sparkle became the game's own mark, a firefly light with a short trail; the Hint
+  button uses a firefly icon; the moon is a crescent placed clear of the board in every band
+- Copy: "Use a hint" (was "Need a nudge?"), "A bush is done when all its dots are gold.", hint
+  sub-lines show progress instead of repeating "locked in place", fewer exclamation marks
+
+Not taken yet (structure, needs Michael): filling the empty sky on tall phones, keeping the wide
+band's controls beside the board, moving the chapter label under the title.

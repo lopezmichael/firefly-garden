@@ -1,26 +1,27 @@
 /* Design tokens. Components use these, never raw colors or font names, so the
    placeholder-to-painted art swap is a theme change. The board renderer reads
    the same tokens at startup (src/view/theme.ts). Source: the Phase 2 design
-   baseline (docs/design/phase-2/), state sheet "Color tokens". */
+   baseline (docs/design/phase-2/), state sheet "Color tokens"; look pass 1
+   (2026-11-12) moved the night from navy to the brief's teal and plum. */
 :root {
   /* Night */
-  --ff-night-0: #0b1230;
-  --ff-night-1: #161b3d;
-  --ff-night-2: #1d1c3c;
-  --ff-tray: #0a1120;
-  --ff-tray-edge: #1a2540;
-  --ff-panel: #1c2742;
-  --ff-panel-deep: #141d33;
-  --ff-panel-edge: #2e3b5e;
-  --ff-track: #0b1120;
-  --ff-moon: #f4e9c6;
-  --ff-moon-crater: #e2d4a8;
-  --ff-star: #fff6d8;
+  --ff-night-0: #0c1a22;
+  --ff-night-1: #13252c;
+  --ff-night-2: #2a1b26;
+  --ff-tray: #08151a;
+  --ff-tray-edge: #1c3338;
+  --ff-panel: #1b2c30;
+  --ff-panel-deep: #122125;
+  --ff-panel-edge: #33494b;
+  --ff-track: #0a171b;
+  --ff-moon: #f3e4bd;
+  --ff-moon-crater: #ddc994;
+  --ff-star: #fff0cc;
 
   /* Text */
   --ff-ink: #f3eedc;
-  --ff-ink-quiet: #c9d1e3;
-  --ff-label: #b9c3da;
+  --ff-ink-quiet: #cdd8cf;
+  --ff-label: #b3c6bd;
 
   /* Light */
   --ff-glow: #ffe7a3;
@@ -63,7 +64,7 @@
 
   /* Petals */
   --ff-petal-pink: #f7a8c4;
-  --ff-petal-lilac: #c9b6f5;
+  --ff-petal-cream: #fbe3c2;
 
   --ff-font-display: 'Fredoka', ui-rounded, system-ui, sans-serif;
   --ff-font-body: 'Nunito', system-ui, sans-serif;

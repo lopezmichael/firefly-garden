@@ -4,6 +4,11 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Changed
+- Look pass 1 (`docs/design/phase-2/README.md`): teal and plum night, glow only on the board, an
+  outlined Hint button, sentence-case labels, visible gold on satisfied bushes, the firefly mark in
+  place of a stock sparkle, a crescent moon placed per layout band, and plainer copy.
+
 ### Added
 - Phase 2 milestone 2: saved progress (`state/save.ts`: versioned, validated field by field per
   rules.md, fuzz-tested with 3,000 hostile saves; the board resumes exactly after a reload), the

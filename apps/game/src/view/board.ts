@@ -80,7 +80,7 @@ class FlyView {
       const r = this.size * 0.44;
       this.ring.circle(0, 0, r).stroke({ width: Math.max(2, this.size * 0.045), color: p.glow });
       this.ring.circle(0, 0, r).stroke({ width: Math.max(4, this.size * 0.12), color: p.glow, alpha: 0.18 });
-      star(this.sparkle, 0, 0, this.size * 0.12, p.star);
+      mark(this.sparkle, 0, 0, this.size * 0.055, p.star);
       this.sparkle.position.set(r * 0.72, -r * 0.72);
     }
   }
@@ -112,14 +112,16 @@ class FlyView {
   }
 }
 
-function star(g: Graphics, x: number, y: number, r: number, color: number): void {
-  const pts: number[] = [];
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * TAU - Math.PI / 2;
-    const rr = i % 2 === 0 ? r : r * 0.28;
-    pts.push(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
-  }
-  g.poly(pts).fill(color);
+/**
+ * The game's own "something good happened" mark: a firefly's light with a
+ * short fading trail behind it (replacing a generic four-point sparkle).
+ * Used on satisfied bushes and as the second shape on hint fireflies.
+ */
+function mark(g: Graphics, x: number, y: number, r: number, color: number): void {
+  g.circle(x - r * 2.6, y + r * 1.9, r * 0.32).fill({ color, alpha: 0.35 });
+  g.circle(x - r * 1.5, y + r * 1.1, r * 0.5).fill({ color, alpha: 0.6 });
+  g.circle(x, y, r * 1.6).fill({ color, alpha: 0.25 });
+  g.circle(x, y, r).fill(color);
 }
 
 function dashedRect(g: Graphics, x: number, y: number, w: number, h: number, dash: number, color: number, width: number): void {
@@ -441,7 +443,8 @@ export class BoardView {
         const key = `${have}:${st}:${state.solved}`;
         if (key !== v.bushKey) {
           v.bushKey = key;
-          v.clue.style.fill = st === 'over' ? this.pal.warn : st === 'met' ? this.pal.glow : this.pal.ink;
+          // A satisfied number turns a full gold: the status card says "all its dots are gold", and pale glow on cream was invisible.
+          v.clue.style.fill = st === 'over' ? this.pal.warn : st === 'met' ? this.pal.gold : this.pal.ink;
           const pip = Math.max(5, Math.round(cell * 0.12)), gap = Math.max(2, Math.round(cell * 0.05));
           const total = want * pip + (want - 1) * gap;
           v.pips.clear();
@@ -453,10 +456,10 @@ export class BoardView {
             if (on || st === 'over') v.pips.circle(x, y, pip / 2 - 0.75).fill(color);
           }
           v.extras!.clear();
-          if (st === 'met' && want > 0) star(v.extras!, cell * 0.92, cell * 0.04, cell * 0.16, this.pal.glow);
+          if (st === 'met' && want > 0) mark(v.extras!, cell * 0.9, cell * 0.06, cell * 0.06, this.pal.glow);
           if (state.solved) {
             flower(v.extras!, cell * 0.18, cell * 0.16, cell * 0.12, this.pal.petalPink, this.pal.glow);
-            flower(v.extras!, cell * 0.8, cell * 0.8, cell * 0.1, this.pal.petalLilac, this.pal.star);
+            flower(v.extras!, cell * 0.8, cell * 0.8, cell * 0.1, this.pal.petalCream, this.pal.star);
           }
         }
       } else if (v.kind === 'bush' && v.extras) {

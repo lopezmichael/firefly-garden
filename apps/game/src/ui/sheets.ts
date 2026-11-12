@@ -76,9 +76,10 @@ export interface HintOffer {
   readonly coinsPerSolve: number;
 }
 
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
 export class HintSheet extends Sheet {
-  private readonly bankValue = el('span', 'ff-stat-value');
-  private readonly coinValue = el('span', 'ff-stat-value');
+  private readonly wallet = el('p', 'ff-sheet-line');
   private readonly primary: HTMLButtonElement;
   private readonly primaryCost = el('span');
   private readonly ad: HTMLButtonElement;
@@ -90,30 +91,23 @@ export class HintSheet extends Sheet {
     super('ff-hint-title');
     const head = el('div', 'ff-sheet-head');
     const text = el('div', 'ff-sheet-text');
-    const title = el('h2', 'ff-sheet-title', 'Need a nudge?');
+    const title = el('h2', 'ff-sheet-title', 'Use a hint');
     title.id = 'ff-hint-title';
     text.append(title, el('p', 'ff-sheet-sub', "A hint places one firefly that's sure to be right, or lifts one that can't stay. Hint fireflies are locked in place."));
     head.append(text);
 
-    const stats = el('div', 'ff-stats');
-    for (const [label, value] of [['Saved hints', this.bankValue], ['Your coins', this.coinValue]] as const) {
-      const box = el('div', 'ff-stat');
-      box.append(el('span', 'ff-stat-label', label), value);
-      stats.append(box);
-    }
 
     this.primary = button('ff-sheet-primary', '', () => this.pick('pay'));
     this.ad = button('ff-sheet-ad', 'Watch a video for 3 hints', () => this.pick('ad'));
     this.decline = button('ff-sheet-quiet', 'No thanks', () => this.pick(null));
-    this.panel.append(head, stats, this.primary, this.ad, this.note, this.decline);
+    this.panel.append(head, this.wallet, this.primary, this.ad, this.note, this.decline);
     this.onClose = () => this.settle(null);
   }
 
   /** Resolves with the player's choice; nothing is charged here. */
   ask(offer: HintOffer): Promise<'pay' | 'ad' | null> {
     this.settle(null);
-    this.bankValue.textContent = String(offer.bank);
-    this.coinValue.textContent = String(offer.coins);
+    this.wallet.textContent = `${plural(offer.coins, 'coin', 'coins')} · ${offer.bank === 0 ? 'no saved hints' : plural(offer.bank, 'saved hint', 'saved hints')}`;
     const canPay = offer.bank > 0 || offer.coins >= offer.cost;
     this.primary.replaceChildren(document.createTextNode(offer.bank > 0 ? 'Use a saved hint' : 'Use a hint'));
     if (offer.bank === 0) {
@@ -158,11 +152,11 @@ export interface SettingsHandlers {
   copyLog(): Promise<boolean>;
 }
 
-const MOTION: readonly [MotionSetting, string][] = [['device', 'Like my device'], ['on', 'On'], ['off', 'Off']];
+const MOTION: readonly [MotionSetting, string][] = [['device', 'Device'], ['on', 'On'], ['off', 'Off']];
 
 export class SettingsSheet extends Sheet {
   private readonly motionButtons = new Map<MotionSetting, HTMLButtonElement>();
-  private readonly stat = { played: el('span', 'ff-stat-value'), solved: el('span', 'ff-stat-value'), hints: el('span', 'ff-stat-value') };
+  private readonly summary = el('p', 'ff-sheet-line');
   private readonly copy: HTMLButtonElement;
 
   constructor(private readonly handlers: SettingsHandlers) {
@@ -188,14 +182,8 @@ export class SettingsSheet extends Sheet {
     motion.append(group);
 
     const log = el('section', 'ff-section');
-    const stats = el('div', 'ff-stats ff-stats-3');
-    for (const [label, value] of [['gardens played', this.stat.played], ['solved', this.stat.solved], ['hints used', this.stat.hints]] as const) {
-      const box = el('div', 'ff-stat');
-      box.append(value, el('span', 'ff-stat-label', label));
-      stats.append(box);
-    }
     this.copy = button('ff-sheet-ad', 'Copy play log', () => void this.copyLog());
-    log.append(el('h3', 'ff-section-title', 'Play log'), stats,
+    log.append(el('h3', 'ff-section-title', 'Play log'), this.summary,
       el('p', 'ff-sheet-sub', 'Helping us test? Copy your play log and send it back. It holds level ids, times and counts, nothing about you, and it never leaves this device unless you send it.'),
       this.copy);
 
@@ -204,9 +192,7 @@ export class SettingsSheet extends Sheet {
 
   open(view: SettingsView): void {
     this.setMotion(view.motion);
-    this.stat.played.textContent = String(view.played);
-    this.stat.solved.textContent = String(view.solved);
-    this.stat.hints.textContent = String(view.hints);
+    this.summary.textContent = `${plural(view.played, 'garden played', 'gardens played')} · ${view.solved} solved · ${plural(view.hints, 'hint used', 'hints used')}`;
     this.copy.textContent = 'Copy play log';
     this.show(this.motionButtons.get(view.motion)!);
   }
@@ -217,6 +203,6 @@ export class SettingsSheet extends Sheet {
 
   private async copyLog(): Promise<void> {
     const ok = await this.handlers.copyLog();
-    this.copy.textContent = ok ? 'Copied. Thank you!' : "Couldn't copy. Try again?";
+    this.copy.textContent = ok ? 'Copied' : "Couldn't copy. Try again?";
   }
 }

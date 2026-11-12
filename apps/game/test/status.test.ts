@@ -21,7 +21,7 @@ describe('status card', () => {
     expect(first.sub).toMatch(/Tap a tile/);
     for (const c of catalog.solution(id)) p.tap(c);
     const done = boardStatus(p.evaluation, false, coins);
-    expect(done).toEqual({ title: 'The garden is glowing!', sub: `Solved. +${coins} coins.`, tone: 'solved' });
+    expect(done).toEqual({ title: 'The garden is glowing!', sub: `Solved · +${coins} coins`, tone: 'solved' });
     expect(litPercent(p.evaluation, p.board.needsLight.length)).toBe(100);
   });
 
@@ -37,10 +37,11 @@ describe('status card', () => {
   });
 
   it('explains hints, and mentions crossed-out tiles only when there are some', () => {
+    const ev = new Play(catalog.board(id), catalog.solution(id), clock).evaluation;
     const base = { kind: 'place', cell: 0, technique: 'T1-needs-all', reason: 'R', because: [1] } as const;
-    expect(noticeStatus({ kind: 'hint', hint: { ...base, ruledOut: [] } }).sub).not.toMatch(/crossed/);
-    expect(noticeStatus({ kind: 'hint', hint: { ...base, ruledOut: [5] } }).sub).toMatch(/crossed-out/);
-    expect(noticeStatus({ kind: 'hint', hint: { kind: 'remove', cell: 0, reason: 'X' } }).title).toMatch(/can't stay/);
-    expect(noticeStatus({ kind: 'no-coins', coinsPerSolve: coins }).sub).toContain(String(coins));
+    expect(noticeStatus({ kind: 'hint', hint: { ...base, ruledOut: [] } }, ev).sub).toMatch(/still dark/);
+    expect(noticeStatus({ kind: 'hint', hint: { ...base, ruledOut: [5] } }, ev).sub).toMatch(/crossed-out/);
+    expect(noticeStatus({ kind: 'hint', hint: { kind: 'remove', cell: 0, reason: 'X' } }, ev).title).toMatch(/can't stay/);
+    expect(noticeStatus({ kind: 'no-coins', coinsPerSolve: coins }, ev).sub).toContain(String(coins));
   });
 });

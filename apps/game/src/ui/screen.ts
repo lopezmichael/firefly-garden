@@ -10,7 +10,8 @@ const ICONS = {
   undo: '<path d="M9 14L4 9l5-5"></path><path d="M4 9h10a6 6 0 0 1 0 12h-3"></path>',
   reset: '<path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path>',
   gear: '<circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path>',
-  hint: '<path d="M12 2l2.4 7.2H22l-6 4.6 2.3 7.2L12 16.6 5.7 21l2.3-7.2-6-4.6h7.6z" fill="currentColor" stroke="none"></path>',
+  // The game's firefly, not a stock star: wings, body, head.
+  hint: '<ellipse cx="7.5" cy="9" rx="4.5" ry="3" transform="rotate(-25 7.5 9)"></ellipse><ellipse cx="16.5" cy="9" rx="4.5" ry="3" transform="rotate(25 16.5 9)"></ellipse><circle cx="12" cy="15" r="4.6" fill="currentColor"></circle><circle cx="12" cy="8.6" r="2.4" fill="currentColor" stroke="none"></circle>',
 } as const;
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {

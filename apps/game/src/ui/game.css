@@ -49,22 +49,22 @@
   animation: ff-star var(--dur) ease-in-out var(--delay) infinite;
 }
 .ff-moon {
-  position: absolute; right: 24px; top: 74px; width: 46px; height: 46px; border-radius: 999px;
-  background: var(--ff-moon);
-  box-shadow: 0 0 30px 8px color-mix(in srgb, var(--ff-moon) 22%, transparent);
+  /* A crescent: the lit edge is an inset shadow on a transparent disc. */
+  position: absolute; right: 28px; top: 70px; width: 40px; height: 40px; border-radius: 999px;
+  background: transparent;
+  box-shadow: inset -11px 5px 0 0 var(--ff-moon), 6px -2px 26px -6px color-mix(in srgb, var(--ff-moon) 35%, transparent);
+  transform: rotate(-18deg);
 }
-.ff-moon::before, .ff-moon::after { content: ''; position: absolute; border-radius: 999px; background: var(--ff-moon-crater); }
-.ff-moon::before { left: 12px; top: 13px; width: 9px; height: 9px; }
-.ff-moon::after { left: 26px; top: 26px; width: 6px; height: 6px; }
+.ff-app[data-band='square'] .ff-moon { top: 18px; right: 50%; margin-right: -20px; }
 @keyframes ff-star { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
 
 .ff-top { grid-area: top; position: relative; display: flex; align-items: center; gap: 10px; }
 .ff-chapter { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-.ff-chapter-label { font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ff-label); }
+.ff-chapter-label { font-size: 14px; font-weight: 700; color: var(--ff-label); }
 .ff-dots { display: flex; gap: 5px; }
 .ff-dot { width: 18px; height: 6px; border-radius: 999px; background: var(--ff-panel-edge); }
-.ff-dot[data-state='done'] { background: var(--ff-gold); box-shadow: 0 0 8px color-mix(in srgb, var(--ff-gold) 70%, transparent); }
-.ff-dot[data-state='now'] { background: var(--ff-star); box-shadow: 0 0 8px color-mix(in srgb, var(--ff-gold) 70%, transparent); }
+.ff-dot[data-state='done'] { background: var(--ff-gold); }
+.ff-dot[data-state='now'] { background: var(--ff-ink); }
 .ff-coins {
   display: flex; align-items: center; gap: 6px; padding: 6px 12px 6px 8px; border-radius: 999px;
   background: color-mix(in srgb, var(--ff-panel) 85%, transparent); font-weight: 800; font-size: 15px;
@@ -74,7 +74,6 @@
 .ff-title {
   grid-area: title; position: relative; margin: 0; font-family: var(--ff-font-display); font-weight: 700;
   font-size: 30px; line-height: 1.05; color: var(--ff-glow);
-  text-shadow: 0 0 18px color-mix(in srgb, var(--ff-gold) 45%, transparent);
 }
 .ff-app[data-band='wide'] .ff-title { font-size: 28px; }
 
@@ -91,20 +90,19 @@
 .ff-status-title { font-family: var(--ff-font-display); font-weight: 600; font-size: 18px; color: var(--ff-ink); }
 .ff-status[data-tone='warn'] .ff-status-title { color: var(--ff-warn); }
 .ff-status[data-tone='glow'] .ff-status-title, .ff-status[data-tone='solved'] .ff-status-title { color: var(--ff-glow); }
-.ff-status-sub { font-size: 14px; line-height: 1.35; color: var(--ff-ink-quiet); }
+.ff-status-sub { font-size: 15px; line-height: 1.4; color: var(--ff-ink-quiet); }
 .ff-app[data-band='wide'] .ff-status { padding: 12px 14px; }
 .ff-app[data-band='wide'] .ff-status-title { font-size: 16px; }
-.ff-app[data-band='wide'] .ff-status-sub { font-size: 13px; }
+.ff-app[data-band='wide'] .ff-status-sub { font-size: 14px; }
 .ff-bar { height: 8px; border-radius: 999px; background: var(--ff-track); overflow: hidden; }
 .ff-bar-fill {
-  height: 100%; width: 0; border-radius: 999px; background: var(--ff-gold);
-  box-shadow: 0 0 10px color-mix(in srgb, var(--ff-gold) 80%, transparent); transition: width 400ms ease;
+  height: 100%; width: 0; border-radius: 999px; background: var(--ff-gold); transition: width 400ms ease;
 }
 
-.ff-next, .ff-hint {
-  border: 0; background: var(--ff-gold); color: var(--ff-on-gold); font-weight: 800; cursor: pointer;
-  box-shadow: 0 0 14px color-mix(in srgb, var(--ff-gold) 45%, transparent);
-}
+.ff-next { border: 0; background: var(--ff-gold); color: var(--ff-on-gold); font-weight: 800; cursor: pointer; }
+/* Hint is a secondary action: outlined, so the paid move is never the loudest thing on screen. */
+.ff-hint { border: 2px solid var(--ff-gold); background: var(--ff-panel); color: var(--ff-glow); font-weight: 800; cursor: pointer; }
+.ff-hint:disabled { opacity: 0.5; cursor: default; }
 .ff-next { flex-shrink: 0; height: 44px; padding: 0 16px; border-radius: 12px; font-size: 15px; }
 .ff-next[hidden] { display: none; }
 
@@ -119,9 +117,11 @@
 .ff-controls .ff-hint { flex: 1.3; }
 .ff-cost {
   display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px 2px 4px; border-radius: 999px; font-size: 13px;
-  background: color-mix(in srgb, var(--ff-on-gold) 14%, transparent);
+  background: color-mix(in srgb, var(--ff-gold) 16%, transparent);
 }
-.ff-cost .ff-coin { width: 13px; height: 13px; background: var(--ff-on-gold); box-shadow: inset 0 0 0 3px var(--ff-on-gold), inset 0 0 0 4.5px var(--ff-gold); }
+.ff-cost .ff-coin { width: 13px; height: 13px; }
+.ff-sheet-primary .ff-cost { background: color-mix(in srgb, var(--ff-on-gold) 14%, transparent); }
+.ff-sheet-primary .ff-cost .ff-coin { background: var(--ff-on-gold); box-shadow: inset 0 0 0 3px var(--ff-on-gold), inset 0 0 0 4.5px var(--ff-gold); }
 .ff-icon { width: 18px; height: 18px; flex-shrink: 0; }
 
 .ff-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -137,7 +137,7 @@
 .ff-app[data-band='wide'] .ff-top { flex-wrap: wrap; }
 .ff-app[data-band='wide'] .ff-coins { order: -1; }
 .ff-app[data-band='wide'] .ff-chapter { flex-basis: 100%; }
-.ff-app[data-band='wide'] .ff-moon { right: 132px; top: 18px; width: 38px; height: 38px; }
+.ff-app[data-band='wide'] .ff-moon { right: 140px; top: 16px; }
 
 .ff-fail { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; text-align: center; }
 .ff-fail h1 { margin: 0; font-family: var(--ff-font-display); color: var(--ff-glow); }
@@ -159,22 +159,17 @@
 .ff-sheet-head { display: flex; gap: 14px; align-items: center; }
 .ff-sheet-text { display: flex; flex-direction: column; gap: 4px; }
 .ff-sheet-title { margin: 0; font-family: var(--ff-font-display); font-weight: 600; font-size: 24px; color: var(--ff-glow); }
-.ff-sheet-sub, .ff-sheet-note { margin: 0; font-size: 14px; line-height: 1.4; color: var(--ff-ink-quiet); }
+.ff-sheet-sub, .ff-sheet-note { margin: 0; font-size: 15px; line-height: 1.45; color: var(--ff-ink-quiet); }
+.ff-sheet-line { margin: 0; font-size: 16px; font-weight: 700; color: var(--ff-ink); }
 .ff-sheet-note[hidden] { display: none; }
-.ff-stats { display: flex; gap: 10px; }
-.ff-stats-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.ff-stat { flex: 1; background: var(--ff-panel-deep); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
-.ff-stat-label { font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ff-label); }
-.ff-stats-3 .ff-stat-label { text-transform: none; letter-spacing: 0; font-weight: 700; color: var(--ff-ink-quiet); }
-.ff-stat-value { font-family: var(--ff-font-display); font-weight: 600; font-size: 22px; color: var(--ff-glow); }
 .ff-sheet button { min-height: 52px; border-radius: 16px; font-weight: 800; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
-.ff-sheet-primary { border: 0; background: var(--ff-gold); color: var(--ff-on-gold); box-shadow: 0 0 16px color-mix(in srgb, var(--ff-gold) 50%, transparent); }
-.ff-sheet-primary:disabled { opacity: 0.45; cursor: default; box-shadow: none; }
+.ff-sheet-primary { border: 0; background: var(--ff-gold); color: var(--ff-on-gold); }
+.ff-sheet-primary:disabled { opacity: 0.45; cursor: default; }
 .ff-sheet-ad { border: 2px solid var(--ff-gold); background: transparent; color: var(--ff-glow); }
 .ff-sheet-ad[hidden] { display: none; }
 .ff-sheet-quiet { border: 2px solid var(--ff-panel-edge); background: var(--ff-panel-deep); color: var(--ff-ink); }
 .ff-section { display: flex; flex-direction: column; gap: 10px; }
-.ff-section-title { margin: 0; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ff-label); }
+.ff-section-title { margin: 0; font-size: 16px; font-weight: 800; color: var(--ff-ink); }
 .ff-segments { display: flex; background: var(--ff-panel-deep); border-radius: 14px; padding: 4px; gap: 4px; }
 .ff-sheet .ff-segment { flex: 1; min-height: 44px; border-radius: 11px; border: 0; background: transparent; color: var(--ff-ink); font-size: 14px; }
 .ff-sheet .ff-segment[aria-checked='true'] { background: var(--ff-gold); color: var(--ff-on-gold); }
