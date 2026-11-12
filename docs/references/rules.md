@@ -61,6 +61,7 @@ rocks is wanted later, it is a skin for a hidden bush, not a new rule.
 | `twists` | | `mushrooms`: `[row, col, n]` with n 0 to 4; `moonlit`, `lanterns`: `[row, col]`. Unknown keys are rejected |
 | `solution` | | Every firefly in the answer, **lanterns included** |
 | `tier`, `score`, `techniques` | | Written by the grader |
+| `seconds` | | Estimated solve time, whole seconds 1 to 3600 (`measure`); written by the generator, checked against a fresh grade in CI. The game feeds it to the next-level policy |
 
 Validation (`parseLevel`) rejects unknown keys, off-board or outside-mask
 coordinates, two things on one cell (including a lantern on a moonlit tile),
@@ -91,10 +92,40 @@ because a single firefly is thin pay for a 30 to 60 second video.
 the player cannot remove it, and it looks different from both their own
 fireflies and lanterns (for example a gold ring or a small sparkle), so it is
 always clear which move came from the hint. A "fix a wrong firefly" hint
-animates the removal so the player sees what changed. In the rules engine a
-locked hint firefly behaves like a lantern for that play (fixed, counts, can
-conflict), so `canPlace` must refuse it; this needs a per-play "locked" set
-alongside the level's lanterns when the game is built.
+animates the removal so the player sees what changed.
+
+**As implemented (`packages/core/src/hints.ts`).** `hint(board, solution, placed, locked)`:
+
+1. Any player firefly that is not in the solution is removed first: one that sees another
+   firefly ("This firefly can see another one."), else one that gives a bush too many
+   ("This firefly gives a bush too many."), else the lowest such cell ("This firefly can't
+   be part of the answer.").
+2. Otherwise the grader runs from the current position (`grade(board, { start, stopAtFirefly })`;
+   every firefly on the board is then part of the answer, so its deductions are sound) and the
+   first step that places a firefly is the hint, with a reason per technique (`HINT_REASONS`),
+   e.g. "That dark tile can only be lit from here." The cell is placed only if it is a
+   solution cell (defense in depth); otherwise step 3 applies.
+   **Ruled-out cells.** Before that firefly the grader often decides cells empty that the
+   player cannot see are empty yet (a satisfied bush's other neighbors, a bush-room or overlap
+   step): 54% of place hints in the property test. The hint returns them as `ruledOut`, and the
+   game must draw them as faint "no firefly here" marks while it shows the hint, or the reason
+   can read false ("needs every open spot" while other spots still look open). `because` is the
+   firefly step's own cells first (the bush or dark tile), then the cells behind each ruled-out
+   step. A test checks the reason holds on the visible board plus these marks for every
+   T1-needs-all and T2-one-source hint.
+3. If the grader is stuck from that position, a missing solution cell is placed anyway
+   ("Try a firefly here."), so a paid hint always does something. On every chapter 1 to 3
+   and reserve level this never happened in the property test.
+4. A solved board gets `none`.
+
+The player's cells passed to `hint` come from saved progress and must be validated first:
+integers in 0..w*h-1 on path cells, no repeats, at most w*h. If that fails, drop the level's
+placed set and keep only the valid locked cells.
+
+Locked cells: `canPlace(board, cell, locked)` refuses them, `evaluate` counts them like any
+firefly (they count for bushes and can conflict), and `hint` throws if a locked cell is not
+a solution cell (saves are validated before this point). For analytics, `hintStep(grade, cell)`
+is the index in the level's full grader trace of the step that decides the hinted cell.
 
 **Rules for the game build (from the Phase 1 security review):**
 - Saved progress stores the locked hint cells per level and the banked hint count, and
@@ -116,6 +147,12 @@ progress, which is untrusted. Before calling it the game must:
   the `solved` set holds only known level ids.
 - persist compact facts rather than truncating history: the set of reserve levels already
   played (so detours never repeat) and the main levels quit at least once (for "retry").
+  `PolicyInput.playedReserve` and `PolicyInput.quitMain` take them. Validate them like the
+  rest of the save: `playedReserve` holds only known reserve ids, `quitMain` only known
+  main-path ids, both capped at their pool's size.
+- keep at least `POLICY_CONFIG.minHistory` (8) records when capping history: the hint
+  streak and the last hint breather are read from history alone. The warm-up tier is also
+  read from the capped history, i.e. from recent plays.
 - fall back to the next unsolved main-path level if validation fails.
 
 ## Not yet implemented

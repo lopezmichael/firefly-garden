@@ -24,9 +24,13 @@ export interface Evaluation {
   readonly solved: boolean;
 }
 
-/** True if the player may place or remove a firefly on this cell. */
-export function canPlace(board: Board, cell: number): boolean {
-  return board.kind[cell] === 'path' && !board.lantern[cell];
+/**
+ * True if the player may place or remove a firefly on this cell. `locked`
+ * holds this play's hint fireflies: like lanterns they are fixed, so the
+ * player can neither remove them nor toggle them off (docs/references/rules.md).
+ */
+export function canPlace(board: Board, cell: number, locked?: ReadonlySet<number>): boolean {
+  return board.kind[cell] === 'path' && !board.lantern[cell] && !(locked?.has(cell) ?? false);
 }
 
 /**

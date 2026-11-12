@@ -8,7 +8,8 @@ the first real data.
 
 **Gate:** friends play 20+ levels without being asked.
 
-**Status:** reviewed 2026-11-12; one decision open (3, rewarded ads in the friends build).
+**Status:** reviewed 2026-11-12, all decisions made. A visual design artifact is reviewed
+before any visual code (Michael, 2026-11-12); core and state work proceed meanwhile.
 
 ## Scope
 
@@ -43,7 +44,8 @@ Reviewed with Michael on 2026-11-12.
    ends the play as `quit` (the policy can serve a breather, then a retry), but the board
    is kept and the retry resumes it. Closing the tab mid-level resumes on reload and is not
    a quit. No "skip level" button.
-3. **Rewarded ads in the friends build.** *Open, see the note below.*
+3. **Rewarded ads in the friends build:** hidden; hints are coins-only there. *Decided (a).*
+   Ad paths are covered by a scriptable test adapter in unit and Playwright tests.
 4. **Playtest distribution:** an unlisted Vercel preview of `develop`. *Agreed.* Deploying
    is still done only when Michael gives the go for that specific deploy.
 5. **Gate evidence:** a "Play log" panel in settings that copies the event log as JSON for
@@ -64,7 +66,7 @@ credit, sound muted during the ad) would never run in front of real players. Two
   and the Playwright test with a test adapter, not by friends.
 - **(b) A placeholder ad card** (5 s, with cancel) so friends walk through the real flow.
 
-Recommendation: **(a)**. It keeps the playtest honest with less to build; the placeholder
+Recommendation, taken: **(a)**. It keeps the playtest honest with less to build; the placeholder
 card is only needed if we want to see whether friends choose ads over coins, and Phase 1's
 simulation says they almost never need to this early.
 
@@ -153,12 +155,12 @@ the same transitions are tested in Node and in Playwright.
 
 ### A. Core additions (pure, tested in `packages/core/test`)
 
-- [ ] **Locked cells in the rules.** `canPlace(board, cell, locked?)` refuses locked hint
+- [x] **Locked cells in the rules.** `canPlace(board, cell, locked?)` refuses locked hint
       cells; `evaluate` treats them as fireflies (they already are, via `placed`). Test:
       a locked cell can never be toggled; it counts for bushes and can conflict.
-- [ ] **Grader from a position.** `grade(board, { start })` begins from a set of fireflies
+- [x] **Grader from a position.** `grade(board, { start })` begins from a set of fireflies
       already placed (all must be solution cells), so a hint is "the next step from here".
-- [ ] **`hint(board, solution, placed, locked)`** in a new `hints.ts`:
+- [x] **`hint(board, solution, placed, locked)`** in a new `hints.ts`:
       - any player firefly not in the solution → remove one (conflicting ones first, then
         ones that overfill a bush, then any), reason "This firefly can't be part of the answer";
       - otherwise run the grader from the position and return the first step that places a
@@ -169,13 +171,13 @@ the same transitions are tested in Node and in Playwright.
       - Property test over every chapter 1 to 3 and reserve level: from random partial and
         wrong positions, every hint is correct, and repeated hints always finish the level.
       - Mutation check: a hint that skips the wrong-firefly branch must fail a test.
-- [ ] **Hint step for analytics.** `hint.step` = the index in the level's full grader trace
+- [x] **Hint step for analytics.** `hint.step` = the index in the level's full grader trace
       of the step that decides the hinted cell, so Phase 4 can tie hints to techniques.
-- [ ] **Policy from compact facts.** `PolicyInput` gains `playedReserve` and `quitMain`
+- [x] **Policy from compact facts.** `PolicyInput` gains `playedReserve` and `quitMain`
       sets (rules.md: persist facts, don't truncate history), so history can be capped
       without detours repeating or retries being lost. Simulator and tests updated; the
       shipped policy numbers in `reports/dash/policy.json` must not move.
-- [ ] **Estimated seconds in level files.** Add an optional `seconds` key (written by the
+- [x] **Estimated seconds in level files.** Add an optional `seconds` key (written by the
       generator, validated by `parseLevel`, checked against a fresh `measure` in
       `tests/levels.test.ts`) so the game feeds `nextLevel` without grading 280 levels at
       startup. Regenerate packs with `npm run levels`; no level may change otherwise.

@@ -5,6 +5,14 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Added
+- Phase 2 core: `hint` (`packages/core/src/hints.ts`) removes a wrong firefly or places the
+  grader's next one from the player's position, with a one-line reason, the `because` cells
+  and the `ruledOut` cells the game marks so the reason reads true; `hintStep` ties a hint to
+  the level's full trace for analytics. `grade` options `start` (grade from a position) and
+  `stopAtFirefly`. `canPlace` refuses locked hint cells. `PolicyInput.playedReserve` /
+  `quitMain` and `POLICY_CONFIG.minHistory` so saved history can be capped. Level files carry
+  `seconds` (estimated solve time), validated by `parseLevel` and re-checked in CI; packs
+  regenerated with no other change.
 - Phase 1: technique grader (`grade`) with T1 bookkeeping, T2 one source and bush room,
   T3 one-step lookahead, T4 overlapping bushes, T5 deep trial; difficulty model (`measure`)
   with score, tier and estimated solve time; seeded generator (`generate`) with garden shapes,

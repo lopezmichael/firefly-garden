@@ -1,5 +1,5 @@
 export type { BushSpec, Coord, Level, LevelTwists } from './types.ts';
-export { LevelError, MAX_BOARD_EDGE, parseLevel, validateLevel } from './level.ts';
+export { LevelError, MAX_BOARD_EDGE, MAX_LEVEL_SECONDS, parseLevel, validateLevel } from './level.ts';
 export { buildBoard, cellCoord, cellIndex } from './board.ts';
 export type { Board, CellKind } from './board.ts';
 export { canPlace, evaluate } from './rules.ts';
@@ -12,6 +12,8 @@ export { createRng, deriveSeed } from './rng.ts';
 export type { Rng } from './rng.ts';
 export { grade, TECHNIQUE_TIER } from './grader.ts';
 export type { Grade, GradeOptions, Step, TechniqueId } from './grader.ts';
+export { hint, HINT_REASONS, hintStep, REMOVE_REASONS, TRY_HERE_REASON } from './hints.ts';
+export type { Hint } from './hints.ts';
 export { DIFFICULTY_CONFIG, measure } from './difficulty.ts';
 export type { Difficulty, LevelFeatures } from './difficulty.ts';
 export { makeMask, SHAPES } from './shapes.ts';

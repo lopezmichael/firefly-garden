@@ -38,10 +38,11 @@ line is swappable.
 | `types.ts` | The on-disk `Level` format (see `docs/references/rules.md`) |
 | `level.ts` | `parseLevel` (untrusted JSON → `Level`, all problems reported at once) and `validateLevel` |
 | `board.ts` | `buildBoard`: compiles a `Level` into a `Board` with precomputed rays (what each tile sees) and bush neighborhoods |
-| `rules.ts` | `evaluate`: lit tiles, conflicts, bush states, solved. `canPlace` |
+| `rules.ts` | `evaluate`: lit tiles, conflicts, bush states, solved. `canPlace` (refuses lanterns and locked hint cells) |
 | `solver.ts` | `solve` / `isUnique`: exact search with propagation, stops at a solution limit |
 | `transform.ts` | The 8 rotations/mirrors, so one stored orientation serves portrait and landscape; `canonicalKey` spots disguised duplicates |
-| `grader.ts` | Human-style technique solver: one deduction at a time, simplest first, records the trace (tier, width, reason) |
+| `grader.ts` | Human-style technique solver: one deduction at a time, simplest first, records the trace (tier, width, reason); can start from a position |
+| `hints.ts` | `hint`: removes a wrong firefly or places the grader's next one from the player's position, with a one-line reason; `hintStep` maps a hint to the full trace for analytics |
 | `difficulty.ts` | Features, score, tier and estimated solve time from a trace; all weights in `DIFFICULTY_CONFIG` |
 | `rng.ts` | Seeded PRNG so every generated level can be regenerated from its spec |
 | `shapes.ts` | Garden masks: rectangle, ring, L, bridge, crescent |
@@ -86,5 +87,5 @@ board renderer (PixiJS), menus (plain DOM) and audio arrive in Phase 2.
    grades and orders each chapter into `levels/launch.json`, fills `levels/reserve.json`, and
    writes the report tables to `reports/`.
 2. CI re-validates every pack with the exact solver.
-3. The game bundles the packs, rotates each level to fit the screen, and uses `evaluate` for play and `solve` for hints.
+3. The game bundles the packs, rotates each level to fit the screen, and uses `evaluate` for play and `hint` (the grader from the current position) for hints.
 4. Progress goes through `Platform.save/load` and is validated on the way back in.

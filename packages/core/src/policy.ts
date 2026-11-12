@@ -41,8 +41,17 @@ export interface PolicyInput {
   /** Every level the policy may need to look up (main path and reserve). */
   readonly levels: ReadonlyMap<string, PolicyLevel>;
   readonly solved: ReadonlySet<string>;
-  /** Most recent last. */
+  /**
+   * Most recent last. The game may cap it (saved progress is untrusted and
+   * must stay small); the two sets below carry the facts a capped history
+   * would lose. Warm-up difficulty reads only this history, so a capped one
+   * judges the player's comfortable tier from recent plays.
+   */
   readonly history: readonly PlayRecord[];
+  /** Reserve levels already served, beyond those in `history`, so detours never repeat. */
+  readonly playedReserve?: ReadonlySet<string>;
+  /** Main-path levels quit at least once, beyond those in `history`, so they come back as a retry. */
+  readonly quitMain?: ReadonlySet<string>;
   /** Current time in milliseconds. */
   readonly now: number;
 }
@@ -63,6 +72,13 @@ export const POLICY_CONFIG = {
   longSolveSeconds: 240,
   /** Hinted main-path levels in a row before a breather. */
   hintStreak: 2,
+  /**
+   * Plays of history the game must keep at least when it caps saved history.
+   * The hint streak and the last hint breather are read from history alone;
+   * detours never come twice in a row, so 2 × hintStreak + 1 records always
+   * cover them. 8 leaves room.
+   */
+  minHistory: 8,
   /** A breather scores at most this fraction of the level that triggered it... */
   breatherScoreFraction: 0.8,
   /** ...and takes at most this many seconds (estimated). */
@@ -81,7 +97,7 @@ export function nextLevel(input: PolicyInput): NextLevel | null {
   const last = input.history.at(-1);
   const main = (): NextLevel | null => {
     if (nextMain === undefined) return null;
-    const quitBefore = input.history.some((h) => h.levelId === nextMain && !h.solved);
+    const quitBefore = (input.quitMain?.has(nextMain) ?? false) || input.history.some((h) => h.levelId === nextMain && !h.solved);
     return { id: nextMain, reason: quitBefore ? 'retry' : 'main' };
   };
   // Done, or nothing played yet: no detours.
@@ -122,7 +138,7 @@ export function nextLevel(input: PolicyInput): NextLevel | null {
 
 function unplayedReserve(input: PolicyInput): PolicyLevel[] {
   const played = new Set(input.history.map((h) => h.levelId));
-  return input.reserve.filter((l) => !input.solved.has(l.id) && !played.has(l.id));
+  return input.reserve.filter((l) => !input.solved.has(l.id) && !played.has(l.id) && !(input.playedReserve?.has(l.id) ?? false));
 }
 
 /** Highest tier the player has solved without hints (at least 1). */
