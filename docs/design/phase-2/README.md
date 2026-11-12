@@ -29,8 +29,8 @@ re-read it and refresh these copies in the same commit.
 ## Look pass 1 (2026-11-12)
 
 The first iteration on the open half, from an Impeccable and a Taste Skill critique (both
-applied as read-only rubrics). The game now differs from the canvas in look and copy only;
-structure is unchanged. The canvas is not updated; the build is the reference for the look.
+applied as read-only rubrics). Structure is unchanged. Applied to the build and to every
+canvas artboard (canvas version "Look pass 1"), so the two match again.
 
 - Night and panel tokens moved from navy to the brief's teal and plum; secondary text is tinted, not grey
 - Glow only on the board and fireflies: no halos on the title, dots, progress bar or buttons
