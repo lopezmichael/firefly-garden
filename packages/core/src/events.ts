@@ -4,8 +4,9 @@
  * PLAYER_CONFIG from them. Every field the refit needs is here, so the
  * logging never has to be reworked. See docs/references/analytics.md.
  *
- * Events carry no personal data: a random install id the game generates,
- * level ids, counts and durations.
+ * Events carry no names, contact details or device data: a random install id
+ * the game generates, level ids, counts and durations. The install id is still
+ * a persistent pseudonymous identifier; see docs/references/analytics.md.
  */
 import type { NextReason } from './policy.ts';
 
@@ -47,14 +48,35 @@ export type AnalyticsEvent =
 
 export type EventType = AnalyticsEvent['type'];
 
-const REASONS = new Set<string>(['main', 'retry', 'warm-up', 'breather-after-quit', 'breather-after-long', 'breather-after-hints']);
+// Typed against NextReason so the two lists cannot drift apart.
+const REASON_FLAGS = {
+  main: true, retry: true, 'warm-up': true, 'breather-after-quit': true, 'breather-after-long': true, 'breather-after-hints': true,
+} as const satisfies Record<NextReason, true>;
+const REASONS = new Set<string>(Object.keys(REASON_FLAGS));
 const isCount = (v: unknown) => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < 1e9;
-const isSeconds = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v < 86_400;
+/** Durations up to a week (a tab left open for days still logs a valid session_end). */
+const isSeconds = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v < 7 * 86_400;
+/** The install id is random: 16 to 64 hex characters (or a UUID's hex with dashes). */
+const isInstallId = (v: unknown) => typeof v === 'string' && /^[0-9a-f-]{16,64}$/i.test(v);
+/** Timestamps from 2020 to 2100, whole milliseconds. */
+const isTimestamp = (v: unknown) => typeof v === 'number' && Number.isInteger(v) && v > 1_577_836_800_000 && v < 4_102_444_800_000;
+
+const FIELDS: Readonly<Record<string, readonly string[]>> = {
+  session_start: ['platform', 'coins'],
+  session_end: ['seconds'],
+  level_start: ['level', 'reason', 'attempt'],
+  level_end: ['level', 'reason', 'attempt', 'outcome', 'seconds', 'placements', 'undos', 'restarts', 'hints'],
+  hint: ['level', 'source', 'step'],
+  ad: ['kind', 'completed', 'seconds'],
+  coins: ['delta', 'balance', 'why'],
+};
+const BASE_FIELDS = ['v', 'install', 'at', 'session', 'type'];
 const isText = (v: unknown, max = 64) => typeof v === 'string' && v.length > 0 && v.length <= max;
 
 /**
  * Validate an event before it is stored or sent (events are built from game
- * state that came from saved progress, which is untrusted). Returns the
+ * state that came from saved progress, which is untrusted). Unknown fields are
+ * rejected, so a valid event carries exactly the schema's fields. Returns the
  * problems found; empty means valid.
  */
 export function validateEvent(e: unknown): string[] {
@@ -62,8 +84,10 @@ export function validateEvent(e: unknown): string[] {
   const r = e as Record<string, unknown>;
   const p: string[] = [];
   if (r.v !== EVENT_SCHEMA_VERSION) p.push(`v must be ${EVENT_SCHEMA_VERSION}`);
-  if (!isText(r.install)) p.push('install must be a short string');
-  if (typeof r.at !== 'number' || !Number.isFinite(r.at) || r.at <= 0) p.push('at must be a positive timestamp');
+  if (!isInstallId(r.install)) p.push('install must be a random hex id');
+  if (!isTimestamp(r.at)) p.push('at must be a millisecond timestamp');
+  const allowed = new Set([...BASE_FIELDS, ...(FIELDS[String(r.type)] ?? [])]);
+  for (const k of Object.keys(r)) if (!allowed.has(k)) p.push(`unknown field "${k}"`);
   if (!isCount(r.session)) p.push('session must be a count');
   const need = (key: string, ok: (v: unknown) => boolean, what: string) => {
     if (!ok(r[key])) p.push(`${String(r.type)}.${key} must be ${what}`);

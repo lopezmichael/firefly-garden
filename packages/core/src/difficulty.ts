@@ -35,7 +35,14 @@ export const DIFFICULTY_CONFIG = {
    * chapter stays under one (project plan: "under a minute each").
    */
   limits: {
+    /** Absolute ceiling for anything shipped (optional challenge levels included). */
     maxSecondsAnyLevel: 300,
+    /**
+     * Main-path ceiling. A chapter ends on its hardest level, and simulated
+     * newcomers (about 1.4x slower) could not get past 5-minute peaks, so the
+     * main path stays at four minutes.
+     */
+    maxSecondsMainPath: 240,
     /** Tighter limits for particular chapters, by chapter id. */
     chapterMaxSeconds: { c1: 60, c3: 240 } as Readonly<Record<string, number>>,
   },

@@ -10,7 +10,7 @@ import {
   buildBoard, canonicalKey, cellIndex, DIFFICULTY_CONFIG, evaluate, grade, isUnique, measure, parseLevel, type Level,
 } from '../packages/core/src/index.ts';
 
-const { maxSecondsAnyLevel, chapterMaxSeconds } = DIFFICULTY_CONFIG.limits;
+const { maxSecondsAnyLevel, maxSecondsMainPath, chapterMaxSeconds } = DIFFICULTY_CONFIG.limits;
 const seconds = (level: Level) => {
   const board = buildBoard(level);
   return measure(level, board, grade(board)).estimatedSeconds;
@@ -78,7 +78,7 @@ describe('committed levels', () => {
   it('every chapter level fits its chapter time limit', () => {
     const over: string[] = [];
     for (const c of manifest.chapters) {
-      const limit = chapterMaxSeconds[c.id] ?? maxSecondsAnyLevel;
+      const limit = chapterMaxSeconds[c.id] ?? maxSecondsMainPath;
       for (const id of c.levels) {
         const s = seconds(byId.get(id)!);
         if (s > limit) over.push(`${c.id}/${id}: ${s}s over ${limit}s`);
@@ -87,9 +87,10 @@ describe('committed levels', () => {
     expect(over).toEqual([]);
   });
 
-  it('chapter limits stay at 1 minute for chapter 1 and 4 minutes for chapter 3', () => {
+  it('chapter limits stay at 1 minute for chapter 1 and 4 minutes on the rest of the main path', () => {
     expect(chapterMaxSeconds['c1']).toBe(60);
-    expect(chapterMaxSeconds['c3']).toBe(240);
+    expect(chapterMaxSeconds['c3'] ?? maxSecondsMainPath).toBeLessThanOrEqual(240);
+    expect(maxSecondsMainPath).toBeLessThanOrEqual(240);
   });
 
   it('each chapter introduces at most one new tier above its easiest level', () => {

@@ -44,10 +44,14 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
   newcomers than one per ad, and five adds nothing over three.
 
 ### Added (launch pack)
-- Per-chapter generation (`scripts/launch-plan.ts`): 70 chapters in 12 garden areas, 760
-  main-path levels plus a 250-level twist-free reserve for detours (1,010 total, ~440 KB).
-  Twists debut one per chapter in the plan's order (mushrooms ch 7, moonlit ch 13, lanterns
-  ch 19, shaped gardens ch 25), each on easy boards first; chapter 1 opens on T1 boards.
+- Per-chapter generation (`scripts/launch-plan.ts`): 40 chapters in 8 garden areas of 5,
+  430 main-path levels plus a 250-level twist-free reserve for detours (~14 hours of play);
+  more areas arrive as content updates. Each area has its own board shapes and a headline
+  twist or pairing: Rose Bed (techniques), Orchard (L beds, shapes debut), Mushroom Glade,
+  Moon Meadow, Lantern Walk (debuts), Koi Pond (moonlit + mushrooms on ring gardens), Stone
+  Bridge (lanterns + mushrooms), Old Greenhouse (everything). Chapter 1 opens on T1 boards.
+- Main path capped at four minutes per level (`maxSecondsMainPath`): with five-minute peaks,
+  simulated newcomers could not get past chapter 15; with four, 37% do.
 - Generator: `maxHardestSteps` (teaching levels that need the new technique once) and
   `fixedLanterns`; ramp builder: per-chapter `pool`.
 - Report data for the whole pack: per-chapter summary and how far simulated players get
@@ -55,7 +59,8 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 
 ### Added (analytics schema)
 - `AnalyticsEvent` and `validateEvent` (`events.ts`): session, level, hint, ad and coin events
-  with no personal data, validated before storage. `docs/references/analytics.md` maps each
+  with a random install id and no names or device data, validated (unknown fields rejected)
+  before storage. `docs/references/analytics.md` maps each
   Phase 1 model assumption to the events that will measure it.
 
 ### Added (next-level policy)

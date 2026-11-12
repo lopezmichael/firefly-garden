@@ -5,8 +5,15 @@ The schema lives in `packages/core/src/events.ts` (`AnalyticsEvent`,
 analytics (and, if we outgrow portal dashboards, our own pipeline). Phase 4
 uses them to replace the Phase 1 models with measured numbers.
 
-No personal data: a random install id generated on first launch, level ids,
-counts and durations. Every event is validated before it is stored or sent.
+No names, contact details or device data: a random install id generated on
+first launch, level ids, counts and durations. Every event is validated before
+it is stored or sent, unknown fields are rejected, and the outgoing payload is
+built from the schema's fields only.
+
+The install id is still a persistent pseudonymous identifier, which privacy
+rules (GDPR, COPPA-style rules for young players) treat as personal data. Before
+Phase 3, check each portal's consent and opt-out requirements, and remember a
+portal SDK may attach its own user id or IP address on its side.
 
 ## Events
 

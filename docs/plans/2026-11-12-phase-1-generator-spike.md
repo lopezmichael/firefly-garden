@@ -187,7 +187,7 @@ better game.
   82.7% finish (from 78.5%), newcomers 60% (from 53%). The real effect is a Phase 3
   measurement (compare players who were served a breather after a quit with those who were not).
 
-## Launch pack size (target 500 to 1,000 levels)
+## Launch pack size (first sized at 500 to 1,000 levels; launched at ~430 + 250, see above)
 
 - Generation is cheap (252 graded levels in ~2 s), and 1,000 levels is ~400 KB of JSON
   against the 8 MB budget; CI validation of 1,000 levels takes seconds.
@@ -197,10 +197,17 @@ better game.
   duplicate guard: `canonicalKey` now rejects rotations and mirrors of existing levels.
 - Content limits seen so far (few T1 openers, few T3 practice levels) disappear with a
   larger, targeted pool: generate per-chapter specs instead of one census.
-- **Launch pack (2026-11-12):** 70 chapters / 760 main levels + 250 reserve, generated per
-  chapter in ~30 s; every chapter full, 1 disguised duplicate skipped. Simulated players
-  through the whole pack (policy on): 45% reach chapter 20, 30% chapter 40, 17% finish;
-  about 30 hours of play. Difficulty plateaus after ~chapter 20 and no new twist arrives
-  after chapter 25, so later chapters need their own identity (open question to Michael:
-  area identities, more twists/combinations, or launch with ~40 chapters and add areas).
+- **Launch pack (2026-11-12, decided with Michael):** 40 chapters in 8 areas of 5 (430 main
+  levels) + 250 reserve, ~14 hours; more areas as updates. Areas differ by board-shape family
+  and a headline twist or pairing. Main path capped at 4:00 (newcomers hit a wall at 5:00
+  peaks). Simulated: 54% of players reach chapter 20, 34% finish all 40; newcomers 37% reach
+  chapter 15. Peak hint use is below the plan's target (5%) because the opening is gentler.
+
+## Phase 1 status (2026-11-12)
+
+Complete. Gate passed (73% of 8x8+ census levels need T3+). Delivered: technique grader,
+difficulty model v1, generator (shapes, twists, teaching levels), ramp builder with teaching
+levels and debut placement, simulated players and hint economy, ad views, next-level policy,
+analytics schema, and the launch pack. Left for later phases: two-color fireflies, chapter
+flavors and optional challenge chapters, and refitting every model from Phase 3 data.
 

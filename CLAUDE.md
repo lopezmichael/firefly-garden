@@ -79,8 +79,8 @@ about the code today.
 - Hint economy (simulated, `tests/economy.test.ts`): at most 5% of hint requests refused,
   at least 95% of players clear chapter 1, breathers under 5% hint use on average, no level
   above 40% hint use
-- No committed level is estimated over 5:00; chapter 1 levels stay under 1:00 and chapter 3
-  under 4:00 (`DIFFICULTY_CONFIG.limits`)
+- No committed level is estimated over 5:00; main-path levels stay under 4:00 and chapter 1
+  under 1:00 (`DIFFICULTY_CONFIG.limits`)
 
 ## Security, scaled to a client-only game
 

@@ -82,8 +82,9 @@ board renderer (PixiJS), menus (plain DOM) and audio arrive in Phase 2.
 
 ## Data flow (target)
 
-1. `scripts/generate-levels.ts` uses core to build, grade and order levels into `levels/*.json`
-   and writes the report tables to `reports/`.
+1. `scripts/generate-levels.ts` runs the launch plan (`scripts/launch-plan.ts`): it builds,
+   grades and orders each chapter into `levels/launch.json`, fills `levels/reserve.json`, and
+   writes the report tables to `reports/`.
 2. CI re-validates every pack with the exact solver.
 3. The game bundles the packs, rotates each level to fit the screen, and uses `evaluate` for play and `solve` for hints.
 4. Progress goes through `Platform.save/load` and is validated on the way back in.

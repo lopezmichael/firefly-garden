@@ -337,9 +337,9 @@ const chapterRows = chapters.map((c, k) => {
   const has = (m: string) => ls.filter((l) => l.mechanics.includes(m)).length / Math.max(1, ls.length);
   return {
     index: k + 1, id: c.id, title: c.title, area: plan.area, debut: plan.debut ?? '', levels: ls.length, shortfall: c.shortfall,
-    meanScore: ls.reduce((a, l) => a + l.score, 0) / Math.max(1, ls.length), peakScore: Math.max(...ls.map((l) => l.score)),
+    meanScore: ls.reduce((a, l) => a + l.score, 0) / Math.max(1, ls.length), peakScore: Math.max(0, ...ls.map((l) => l.score)),
     minutes: ls.reduce((a, l) => a + l.estimatedSeconds, 0) / 60,
-    maxTier: Math.max(...ls.map((l) => l.tier)), maxArea: Math.max(...ls.map((l) => l.area)),
+    maxTier: Math.max(0, ...ls.map((l) => l.tier)), maxArea: Math.max(0, ...ls.map((l) => l.area)),
     mushrooms: has('mushrooms'), moonlit: has('moonlit'), lanterns: has('lanterns'), shaped: has('shaped'),
   };
 });
@@ -351,6 +351,7 @@ const journey = PLAYER_CONFIG.profiles.map((p, k) =>
 const lastIndexOf = new Map(chapters.map((c) => [c.id, journeyLevels.map((l) => l.chapter).lastIndexOf(c.id)]));
 const journeyRows = chapters.flatMap((c, ci) => {
   const i = lastIndexOf.get(c.id)!;
+  if (i < 0) return [];
   const rows = journey.map((r, k) => ({
     key: `${c.id}|${r.profile}`, index: ci + 1, chapter: c.id, title: c.title, profile: r.profile,
     label: PLAYER_CONFIG.profiles[k]!.label, cleared: r.levels[i]!.solved / r.runs,
@@ -359,6 +360,11 @@ const journeyRows = chapters.flatMap((c, ci) => {
   return [...rows, { key: `${c.id}|all`, index: ci + 1, chapter: c.id, title: c.title, profile: 'all', label: 'Everyone', cleared: all }];
 });
 writeFileSync('reports/dash/journey.json', JSON.stringify(journeyRows));
+writeFileSync('reports/dash/pack.json', JSON.stringify([{
+  key: 'launch', chapters: chapters.length, areas: new Set(plans.map((p) => p.area)).size,
+  mainLevels: launchLevels.length, reserveLevels: reserveLevels.length,
+  hours: chapterRows.reduce((a, c) => a + c.minutes, 0) / 60,
+}]));
 const journeySummary = PLAYER_CONFIG.profiles.map((p, k) => ({
   profile: p.id, minutes: journey[k]!.minutesPerPlayer, adViews: journey[k]!.interstitialsPerPlayer + journey[k]!.rewardedPerPlayer,
 }));
