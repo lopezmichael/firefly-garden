@@ -76,6 +76,24 @@ describe('grade', () => {
 });
 
 describe('measure', () => {
+  it('keeps every score inside its tier band, rising with search effort within the band', () => {
+    const rows: { tier: number; score: number; seconds: number }[] = [];
+    for (const spec of SPECS) {
+      const gen = generate(spec);
+      if (!gen || gen.difficulty.tier === 0) continue;
+      const { tier, score, estimatedSeconds } = gen.difficulty;
+      expect(score, spec.id).toBeGreaterThanOrEqual(25 * tier);
+      expect(score, spec.id).toBeLessThan(25 * (tier + 1));
+      rows.push({ tier, score, seconds: estimatedSeconds });
+    }
+    // Within T2, more estimated time should usually mean a higher score.
+    const t2 = rows.filter((r) => r.tier === 2).sort((a, b) => a.seconds - b.seconds);
+    expect(t2.length).toBeGreaterThan(10);
+    const half = Math.floor(t2.length / 2);
+    const mean = (xs: typeof t2) => xs.reduce((a, r) => a + r.score, 0) / xs.length;
+    expect(mean(t2.slice(half))).toBeGreaterThan(mean(t2.slice(0, half)));
+  });
+
   it('scores harder traces higher and estimates longer solves', () => {
     const easy = generate({ id: 'e', seed: 1, w: 4, h: 4, bushDensity: 0.2, hide: 'none', targetTiers: [1, 2] })!;
     const hard = generate({ id: 'h', seed: 2, w: 8, h: 8, bushDensity: 0.18, hide: 'max', targetTiers: [3, 5] })!;

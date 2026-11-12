@@ -152,8 +152,10 @@ better game.
 - **Length:** the first census had levels estimated up to 9:23. **Decided:** five-minute
   limit on every level, one minute in chapter 1, enforced by the generator and CI.
   After regenerating: longest 4:59, gate still passes (73% of 8x8+ need T3+).
-- **Score resolution:** chapter 1 is flat (all T2, scores 51 to 56). The score needs finer
-  weight inside a tier before the early ramp shows a climb.
+- **Score resolution:** chapter 1 was flat (all T2, scores 51 to 56). **Done:** score v1 bands
+  by tier and places each level inside its band by log search effort. T2 now spans 50 to 74,
+  distinct scores went from 40 to 75, and chapter 1 climbs 50 to 59 after its T1 opener.
+  Chapter 3 capped at four minutes (peak now 3:55).
 - **Review (2026-11-12):** grader fuzzed on ~29,000 boards in both technique orders with zero
   unsound steps. Fixed: a repair lantern could land on a moonlit tile (latent; no current spec
   combines them), and the grader now needs every tile decided before calling a board solved.

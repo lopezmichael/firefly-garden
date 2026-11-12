@@ -32,6 +32,10 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
   (`twists.mushrooms: [row, col, n]`). The toadstool and sporecap experiments are removed.
 - Shipped levels are capped at an estimated five minutes, and chapter 1 at one minute
   (`DIFFICULTY_CONFIG.limits`), enforced by the generator, the ramp builder and CI.
+  Chapter 3 is capped at four minutes.
+- Difficulty score v1: the hardest tier picks a 25-point band and search effort places the
+  level inside it on a log scale, so levels of the same tier are told apart (T2 now spans
+  50 to 74 instead of 51 to 56).
 
 ### Security
 - `parseLevel` caps list lengths, mask row width and text fields before any per-item work.

@@ -3,18 +3,23 @@ import type { Grade } from './grader.ts';
 import type { Level } from './types.ts';
 
 /**
- * Difficulty model v0. Difficulty comes from which deductions a level forces
- * (the grader trace), with board size only as a tie-breaker. Every weight
+ * Difficulty model v1. Difficulty comes from which deductions a level forces
+ * (the grader trace). The hardest tier picks a band of the score; how much
+ * searching the trace demands places the level inside that band. Every weight
  * lives in DIFFICULTY_CONFIG so Phase 4 can refit them to real solve times
  * and quit rates without touching the code that uses them.
  */
 export const DIFFICULTY_CONFIG = {
   score: {
-    perTier: 25, // hardest tier dominates
-    perT3PlusStep: 4,
-    perT4PlusStep: 6, // on top of the T3+ weight
-    perNarrowStep: 1.5, // a T2+ step that was the only move available
-    perPathCell: 0.1,
+    /** Each tier owns a band of this width: tier 2 scores from 50 up to (not reaching) 75. */
+    perTier: 25,
+    /**
+     * Per tier, the search seconds (time model without taps) that map to the
+     * bottom and top of its band, on a log scale: doubling the search moves a
+     * level the same distance anywhere in the band. Set from the spread of
+     * each tier in the census (2026-11-12) so every band uses its full width.
+     */
+    searchRange: [[1, 1], [15, 45], [25, 210], [50, 260], [45, 290], [100, 300]] as readonly (readonly [number, number])[],
   },
   time: {
     /** Seconds to find one deduction of each tier when it is the only one on the board. */
@@ -31,7 +36,8 @@ export const DIFFICULTY_CONFIG = {
    */
   limits: {
     maxSecondsAnyLevel: 300,
-    maxSecondsChapter1: 60,
+    /** Tighter limits for particular chapters, by chapter id. */
+    chapterMaxSeconds: { c1: 60, c3: 240 } as Readonly<Record<string, number>>,
   },
 } as const;
 
@@ -89,15 +95,18 @@ export function measure(level: Level, board: Board, g: Grade): Difficulty {
     mechanics,
   };
 
-  const s = cfg.score;
-  const score = Math.round(
-    s.perTier * g.maxTier + s.perT3PlusStep * t3PlusSteps + s.perT4PlusStep * t4PlusSteps
-    + s.perNarrowStep * narrowSteps + s.perPathCell * board.paths.length,
-  );
-
   const t = cfg.time;
-  let seconds = features.fireflies * t.secondsPerTap;
-  for (const st of steps) seconds += t.secondsPerTier[st.tier]! * (1 + t.spread / (st.width + 1));
+  let search = 0;
+  for (const st of steps) search += t.secondsPerTier[st.tier]! * (1 + t.spread / (st.width + 1));
+  const seconds = search + features.fireflies * t.secondsPerTap;
+
+  // Band by tier, then a log-scale position inside it, clamped so a level
+  // never leaves its tier's band.
+  const s = cfg.score;
+  const [lo, hi] = s.searchRange[Math.min(g.maxTier, s.searchRange.length - 1)]!;
+  const pos = g.maxTier === 0 || search <= lo ? 0 : Math.min(1, Math.log(search / lo) / Math.log(hi / lo));
+  const within = (s.perTier - 1) * pos;
+  const score = Math.round(s.perTier * g.maxTier + within);
 
   return { features, tier: g.maxTier, score, estimatedSeconds: Math.round(seconds) };
 }

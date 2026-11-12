@@ -97,10 +97,12 @@ for (const size of SIZES) {
 // variants no longer exist in core, so it is not regenerated.
 
 // 3. Ramp: the first three chapters, built from the census pool.
+const chapterLimit = (id: string) =>
+  DIFFICULTY_CONFIG.limits.chapterMaxSeconds[id] ?? DIFFICULTY_CONFIG.limits.maxSecondsAnyLevel;
 const CHAPTERS: ChapterSpec[] = [
-  { id: 'c1', title: 'The Rose Bed', count: 10, tiers: [1, 2], areas: [16, 25], maxSeconds: DIFFICULTY_CONFIG.limits.maxSecondsChapter1 },
-  { id: 'c2', title: 'The Orchard', count: 12, tiers: [1, 3], areas: [25, 49] },
-  { id: 'c3', title: 'The Koi Pond', count: 12, tiers: [2, 4], areas: [36, 100] },
+  { id: 'c1', title: 'The Rose Bed', count: 10, tiers: [1, 2], areas: [16, 25], maxSeconds: chapterLimit('c1') },
+  { id: 'c2', title: 'The Orchard', count: 12, tiers: [1, 3], areas: [25, 49], maxSeconds: chapterLimit('c2') },
+  { id: 'c3', title: 'The Koi Pond', count: 12, tiers: [2, 4], areas: [36, 100], maxSeconds: chapterLimit('c3') },
 ];
 const pool: RampLevel[] = census.map(({ row: r }) => ({
   id: r.id, tier: r.tier, score: r.score, estimatedSeconds: r.estimatedSeconds, area: r.area, mechanics: [],

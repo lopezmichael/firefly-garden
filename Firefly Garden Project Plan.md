@@ -181,9 +181,9 @@ It solves the way a person would, always trying the simplest technique first, an
 | T4 | One-step lookahead | Placing here would leave some tile impossible to light: never place here |
 | T5 | Deep trial | Needs a guess followed several steps ahead; reserve for late, optional "expert" gardens |
 
-**Difficulty score** = the hardest technique required (dominant), plus how many times T3 or higher was needed, plus board size and step count as tie-breakers. The eight-neighbor rule makes bushes interact more than in standard Akari; the Phase 1 grader confirmed it, so overlapping bushes moved to T3, ahead of lookahead (changed 2026-11-12).
+**Difficulty score** = the hardest technique required picks a band (25 points per tier); search effort places the level inside its band, so levels of the same tier are still told apart (score v1, 2026-11-12). The eight-neighbor rule makes bushes interact more than in standard Akari; the Phase 1 grader confirmed it, so overlapping bushes moved to T3, ahead of lookahead (changed 2026-11-12).
 
-**Length limit.** No shipped level is estimated over five minutes, and the first chapter stays under one; the generator and CI enforce both (`DIFFICULTY_CONFIG.limits`).
+**Length limit.** No shipped level is estimated over five minutes, the first chapter stays under one and chapter 3 under four; the generator and CI enforce both (`DIFFICULTY_CONFIG.limits`).
 
 **The ramp**
 
