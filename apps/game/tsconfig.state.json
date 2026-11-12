@@ -1,0 +1,10 @@
+{
+  // Game state compiles without DOM or Node types, like packages/core: the
+  // compiler, not just a ratchet, keeps browser globals out of it.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "types": []
+  },
+  "include": ["src/state"]
+}

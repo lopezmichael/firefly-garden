@@ -74,12 +74,25 @@ a naive enumerator on 300 random boards with every twist
 
 ## apps/game
 
-Phase 0 is a placeholder page that loads core and the platform adapter. The
-board renderer (PixiJS), menus (plain DOM) and audio arrive in Phase 2.
+Plain DOM for the screens, PixiJS for the board, one controller between them.
+The look follows the Phase 2 design baseline (`docs/design/phase-2/`).
 
-- `src/platform/platform.ts`: the `Platform` interface. The only door to SDKs.
+| Folder | Holds | May import |
+| --- | --- | --- |
+| `src/state/` | Level catalog (`catalog.ts`), one play with undo, reset, hints and active time (`play.ts`), coins and hint bank (`wallet.ts`), progress and the next-level policy (`session.ts`), status-card wording (`status.ts`) | `@firefly/core` only, no browser globals (ratchet) |
+| `src/view/` | Pure layout math: bands, board fit, orientation (`layout.ts`); the PixiJS board (`board.ts`); CSS tokens read into a Pixi palette (`theme.ts`) | `state/`, `pixi.js` |
+| `src/ui/` | The play screen's DOM (`screen.ts`, `game.css`) and the controller (`app.ts`) | `state/`, `view/`, `platform/` |
+| `src/platform/` | The `Platform` interface and adapters; the only door to SDKs (ratchet) | |
+
+- **Layout follows the screen's shape** (`bandFor`): tall (phones in portrait), square
+  (iPhone Duo, tablets), wide (landscape, desktop). The board picks its rotation when a level
+  starts and keeps it through a resize or fold unless cells would drop under 44 px.
+- **The board draws, the state decides.** `BoardView.render` takes a `BoardState` (evaluation,
+  locked cells, hint outlines) and reports taps as canonical cell indices, so rotation never
+  reaches game state, saves or events.
+- **Colors live only in `src/theme.css`.** The board reads them through `readPalette`; a
+  ratchet rejects color literals anywhere else in `apps/game/src`.
 - `src/platform/local.ts`: development adapter (no ads, localStorage saves).
-- `src/theme.css`: design tokens. Placeholder → painted art is a theme change.
 
 ## Data flow (target)
 

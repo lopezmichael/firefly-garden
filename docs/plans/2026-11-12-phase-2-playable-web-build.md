@@ -8,8 +8,9 @@ the first real data.
 
 **Gate:** friends play 20+ levels without being asked.
 
-**Status:** reviewed 2026-11-12, all decisions made. A visual design artifact is reviewed
-before any visual code (Michael, 2026-11-12); core and state work proceed meanwhile.
+**Status:** all decisions made. Design approved 2026-11-12 as the Phase 2 baseline
+(structure and behaviour locked, look open): [`docs/design/phase-2/`](../design/phase-2/README.md).
+Milestone 1 in progress.
 
 ## Scope
 
@@ -184,17 +185,17 @@ the same transitions are tested in Node and in Playwright.
 
 ### B. Game state (`apps/game/src/state`, tested in `apps/game/test`)
 
-- [ ] Level catalog: parse chapters 1 to 3 and the reserve with `parseLevel` at startup,
+- [x] Level catalog: parse chapters 1 to 3 and the reserve with `parseLevel` at startup,
       build boards lazily, main path from `levels/manifest.json`.
-- [ ] Play state: toggle, undo, reset (both never remove locked cells), solved via
+- [x] Play state: toggle, undo, reset (both never remove locked cells), solved via
       `evaluate`, counters for `level_end` (placements, undos, restarts, hints), active
       seconds that pause on hidden tab, menus and ads.
-- [ ] Wallet and hint bank driven by `PLAYER_CONFIG` economy: coins only change through
+- [x] Wallet and hint bank driven by `PLAYER_CONFIG` economy: coins only change through
       one function that also emits the `coins` event; hints from the bank first, then coins
       or an ad; ad hints credited only after `showRewarded()` resolves `true`.
-- [ ] Orientation: pick the `transformLevel` that shows the board biggest for the current
+- [x] Orientation: pick the `transformLevel` that shows the board biggest for the current
       viewport; map taps back to canonical cells, so saves and events never depend on it.
-- [ ] Next level: call `nextLevel` after every solve or quit; after chapter 3, a
+- [x] Next level: call `nextLevel` after every solve or quit; after chapter 3, a
       "more gardens soon" screen.
 
 ### C. Saves (`state/save.ts`)
@@ -214,7 +215,7 @@ the same transitions are tested in Node and in Playwright.
 
 ### D. Board renderer and juice (`view/`)
 
-- [ ] Pixi app sized to the board area, devicePixelRatio-aware, paused when hidden.
+- [x] Pixi app sized to the board area, devicePixelRatio-aware, paused when hidden.
 - [ ] 2.5D board: raised tiles with a front edge, slight downward tilt (vertical squash
       plus front edges, no 3D camera), bushes standing off the board with soft shadows,
       dot rows that fill as fireflies land.
@@ -231,7 +232,7 @@ the same transitions are tested in Node and in Playwright.
 - [ ] **Hint fireflies:** gold ring and a small sparkle, distinct from player fireflies and
       lanterns; the `because` cells pulse briefly; a removal hint lifts the wrong firefly
       away visibly. A tap on a locked firefly gives a small "locked" wiggle, nothing else.
-- [ ] Every color from `theme.css` tokens (read once into a Pixi palette); new tokens added
+- [x] Every color from `theme.css` tokens (read once into a Pixi palette); new tokens added
       there, none hardcoded (ratchet).
 - [ ] Performance: object pools, a particle cap, an fps readout in dev builds; target
       60 fps at 4x CPU throttling in Chromium.
@@ -288,8 +289,8 @@ the same transitions are tested in Node and in Playwright.
 - [ ] Screenshots for review: 390x844, 360x740, 844x390, 1280x720, iPhone Duo inner
       626x890 and 890x626, outer 470x670; reduced motion on; each juice moment; a short
       clip of a solve; the fold/unfold resize test.
-- [ ] Bundle stays well under 8 MB (expect ~1 MB with Pixi and fonts).
-- [ ] New ratchets in `tests/ratchets.test.ts`:
+- [x] Bundle stays well under 8 MB (expect ~1 MB with Pixi and fonts).
+- [x] New ratchets in `tests/ratchets.test.ts`:
       - `apps/game/src/state` imports only `@firefly/core` and itself
       - no color literals (`#rrggbb`, `0xrrggbb`, `rgb(`) in `apps/game/src` outside `theme.css`
       - economy numbers appear only in `PLAYER_CONFIG` (game reads, never restates)
@@ -311,6 +312,10 @@ Each milestone ends with typecheck, tests, build, screenshots and a commit (when
 
 1. **Playable and plain:** A (locked cells, grader start, hints), B, the board drawn with
    flat shapes, tap to place, solve, auto-advance through chapter 1. Screenshot.
+   *Done 2026-11-12:* built straight in the approved design's look (tiles, bushes, fireflies,
+   hint ring, reason outlines, ruled-out marks, basic bob/drop/flutter); hints pay directly
+   from coins until the hint sheet lands in milestone 2. Played in Chromium at all eight
+   target sizes, including a fold from 470x670 to 626x890 mid-level.
 2. **Economy and memory:** wallet, hint bank, hint dialog, rewarded-ad flow (decision 3), saves with
    validation, the policy (A's compact facts and `seconds`), analytics log.
 3. **Look and juice:** the mockup look, every juice item, audio, reduced motion, both
