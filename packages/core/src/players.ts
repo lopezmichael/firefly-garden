@@ -98,6 +98,8 @@ export const PLAYER_CONFIG = {
     midgameMinGapSeconds: 180,
     /** Seconds between levels (celebration, auto-advance). */
     levelTransitionSeconds: 5,
+    /** Seconds a midgame ad takes. */
+    midgameSeconds: 15,
   },
   /** Economies compared in the report's sweep. */
   sweep: {
@@ -206,6 +208,7 @@ export function simulate(levels: readonly SimLevel[], profile: PlayerProfile, ec
           if (completed > ads.midgameAfterLevels && clock - lastMidgame >= ads.midgameMinGapSeconds) {
             t.interstitials++;
             lastMidgame = clock;
+            clock += ads.midgameSeconds;
           }
           break;
         }

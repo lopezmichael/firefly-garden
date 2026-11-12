@@ -176,7 +176,7 @@ writeFileSync('reports/dash/players.json', JSON.stringify(simLevels.flatMap((l, 
   }];
 })));
 /** Population-weighted summary of one economy across every profile. */
-function summarize(economy: Economy) {
+function summarize(economy: Economy, canBeShipped = true) {
   const res = runAll(economy);
   let coin = 0, ad = 0, refused = 0, banked = 0, finish = 0, interstitials = 0, rewarded = 0, minutes = 0;
   res.forEach((r, k) => {
@@ -196,7 +196,7 @@ function summarize(economy: Economy) {
   const s = PLAYER_CONFIG.economy;
   return {
     ...economy,
-    shipped: economy.startingCoins === s.startingCoins && economy.coinsPerSolve === s.coinsPerSolve
+    shipped: canBeShipped && economy.startingCoins === s.startingCoins && economy.coinsPerSolve === s.coinsPerSolve
       && economy.hintCost === s.hintCost && economy.hintsPerAd === s.hintsPerAd,
     finish, newcomerFinish: res[0]!.finished / res[0]!.runs,
     coinShare: asked ? coin / asked : 0, adShare: asked ? ad / asked : 0,
@@ -220,7 +220,8 @@ for (const startingCoins of PLAYER_CONFIG.sweep.startingCoins) {
 const TIGHT: Omit<Economy, 'hintsPerAd'> = { startingCoins: 30, coinsPerSolve: 10, hintCost: 60 };
 for (const [name, base] of [['shipped', PLAYER_CONFIG.economy], ['tight', TIGHT]] as const) {
   for (const n of PLAYER_CONFIG.sweep.hintsPerAd) {
-    economyRows.push({ key: `perAd-${name}-${n}`, group: `perAd-${name}`, ...summarize({ ...base, hintsPerAd: n }) });
+    // Only the sweep row carries the shipped flag, so it is unique across the file.
+    economyRows.push({ key: `perAd-${name}-${n}`, group: `perAd-${name}`, ...summarize({ ...base, hintsPerAd: n }, false) });
   }
 }
 // Ad views per player under the shipped economy, by kind of player.

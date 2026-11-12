@@ -37,7 +37,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
   18-economy sweep, almost no refused hints). Economy guardrails in `tests/economy.test.ts`.
 - `reports/dash/players.json` and `economy.json` feed the report's new sections.
 - Ad views per player in the simulation: midgame ads paced as in the plan (none in the first
-  five levels, at most one per three minutes) and rewarded hint ads. About 13 midgame ads per
+  five levels, at most one per three minutes) and rewarded hint ads. About 14 midgame ads per
   player through chapter 3 against 0.01 rewarded hint ads; a tight economy loses ad views
   overall because fewer players keep playing (`reports/dash/ads.json`).
 - A rewarded ad grants 3 hints (one now, two saved); at a tight economy this keeps more

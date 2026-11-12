@@ -37,7 +37,7 @@ describe('hint economy (simulated, shipped economy)', () => {
     results.forEach((r, k) => {
       const w = PLAYER_CONFIG.profiles[k]!.share;
       for (const o of r.levels) {
-        asked += (w * (o.coinHints + o.adHints + o.refusedHints)) / r.runs;
+        asked += (w * (o.coinHints + o.adHints + o.bankedHints + o.refusedHints)) / r.runs;
         refused += (w * o.refusedHints) / r.runs;
       }
     });

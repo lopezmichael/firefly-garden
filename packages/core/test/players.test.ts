@@ -65,12 +65,14 @@ describe('simulate', () => {
     const three = simulate(lv, p, { ...broke, hintsPerAd: 3 }, 300, 21);
     const sum = (r: typeof one, f: (o: (typeof one.levels)[number]) => number) => r.levels.reduce((a, o) => a + f(o), 0);
     expect(sum(three, (o) => o.bankedHints)).toBeGreaterThan(0);
+    // Each ad funds at most hintsPerAd - 1 saved hints: the bundle is spent, not endless.
+    expect(sum(three, (o) => o.bankedHints)).toBeLessThanOrEqual(2 * sum(three, (o) => o.adHints));
     expect(three.rewardedPerPlayer).toBeLessThan(one.rewardedPerPlayer * 0.6);
     expect(sum(one, (o) => o.bankedHints)).toBe(0);
   });
 
   it('paces midgame ads: none in the first five levels, then at most one per three minutes', () => {
-    // Quick levels (about 10 s each): 30 levels take ~7.5 minutes after the first five.
+    // Quick levels (a few seconds each, plus transitions and midgame ads).
     const lv = Array.from({ length: 35 }, (_, i) => level(`q${i}`, [1]));
     const r = simulate(lv, profile({ skill: 5 }), economy, 50, 22);
     expect(r.levels.slice(0, 5).every((o) => o.interstitials === 0)).toBe(true);
