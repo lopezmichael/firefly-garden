@@ -69,7 +69,7 @@ describe('grade', () => {
       const gen = generate(spec);
       if (gen) for (const st of gen.grade.steps) used.add(st.technique);
     }
-    for (const t of ['T1-satisfied', 'T1-needs-all', 'T2-one-source', 'T2-bush-room', 'T4-lookahead']) {
+    for (const t of ['T1-satisfied', 'T1-needs-all', 'T2-one-source', 'T2-bush-room', 'T3-overlap', 'T4-lookahead']) {
       expect(used, t).toContain(t);
     }
   });

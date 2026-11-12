@@ -41,7 +41,8 @@ and records the trace. Kept separate from the exact solver.
 - [x] `Technique` interface: `{ id, tier, mechanic, apply(state) → Deduction[] }`.
       Techniques are pluggable, so each twist can register its own.
 - [x] Base techniques from the plan: T1 bush bookkeeping, T2 only one light source,
-      T3 one-step lookahead (contradiction), T4 overlapping bushes, T5 deep trial
+      T3 overlapping bushes, T4 one-step lookahead (swapped from the plan's order on
+      2026-11-12), T5 deep trial, plus T2 "bush room"
 - [ ] Twist techniques, tagged by mechanic, e.g. lantern exclusion (T1), moonlit
       "doesn't need light" reads (T2), pond/neck region splitting (T3), shape-forced
       placements at narrow necks (T2). The grader tells us which ones actually matter.

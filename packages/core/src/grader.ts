@@ -297,7 +297,7 @@ const overlap: Finder = (board, s) => {
       // at most what either still needs.
       const lo = Math.max(0, needA - aOnly.length, needB - bOnly.length);
       const hi = Math.min(needA, needB, shared.length);
-      if (lo > hi) continue; // contradiction; T3 or the exact solver will see it
+      if (lo > hi) continue; // contradiction; lookahead (T4) or the exact solver will see it
       const because = [a, b];
       const all = (cells: number[], value: 'firefly' | 'empty') => {
         for (const c of cells) out.push({ technique: 'T3-overlap', cell: c, value, because });
@@ -313,7 +313,7 @@ const overlap: Finder = (board, s) => {
   return out;
 };
 
-/** Apply T1, T2 and T4 to a fixpoint. False if a placement fails along the way. */
+/** Apply T1, T2 and T3 (overlap) to a fixpoint. False if a placement fails along the way. */
 function settleWithBasics(board: Board, s: State, budget = 60): boolean {
   for (let round = 0; round < budget; round++) {
     let ds = t1(board, s);

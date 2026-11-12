@@ -61,6 +61,16 @@ describe('generate', () => {
     }
   });
 
+  it('stops hiding clues before crossing maxSeconds, instead of discarding the level', () => {
+    const spec = { id: 'cap', seed: 9002, w: 9, h: 9, bushDensity: 0.16, hide: 'max' as const };
+    const free = generate(spec)!;
+    const capped = generate({ ...spec, maxSeconds: 395 })!;
+    expect(free.difficulty.estimatedSeconds).toBeGreaterThan(395);
+    expect(capped.attempts).toBe(free.attempts); // same board, not a retry
+    expect(capped.difficulty.estimatedSeconds).toBeLessThanOrEqual(395);
+    expect(capped.difficulty.features.hiddenBushes).toBeLessThan(free.difficulty.features.hiddenBushes);
+  });
+
   it('respects maxSeconds', () => {
     for (let i = 0; i < 6; i++) {
       const gen = generate({ id: `ms${i}`, seed: 600 + i, w: 10, h: 10, bushDensity: 0.16, hide: 'max', maxSeconds: 150 });
