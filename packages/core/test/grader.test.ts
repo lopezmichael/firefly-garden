@@ -76,6 +76,24 @@ describe('grade', () => {
 });
 
 describe('measure', () => {
+  // Fake T2 traces: each step costs secondsPerTier[2] × (1 + spread / (width + 1)) ≈ 4 s
+  // when the width is huge, so `n` steps give about 4n seconds of search.
+  const board = buildBoard({ id: 'm', w: 3, h: 1, mask: ['###'], bushes: [[0, 1, 2]] });
+  const level: Level = { id: 'm', w: 3, h: 1, mask: ['###'], bushes: [[0, 1, 2]] };
+  const fakeT2 = (n: number) => ({
+    solved: true, maxTier: 2, tierCounts: [0, 0, n, 0, 0, 0], fireflies: [],
+    steps: Array.from({ length: n }, () => ({ technique: 'T2-one-source' as const, tier: 2, cell: 0, value: 'firefly' as const, width: 1e9, because: [] })),
+  });
+
+  it('puts a level with less search than its tier floor at the bottom of the band', () => {
+    expect(measure(level, board, fakeT2(2)).score).toBe(50); // ~8 s, below the T2 floor of 25 s
+  });
+
+  it('places levels on a log scale: the geometric middle of the range is mid-band', () => {
+    // T2 range is 25..210 s; its geometric middle is ~72 s (18 steps). Linear would give 56.
+    expect(measure(level, board, fakeT2(18)).score).toBe(62);
+  });
+
   it('keeps every score inside its tier band, rising with search effort within the band', () => {
     const rows: { tier: number; score: number; seconds: number }[] = [];
     for (const spec of SPECS) {
