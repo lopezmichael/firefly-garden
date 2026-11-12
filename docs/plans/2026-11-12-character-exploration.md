@@ -112,9 +112,17 @@ plus mark), the jar with its slots, one button, one sheet, and one full tall-pho
       (three shades, a bud of it, one with a leaf, each turned and sized differently); each happy
       bush picks three by board position so a garden always looks the same. Hint marker: the
       ground ring sat too close to the tile's bottom edge; options A (dashed halo at body height
-      plus the small seal), B (bigger corner seal), C (red knot on the tail); A on the board,
-      waiting for Michael's pick.
-- [ ] **Checkpoint B:** Michael picks a direction or a blend.
+      plus the small seal), B (bigger corner seal), C (red knot on the tail); **Michael chose A.**
+- [x] **Checkpoint B passed (2026-11-12):** ink and wash, as locked across rounds 3 and 4, is the
+      direction. Rounds 1 to 4 stay on the canvas as history.
+- [x] **Checkpoint B:** Michael picks a direction or a blend.
+
+### 3b. Design elements in the locked style
+
+- [x] Components board (2026-11-12): every remaining board state (conflict, too many, ruled
+      out, lit twice, no-number bush, wants-none bush, hint reason outline, solve moment) and the
+      icon set (undo, reset, hint, settings, sound on/off, map, next, close, locked, motion, play
+      log) plus the coin, all in ink line on a 24 px grid. Waiting for Michael's review.
 
 ### 4. Full screen set, chosen direction (canvas row 3)
 
