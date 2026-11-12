@@ -96,6 +96,15 @@ locked hint firefly behaves like a lantern for that play (fixed, counts, can
 conflict), so `canPlace` must refuse it; this needs a per-play "locked" set
 alongside the level's lanterns when the game is built.
 
+**Rules for the game build (from the Phase 1 security review):**
+- Saved progress stores the locked hint cells per level and the banked hint count, and
+  a load validates both like `parseLevel` does: a locked cell must be a cell of the
+  level's unique solution, and the bank is a small non-negative integer. A corrupt or
+  edited save must never lock wrong cells or grant unlimited hints.
+- Undo and reset never remove a locked hint firefly; a paid hint is never lost.
+- Hints are credited only after `Platform.showRewarded()` resolves `true` (the ad
+  finished). A failed or skipped ad credits nothing and charges nothing.
+
 ## Not yet implemented
 
 - **Two-color fireflies** (late twist): needs a color per firefly and per-color
