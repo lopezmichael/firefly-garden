@@ -54,3 +54,9 @@ status card (tap to release a firefly, which flies out of the jar to the tile; t
 call it back) and a storyboard with the release timing, the jar's states and two open decisions:
 whether the jar caps placements (recommended) and where the jar lives (status card proposed, top
 bar the alternative). Both change the locked layout and wait for Michael's sign-off.
+
+**Decided (Michael, 2026-11-12):** the jar caps placements (no more fireflies than it holds; a tap
+with an empty jar shakes it and places nothing), and it lives in the status card. Open: how the
+count reads at a glance. The jar's dots can't be counted past about four, so the canvas board
+"how to show the count" compares A (jar with a number), B (jar plus a row of one slot per firefly,
+recommended) and C (a lantern tube: the slot row as the container).

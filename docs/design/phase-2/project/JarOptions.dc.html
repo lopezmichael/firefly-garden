@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Firefly Garden · jar count options</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&amp;family=Nunito:wght@600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#0C1A22}
+</style>
+</helmet>
+<div style="width: 1240px; height: 700px; box-sizing: border-box; background: linear-gradient(180deg, #0C1A22 0%, #13252C 55%, #2A1B26 100%); color: #F3EEDC; font-family: 'Nunito', system-ui, sans-serif; padding: 36px 40px; display: flex; flex-direction: column; gap: 20px">
+  <div style="display: flex; justify-content: space-between; align-items: baseline">
+    <h1 style="margin: 0; font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 30px; color: #FFE7A3">How many are left?</h1>
+    <span style="font-size: 15px; color: #B3C6BD">Three ways to show the count in the status card. Each column: 5 of 7 left, then all out.</span>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; flex: 1; min-height: 0">
+    <sc-for list="{{options}}" as="o" hint-placeholder-count="3">
+      <div style="background: rgba(18,33,37,0.7); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: {{o.ring}}">
+        <div style="display: flex; align-items: baseline; gap: 8px">
+          <span style="font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 20px; color: #F2C66D">{{o.letter}}</span>
+          <span style="font-weight: 800; font-size: 17px">{{o.name}}</span>
+          <span style="margin-left: auto; font-size: 13px; font-weight: 800; color: {{o.tagColor}}">{{o.tag}}</span>
+        </div>
+
+        <sc-for list="{{o.cards}}" as="c" hint-placeholder-count="2">
+          <div style="background: rgba(27,44,48,0.95); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px">
+            <div style="display: flex; align-items: center; gap: 12px">
+              <sc-if value="{{o.showJar}}" hint-placeholder-val="{{true}}">
+                <div style="position: relative; width: 44px; height: 56px; flex-shrink: 0">
+                  <svg width="44" height="56" viewBox="0 0 64 80" aria-hidden="true" style="position: absolute; inset: 0">
+                    <path d="M18 18 h28 v6 c8 4 12 12 12 22 v18 c0 8 -6 13 -14 13 h-24 c-8 0 -14 -5 -14 -13 v-18 c0 -10 4 -18 12 -22 z" fill="#CDE6DF" fill-opacity="0.16" stroke="#CDE6DF" stroke-opacity="0.75" stroke-width="2.5"></path>
+                    <rect x="16" y="9" width="32" height="10" rx="3" fill="#B8862B"></rect>
+                  </svg>
+                  <sc-for list="{{c.jarDots}}" as="d" hint-placeholder-count="3">
+                    <span aria-hidden="true" style="position: absolute; left: {{d.l}}px; top: {{d.t}}px; width: 6px; height: 6px; border-radius: 999px; background: #FFF3C4; box-shadow: 0 0 6px 3px rgba(255,231,163,0.45)"></span>
+                  </sc-for>
+                  <sc-if value="{{o.badge}}" hint-placeholder-val="{{false}}">
+                    <div style="position: absolute; right: -8px; bottom: -4px; min-width: 22px; height: 22px; padding: 0 5px; box-sizing: border-box; border-radius: 999px; background: {{c.badgeBg}}; color: {{c.badgeFg}}; font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center">{{c.left}}</div>
+                  </sc-if>
+                </div>
+              </sc-if>
+              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+                <span style="font-size: 13px; font-weight: 700; color: #B3C6BD">{{c.line}}</span>
+                <sc-if value="{{o.showSlots}}" hint-placeholder-val="{{true}}">
+                  <div style="display: flex; gap: 5px; align-items: center; padding: {{o.tubePad}}; border-radius: 999px; border: {{o.tubeBorder}}; background: {{o.tubeBg}}">
+                    <sc-for list="{{c.slots}}" as="s" hint-placeholder-count="7">
+                      <span style="width: 16px; height: 16px; border-radius: 999px; box-sizing: border-box; border: 2px solid {{s.ring}}; background: {{s.fill}}; box-shadow: {{s.glow}}"></span>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+            <span style="font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 16px; color: #F3EEDC">{{c.title}}</span>
+          </div>
+        </sc-for>
+
+        <div style="display: flex; flex-direction: column; gap: 6px; margin-top: auto">
+          <sc-for list="{{o.notes}}" as="n" hint-placeholder-count="3">
+            <span style="font-size: 14px; line-height: 1.4; color: {{n.color}}">{{n.text}}</span>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1240,"height":700}}'>
+var TOTAL = 7;
+var SLOTS = [[17, 42], [27, 44], [22, 34], [14, 32], [30, 33], [19, 24], [27, 23]];
+function card(left) {
+  var slots = [];
+  for (var i = 0; i < TOTAL; i++) {
+    var on = i < left;
+    slots.push({ key: String(i), ring: on ? "#F2C66D" : "#33494B", fill: on ? "#FFF3C4" : "transparent", glow: on ? "0 0 8px 2px rgba(255,231,163,0.55)" : "none" });
+  }
+  return {
+    key: String(left), left: left, slots: slots,
+    jarDots: SLOTS.slice(0, left).map(function (p, i) { return { key: String(i), l: p[0] - 3, t: p[1] - 3 }; }),
+    badgeBg: left === 0 ? "#33494B" : "#F2C66D", badgeFg: left === 0 ? "#F3EEDC" : "#2A1E08",
+    line: left === 0 ? "All 7 fireflies are out" : left + " of 7 fireflies left",
+    title: left === 0 ? "The garden isn’t glowing yet" : "3 path tiles still dark"
+  };
+}
+class Component extends DCLogic {
+  renderVals() {
+    var cards = [card(5), card(0)];
+    return {
+      options: [
+        { key: "a", letter: "A", name: "Jar with a number", tag: "current mock-up", tagColor: "#B3C6BD", ring: "none",
+          showJar: true, badge: true, showSlots: false, tubePad: "0", tubeBorder: "0", tubeBg: "transparent", cards: cards,
+          notes: [{ key: "1", color: "#CDD8CF", text: "Charming, and the flight has an obvious source." },
+                  { key: "2", color: "#FFB4B4", text: "The dots can’t be counted past about four, so the badge does all the work; the jar is decoration." }] },
+        { key: "b", letter: "B", name: "Jar and a slot row", tag: "recommended", tagColor: "#F2C66D", ring: "inset 0 0 0 2px #F2C66D",
+          showJar: true, badge: false, showSlots: true, tubePad: "0", tubeBorder: "0", tubeBg: "transparent", cards: cards,
+          notes: [{ key: "1", color: "#CDD8CF", text: "One slot per firefly: “5 lit, 2 empty” reads at a glance, no counting, up to 12 slots." },
+                  { key: "2", color: "#CDD8CF", text: "The firefly still flies out of the jar; a slot goes dark as it leaves and relights when one is called back." },
+                  { key: "3", color: "#CDD8CF", text: "Takes the old progress bar’s place, so the card gets simpler." }] },
+        { key: "c", letter: "C", name: "Lantern tube", tag: "tidiest", tagColor: "#B3C6BD", ring: "none",
+          showJar: false, badge: false, showSlots: true, tubePad: "5px 8px", tubeBorder: "2px solid rgba(205,230,223,0.6)", tubeBg: "rgba(205,230,223,0.08)", cards: cards,
+          notes: [{ key: "1", color: "#CDD8CF", text: "The slot row is the glass container: one long tube with a compartment per firefly." },
+                  { key: "2", color: "#CDD8CF", text: "Exact and compact; the flight starts from the slot that empties." },
+                  { key: "3", color: "#FFB4B4", text: "Loses the jar as a character, and the cork-pop moment with it." }] }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

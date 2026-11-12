@@ -85,6 +85,13 @@
       "w": 1240,
       "h": 844,
       "title": "Firefly jar \u00b7 release storyboard, states and decisions"
+    },
+    "JarOptions.dc.html": {
+      "x": 1790,
+      "y": 2620,
+      "w": 1240,
+      "h": 700,
+      "title": "Firefly jar \u00b7 how to show the count (A jar, B jar + slots, C lantern tube)"
     }
   },
   "createdOnFiles": {
@@ -130,7 +137,7 @@
       "y": 2320,
       "text": "Firefly jar (proposal)",
       "kind": "title1",
-      "maxW": 1710
+      "maxW": 3030
     }
   },
   "order": [
@@ -144,7 +151,8 @@
     "Settings.dc.html",
     "States.dc.html",
     "JarPhone.dc.html",
-    "JarStory.dc.html"
+    "JarStory.dc.html",
+    "JarOptions.dc.html"
   ],
   "pages": [],
   "title": "Firefly Garden Phase 2 Design"

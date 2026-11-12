@@ -333,6 +333,8 @@ Two things confused him on first play, plus two ideas worth keeping.
          swapped some levels (every ratchet holds). The game's `hintStep` trace uses `gradeLevel` too.
    - [x] Jar mock-up on the design canvas: row 3 (playable jar phone and a storyboard), with two
          decisions for Michael (does the jar cap placements; status card or top bar).
+         *Decided:* the jar caps placements, and it lives in the status card. Open: jar with a
+         number (A), jar plus a slot per firefly (B, recommended) or a lantern tube (C).
    - [ ] **Ship the jar before the friends playtest.** Hints are already count-aware, so a hint's
          crossed-out tiles can rest on the count; until the jar is on screen the player cannot
          follow those. The jar lands with milestone 3.
