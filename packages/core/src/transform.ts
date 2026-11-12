@@ -45,8 +45,11 @@ function mapLevel(level: Level, w: number, h: number, f: (p: Coord) => Coord): L
   if (level.twists) {
     const twists: { -readonly [K in keyof LevelTwists]: LevelTwists[K] } = {};
     for (const key of Object.keys(level.twists) as (keyof LevelTwists)[]) {
-      const mapped = mapCoords(level.twists[key]);
-      if (mapped) twists[key] = mapped;
+      const entries = level.twists[key] as readonly (readonly number[])[] | undefined;
+      if (!entries) continue;
+      // Each entry is [row, col, ...extra]; only the coordinate moves.
+      const mapped = entries.map(([r, c, ...rest]) => [...f([r!, c!]), ...rest]);
+      (twists as Record<string, unknown>)[key] = mapped;
     }
     out.twists = twists;
   }

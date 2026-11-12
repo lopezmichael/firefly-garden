@@ -39,7 +39,7 @@ export function bruteForceSolutions(board: Board): number[][] {
     }
     const p = paths[k]!;
     const seesFirefly = board.rays[p]!.some((j) => chosen.has(j));
-    if (!seesFirefly) {
+    if (!seesFirefly && !board.noLand[p]) {
       chosen.add(p);
       rec(k + 1);
       chosen.delete(p);

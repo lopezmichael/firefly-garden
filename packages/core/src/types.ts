@@ -15,6 +15,17 @@ export interface LevelTwists {
   readonly moonlit?: readonly Coord[];
   /** Fixed fireflies, placed before the player starts. */
   readonly lanterns?: readonly Coord[];
+  /**
+   * EXPERIMENTAL mushroom variant B. Tiles that need light like a path, let
+   * light pass, but never take a firefly. Under evaluation in Phase 1.
+   */
+  readonly toadstools?: readonly Coord[];
+  /**
+   * EXPERIMENTAL mushroom variant C. Numbered blockers that count only the 4
+   * orthogonal neighbors (classic Akari), mixed into an 8-neighbor garden.
+   * Entries are [row, col, number 0..4]. Under evaluation in Phase 1.
+   */
+  readonly sporecaps?: readonly (readonly [row: number, col: number, clue: number])[];
 }
 
 /** The on-disk level format. See docs/references/rules.md for the full spec. */

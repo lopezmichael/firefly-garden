@@ -6,7 +6,7 @@ export const MAX_BOARD_EDGE = 32;
 const MAX_LIST = MAX_BOARD_EDGE * MAX_BOARD_EDGE;
 const MAX_TEXT = 128;
 
-const TWIST_KEYS = ['mushrooms', 'moonlit', 'lanterns'] as const;
+const TWIST_KEYS = ['mushrooms', 'moonlit', 'lanterns', 'toadstools', 'sporecaps'] as const;
 const LEVEL_KEYS = new Set([
   'id', 'area', 'w', 'h', 'tier', 'score', 'mask', 'bushes', 'twists', 'solution', 'techniques',
 ]);
@@ -71,7 +71,12 @@ export function parseLevel(json: unknown): Level {
     } else {
       for (const key of Object.keys(json.twists)) {
         if (!(TWIST_KEYS as readonly string[]).includes(key)) problems.push(`unknown twist "${key}"`);
-        else if (!isCoordArray(json.twists[key])) problems.push(`twists.${key} must be an array of [row, col]`);
+        else if (key === 'sporecaps') {
+          const v = json.twists[key];
+          if (!Array.isArray(v) || !v.every((e) => isBushSpec(e) && e[2] !== null)) {
+            problems.push('twists.sporecaps must be an array of [row, col, number]');
+          }
+        } else if (!isCoordArray(json.twists[key])) problems.push(`twists.${key} must be an array of [row, col]`);
       }
     }
   }
@@ -130,6 +135,11 @@ export function validateLevel(level: Level): string[] {
   // cell with a blocker, and a lantern on a moonlit tile is redundant.
   for (const m of twists.moonlit ?? []) claim('moonlit tile', m);
   for (const l of twists.lanterns ?? []) claim('lantern', l);
+  for (const t of twists.toadstools ?? []) claim('toadstool', t);
+  for (const [r, c, clue] of twists.sporecaps ?? []) {
+    claim('sporecap', [r, c]);
+    if (!isInt(clue) || clue < 0 || clue > 4) problems.push(`sporecap at [${r}, ${c}] has clue ${clue}; must be 0..4`);
+  }
 
   if (level.solution) {
     const seen = new Set<string>();
@@ -137,7 +147,9 @@ export function validateLevel(level: Level): string[] {
       const key = `${r},${c}`;
       const what = claimed.get(key);
       if (!isInt(r) || !isInt(c) || !active(r, c)) problems.push(`solution firefly at [${r}, ${c}] is not on an active cell`);
-      else if (what === 'bush' || what === 'mushroom') problems.push(`solution firefly at [${r}, ${c}] sits on a ${what}`);
+      else if (what === 'bush' || what === 'mushroom' || what === 'sporecap' || what === 'toadstool') {
+        problems.push(`solution firefly at [${r}, ${c}] sits on a ${what}`);
+      }
       if (seen.has(key)) problems.push(`solution lists [${r}, ${c}] twice`);
       seen.add(key);
     }

@@ -1,0 +1,62 @@
+{
+  "packs": [
+    {
+      "file": "spike.json",
+      "count": 252
+    }
+  ],
+  "chapters": [
+    {
+      "id": "c1",
+      "title": "The Rose Bed",
+      "levels": [
+        "spike-4x4-none-17",
+        "spike-4x4-max-07",
+        "spike-4x4-none-06",
+        "spike-4x4-max-16",
+        "spike-4x4-none-11",
+        "spike-5x5-none-11",
+        "spike-4x4-max-14",
+        "spike-5x5-none-00",
+        "spike-5x5-max-13",
+        "spike-5x5-max-04"
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "The Orchard",
+      "levels": [
+        "spike-5x5-none-02",
+        "spike-6x6-max-02",
+        "spike-6x6-max-10",
+        "spike-5x5-none-04",
+        "spike-7x7-none-15",
+        "spike-5x5-none-03",
+        "spike-6x6-max-09",
+        "spike-7x7-max-10",
+        "spike-6x6-none-15",
+        "spike-5x5-max-17",
+        "spike-7x7-max-03",
+        "spike-7x7-none-00"
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "The Koi Pond",
+      "levels": [
+        "spike-6x6-none-02",
+        "spike-7x7-max-15",
+        "spike-7x7-none-04",
+        "spike-6x6-none-05",
+        "spike-8x8-none-01",
+        "spike-9x9-max-17",
+        "spike-10x10-max-16",
+        "spike-9x9-none-03",
+        "spike-6x6-max-07",
+        "spike-7x7-max-12",
+        "spike-8x8-none-06",
+        "spike-9x9-max-01"
+      ]
+    }
+  ]
+}

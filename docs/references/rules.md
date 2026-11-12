@@ -18,6 +18,8 @@ Every active cell is one of:
 | Lantern (twist) | Already has one, fixed | No | |
 | Bush | No | Yes | A number 0 to 8, or hidden (`null`) |
 | Mushroom (twist) | No | Yes | Never |
+| Toadstool (experimental) | No, never | No | Needs light like a path tile |
+| Sporecap (experimental) | No | Yes | A number 0 to 4, counting only the 4 side neighbors |
 
 ## Rules
 
@@ -55,7 +57,7 @@ and the mushroom twist read as the same thing.
 | `w`, `h` | Yes | 1 to 32 |
 | `mask` | Yes | `h` strings of `w` chars, `#` or `.` |
 | `bushes` | Yes | `[row, col, clue]`, clue 0 to 8 or `null` (hidden) |
-| `twists` | | `mushrooms`, `moonlit`, `lanterns`: arrays of `[row, col]`. Unknown keys are rejected |
+| `twists` | | `mushrooms`, `moonlit`, `lanterns`, `toadstools`: arrays of `[row, col]`; `sporecaps`: `[row, col, n]`. Unknown keys are rejected |
 | `solution` | | Every firefly in the answer, **lanterns included** |
 | `tier`, `score`, `techniques` | | Written by the grader |
 
@@ -67,6 +69,14 @@ omit a lantern. Coordinates are `[row, col]` with row 0 at the top.
 Levels are stored in one canonical orientation. `transformLevel` gives any of
 the 8 rotations/mirrors; the rules are symmetric, so the solution count never
 changes.
+
+## Mushroom redesign (Phase 1 experiment)
+
+Because the current mushroom plays exactly like a hidden bush, two alternatives
+are implemented for comparison: the **toadstool** (variant B) and the
+**sporecap** (variant C). The difficulty report compares all three on the same
+seeds. Once a direction is chosen, the losers are removed and the winner takes
+the `mushrooms` name.
 
 ## Not yet implemented
 

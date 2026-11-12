@@ -5,6 +5,14 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Added
+- Phase 1: technique grader (`grade`) with T1 bookkeeping, T2 one source and bush room,
+  T3 one-step lookahead, T4 overlapping bushes, T5 deep trial; difficulty model (`measure`)
+  with score, tier and estimated solve time; seeded generator (`generate`) with garden shapes,
+  uniqueness repair and clue removal; ramp builder (`buildRamp`).
+- 252 generated, unique, graded levels (`levels/spike.json`) and chapters 1 to 3
+  (`levels/manifest.json`), re-validated by `tests/levels.test.ts`.
+- Experimental mushroom variants: toadstool and sporecap, compared in the difficulty report.
+- `npm run levels` regenerates packs and report data.
 - Phase 0 foundation: npm workspaces (`packages/core`, `apps/game`), strict TypeScript 7,
   Vitest, Vite build, CI workflow, pre-commit hook, Claude Code typecheck hook.
 - `@firefly/core`: level format and validation (`parseLevel`), board compiler

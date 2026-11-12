@@ -74,7 +74,7 @@ describe('solve', () => {
     expect(() => solve(buildBoard(MOCKUPS[0]!.level), { limit: 0 })).toThrow(RangeError);
   });
 
-  it('agrees with a naive enumerator on 300 random small boards, twists included', () => {
+  it('agrees with a naive enumerator on 300 random small boards, every twist included', () => {
     const rand = rng(20261112);
     const pick = <T>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)]!;
     let nonTrivial = 0;
@@ -95,7 +95,10 @@ describe('solve', () => {
       const bushes = take(0.2).map(([r, c]) => [r, c, rand() < 0.15 ? null : pick([0, 1, 1, 2, 2, 3, 4])] as const);
       const level: Level = {
         id: `rand-${t}`, w, h, mask, bushes,
-        twists: { mushrooms: take(0.05), moonlit: take(0.05), lanterns: take(0.03) },
+        twists: {
+          mushrooms: take(0.05), moonlit: take(0.05), lanterns: take(0.03), toadstools: take(0.05),
+          sporecaps: take(0.05).map(([r, c]) => [r, c, pick([0, 1, 1, 2])] as const),
+        },
       };
       const board = buildBoard(level);
       const fast = solve(board, { limit: 100_000 });

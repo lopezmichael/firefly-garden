@@ -16,6 +16,7 @@ about the code today.
 | `npm run check:bundle` | Fails if the build is over the 8 MB Poki budget |
 | `npm run check` | All of the above, in order. The pre-commit hook runs this |
 | `npm run dev` | Vite dev server for the game |
+| `npm run levels` | Regenerate `levels/` and `reports/` (deterministic). Never hand-edit packs |
 
 ## Codebase facts
 
@@ -27,8 +28,13 @@ about the code today.
   `tests/ratchets.test.ts` enforces this.
 - Cells are addressed by index `r * w + c` once a `Level` is compiled into a `Board`
   (`buildBoard`). Coordinates in level files are `[row, col]`.
-- `solve()` is the exact solver (uniqueness, validation, hints). The human-style
-  technique grader is a separate solver (Phase 1); do not merge them.
+- `solve()` is the exact solver (uniqueness, validation). `grade()` is the human-style
+  technique grader (difficulty, hints). Keep them separate.
+- The generator, grader, difficulty model and ramp builder are all seeded/pure;
+  difficulty weights live only in `DIFFICULTY_CONFIG` (`packages/core/src/difficulty.ts`).
+- Scripts in `scripts/*.ts` run directly with Node's type stripping (`node scripts/x.ts`).
+- The difficulty report (a claude.ai artifact) is fed by `reports/dash/*.json`, written by
+  `npm run levels`. Re-upload those files to refresh it.
 - `evaluate()` is the single source of truth for "is this position solved", used by
   tests and, later, by the game.
 - Every SDK (portal, ads, purchases, Capacitor) is called only from
@@ -62,14 +68,12 @@ about the code today.
 
 ## Ratchets (tests that fail the build)
 
-In place:
 - `packages/core` imports nothing outside itself and compiles without DOM/Node types
 - No portal or ad SDK mentioned outside `apps/game/src/platform/`
 - Production bundle under 8 MB
-
-Planned (Phase 1, once `levels/` has packs):
-- Every committed level re-solves to exactly one solution and matches its stored tier
-- No level in the first chapter requires a technique above T2
+- Every committed level re-solves to exactly one solution and re-grades to its stored
+  tier and score (`tests/levels.test.ts`)
+- No level in chapter 1 requires a technique above T2
 
 ## Security, scaled to a client-only game
 

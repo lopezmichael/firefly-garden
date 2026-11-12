@@ -26,7 +26,7 @@ export interface Evaluation {
 
 /** True if the player may place or remove a firefly on this cell. */
 export function canPlace(board: Board, cell: number): boolean {
-  return board.kind[cell] === 'path' && !board.lantern[cell];
+  return board.kind[cell] === 'path' && !board.lantern[cell] && !board.noLand[cell];
 }
 
 /**
@@ -38,7 +38,7 @@ export function canPlace(board: Board, cell: number): boolean {
 export function evaluate(board: Board, placed: Iterable<number>): Evaluation {
   const has = new Set<number>(board.lanterns);
   for (const i of placed) {
-    if (board.kind[i] !== 'path') throw new RangeError(`cell ${i} cannot hold a firefly`);
+    if (board.kind[i] !== 'path' || board.noLand[i]) throw new RangeError(`cell ${i} cannot hold a firefly`);
     has.add(i);
   }
   const fireflies = [...has].sort((a, b) => a - b);

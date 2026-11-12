@@ -9,8 +9,8 @@ flowchart LR
   subgraph core["packages/core · pure TS, no DOM"]
     rules[Rules engine]
     exact[Exact solver<br/>uniqueness]
-    grader[Technique grader<br/><i>Phase 1</i>]
-    gen[Level generator<br/><i>Phase 1</i>]
+    grader[Technique grader]
+    gen[Level generator]
   end
   core --> script["scripts/generate-levels<br/>offline"] --> packs["levels/ JSON packs<br/>bundled into the build"]
   core -- "rules, hints, validation" --> game
@@ -41,6 +41,12 @@ line is swappable.
 | `rules.ts` | `evaluate`: lit tiles, conflicts, bush states, solved. `canPlace` |
 | `solver.ts` | `solve` / `isUnique`: exact search with propagation, stops at a solution limit |
 | `transform.ts` | The 8 rotations/mirrors, so one stored orientation serves portrait and landscape |
+| `grader.ts` | Human-style technique solver: one deduction at a time, simplest first, records the trace (tier, width, reason) |
+| `difficulty.ts` | Features, score, tier and estimated solve time from a trace; all weights in `DIFFICULTY_CONFIG` |
+| `rng.ts` | Seeded PRNG so every generated level can be regenerated from its spec |
+| `shapes.ts` | Garden masks: rectangle, ring, L, bridge, crescent |
+| `generator.ts` | Spec → unique, graded level (scatter, hidden answer, derive clues, repair, clue removal, grade) |
+| `ramp.ts` | Picks levels for each chapter and orders them as a sawtooth |
 
 Rules of the package: no DOM, no Node APIs, no dependencies, relative imports
 only (enforced by `tests/ratchets.test.ts` and its tsconfig). Everything is
@@ -73,7 +79,8 @@ board renderer (PixiJS), menus (plain DOM) and audio arrive in Phase 2.
 
 ## Data flow (target)
 
-1. `scripts/generate-levels` (Phase 1) uses core to build, grade and order levels into `levels/*.json`.
+1. `scripts/generate-levels.ts` uses core to build, grade and order levels into `levels/*.json`
+   and writes the report tables to `reports/`.
 2. CI re-validates every pack with the exact solver.
 3. The game bundles the packs, rotates each level to fit the screen, and uses `evaluate` for play and `solve` for hints.
 4. Progress goes through `Platform.save/load` and is validated on the way back in.

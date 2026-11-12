@@ -174,6 +174,7 @@ export function solve(board: Board, options: SolveOptions = {}): SolveResult {
 
   const n = board.w * board.h;
   const start: State = { st: new Int8Array(n), lit: new Uint8Array(n) };
+  for (const p of board.paths) if (board.noLand[p]) start.st[p] = NO;
   let ok = true;
   for (const l of board.lanterns) ok = ok && place(start, l);
   if (ok) search(start);
