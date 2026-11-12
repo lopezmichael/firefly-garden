@@ -147,6 +147,9 @@ plus mark), the jar with its slots, one button, one sheet, and one full tall-pho
       Mushrooms redrawn from Michael's reference sheet (feel only, our own drawing): a broad rust
       cap with gills and a frilled ring, a slender lilac cone and a small bolete, speckled cream
       stems, thick ink outline; number on the broad cap (paper 5.8:1, gold 4.3:1).
+      Then fuller (about eight mushrooms a tile: tiny ones behind, small ones in the front
+      corners, moss and a leaf), and the edge notches are gone: the cluster itself means "counts
+      its 4 sides", taught by those four tiles glowing on the debut level and in hint reasons.
 
 ### 4. Full screen set, chosen direction (canvas row 3)
 
