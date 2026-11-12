@@ -50,8 +50,10 @@ Each checkpoint is a stop: I show the work and wait.
   - Copyrighted work (game screenshots, contemporary illustrators) is **linked, not copied**:
     a card with title, link and one line on what to take from it. It is for feel only and never
     ends up in the build.
-- [ ] Put the boards on a **new design canvas, "Firefly Garden · Character"**. Row 1 is the
-      moodboards; the phase 2 canvas stays as the locked baseline.
+- [x] Put the boards on a **new design canvas, "Firefly Garden · Character"**:
+      https://claude.ai/artifact/JYTEsJmpHaWKATru6UMvDG . A start board, then one reference board
+      per direction (Michael's picks, public-domain companions, take and avoid, a code sketch and
+      a first palette guess); the phase 2 canvas stays as the locked baseline.
 - [ ] For each direction, write one paragraph naming what it takes from the references and
       what it avoids.
 - [ ] **Checkpoint A:** Michael reacts (more of this, none of that) and adds his own references.
