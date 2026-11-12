@@ -48,6 +48,7 @@ line is swappable.
 | `generator.ts` | Spec → unique, graded level (scatter, hidden answer, derive clues, repair, clue removal, grade) |
 | `ramp.ts` | Picks levels for each chapter, orders them as a sawtooth, swaps in a teaching level where each new tier first appears, and places that debut early in the chapter with practice alternating with easier levels |
 | `policy.ts` | Next-level policy: main path by default, one detour (warm-up after a break; breather after a quit, a long solve or repeated hints) from a reserve pool, never two in a row |
+| `events.ts` | Analytics event schema and `validateEvent`; what Phase 2 logs and Phase 4 refits from (`docs/references/analytics.md`) |
 | `players.ts` | Simulated players (four kinds of portal player) walking grader traces with skill, learning, patience, hints and churn; the shipped hint economy (`PLAYER_CONFIG`) |
 
 Rules of the package: no DOM, no Node APIs, no dependencies, relative imports

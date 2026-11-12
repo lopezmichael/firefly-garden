@@ -43,6 +43,11 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 - A rewarded ad grants 3 hints (one now, two saved); at a tight economy this keeps more
   newcomers than one per ad, and five adds nothing over three.
 
+### Added (analytics schema)
+- `AnalyticsEvent` and `validateEvent` (`events.ts`): session, level, hint, ad and coin events
+  with no personal data, validated before storage. `docs/references/analytics.md` maps each
+  Phase 1 model assumption to the events that will measure it.
+
 ### Added (next-level policy)
 - `nextLevel` (`policy.ts`): the main path by default, plus one detour from a reserve pool
   when needed: a warm-up after a break of 8+ hours, a breather after a quit (then the quit

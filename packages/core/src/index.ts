@@ -24,3 +24,5 @@ export { combine, PLAYER_CONFIG, simulate, simulateWithPolicy } from './players.
 export { isDetour, nextLevel, POLICY_CONFIG } from './policy.ts';
 export type { NextLevel, NextReason, PlayRecord, PolicyInput, PolicyLevel } from './policy.ts';
 export type { Economy, LevelOutcome, LevelRole, PlayerProfile, PolicyOptions, PolicySimResult, SimLevel, SimResult, SimStep } from './players.ts';
+export { EVENT_SCHEMA_VERSION, validateEvent } from './events.ts';
+export type { AdKind, AnalyticsEvent, EventType, HintSource } from './events.ts';

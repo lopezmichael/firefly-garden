@@ -106,7 +106,7 @@ This is where we design the pull of the game while it is still cheap to change.
 - [x] **Hint economy check**: estimated hint demand of 10 to 25% on peak levels and
       under 5% on breathers (the plan's targets), and coins earned covering normal hint use
       so rewarded ads stay optional.
-- [ ] **Analytics event schema** (types only, in core): level start/solve/quit, time,
+- [x] **Analytics event schema** (types only, in core): level start/solve/quit, time,
       undos, hints, restarts, session start/end. Phase 2 logs locally, Phase 3 sends
       to portal analytics. Same schema feeds the Phase 4 refit.
 - [ ] Meta hooks recorded as data, displayed later: levels per garden area (visible
