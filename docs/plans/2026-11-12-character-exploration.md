@@ -167,7 +167,7 @@ plus mark), the jar with its slots, one button, one sheet, and one full tall-pho
       with hills behind the status card and the lantern jar. Boards InkDuo and InkWide.
 - [x] State sheet: the Components and Twists boards together hold every tile, bush, firefly
       and twist state; the motion table is in `docs/design/assets.md`.
-- [ ] **Checkpoint C:** Michael signs off the set.
+- [x] **Checkpoint C:** Michael signed off the set (2026-11-12).
 
 ### 5. Asset plan (`docs/design/assets.md`)
 
@@ -183,7 +183,7 @@ plus mark), the jar with its slots, one button, one sheet, and one full tall-pho
 - [ ] A bundle budget table against the 8 MB Poki limit (today about 1.1 MB).
 - [ ] A licence log, started in phase 1 and kept for every sourced file (moodboard sources
       included, marked "reference only").
-- [ ] **Checkpoint D:** sign-off, then a separate implementation plan for deliverable 6.
+- [x] **Checkpoint D:** signed off (2026-11-12). Implementation plan: `docs/plans/2026-11-12-ink-wash-theme.md`. Sound moves to a separate chat.
 
 ## Structure
 
