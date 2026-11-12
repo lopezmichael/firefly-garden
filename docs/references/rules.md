@@ -157,5 +157,10 @@ progress, which is untrusted. Before calling it the game must:
 
 ## Not yet implemented
 
+- **Coloured beams** (candidate twist, from Michael's play feedback 2026-11-12): fireflies of two
+  or more colours whose crossing beams mix (red + blue = purple); some tiles want a specific mix,
+  others must not be mixed. Changes what "lit" means, so it needs new rules, solver propagation and
+  grader techniques before any level uses it.
+
 - **Two-color fireflies** (late twist): needs a color per firefly and per-color
   bush clues. Will be added as a new twist key when its chapter is planned.
