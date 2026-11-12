@@ -150,6 +150,13 @@ locked hint fireflies together never exceed it: a tap with an empty jar places n
 brings back only what fits, and a saved board holding more than the jar is dropped on load.
 A full but wrong jar always gets a removal hint first, so hints never overfill it.
 
+**Quitting and parked boards (Phase 2, milestone 3).** Leaving a level for the garden map ends
+the play as a quit, unless the board is untouched (no placement, undo, reset or hint): then it
+just waits behind the map and Continue returns to it. A quit main-path level's board is parked in
+the save (up to five, oldest dropped), validated on load exactly like the current board, and
+resumed when the policy serves that level as a retry; the retry keeps the fireflies but starts
+its own counters. A quit detour is never served again, so its board is not parked.
+
 **Rules for the game build (from the Phase 1 security review):**
 - Saved progress stores the locked hint cells per level and the banked hint count, and
   a load validates both like `parseLevel` does: a locked cell must be a cell of the

@@ -245,10 +245,24 @@ the same transitions are tested in Node and in Playwright.
 - [ ] Safe-area insets; every button at least 44 px; the board's cells sized from the
       viewport. **Known squeeze:** 8x8 on a 360 px-wide phone gives about 42 px cells, so
       the board gets no outer gutter in portrait; checked in a 360x740 screenshot.
-- [ ] Garden map: the Rose Bed with chapter progress toward the next area, "Continue".
+- [x] Garden map: the Rose Bed with chapter progress toward the next area, "Continue".
+      *Done (milestone 3):* the top bar's map button leaves a level; an unsolved level counts as
+      a quit and its board is parked (up to five) so the retry resumes it. First launch goes
+      straight to garden 1; a returning player without an unfinished board opens on the map.
 - [x] Hint dialog: bank count, "Use 30 coins", "Watch an ad for 3 hints" (video icon),
       equal-size "No thanks".
-- [ ] Level complete: celebration, +10 coins, auto-advance with the next board preloaded.
+- [x] Level complete: celebration, +10 coins, auto-advance with the next board preloaded.
+      *Done (milestone 3):* a card takes the place of the status card and moves (they keep their
+      space, so the board never resizes): the garden, time and hints, a +10 chip, Garden map, and
+      Next garden with a ring counting down the 3 s auto-advance. Sparks burst from the board. The
+      countdown waits while a sheet is open or the tab is hidden and restarts from full. On the
+      last garden there is no Next and no countdown. No preloading was needed: building the next
+      board is synchronous and takes a frame.
+      *Follow-up, done:* the status card could still grow on 320–360 px phones (long hint reasons
+      were the card's title). Hints now have short one-line titles with the reason below; the card
+      reserves three sub-lines when it is narrower than 290 px; a test holds every message to one
+      title line and two sub-lines at a 360 px phone (72 characters, a proxy for width). Browser check at 320/360/390: no board change
+      through a tap and two hints. Still to come: the same check in the CI browser smoke test.
 - [ ] Settings: sound, reduced motion (defaults to `prefers-reduced-motion`, overridable),
       play log.
 - [ ] First-level teaching: the one-line hint from the plan ("Tap a tile to place a
