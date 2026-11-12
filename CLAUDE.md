@@ -30,8 +30,9 @@ about the code today.
   (`buildBoard`). Coordinates in level files are `[row, col]`.
 - `solve()` is the exact solver (uniqueness, validation). `grade()` is the human-style
   technique grader (difficulty, hints). Keep them separate.
-- The generator, grader, difficulty model and ramp builder are all seeded/pure;
-  difficulty weights live only in `DIFFICULTY_CONFIG` (`packages/core/src/difficulty.ts`).
+- The generator, grader, difficulty model, ramp builder and player simulator are all
+  seeded/pure; difficulty weights live only in `DIFFICULTY_CONFIG` (`difficulty.ts`), player
+  model assumptions and the shipped economy only in `PLAYER_CONFIG` (`players.ts`).
 - Scripts in `scripts/*.ts` run directly with Node's type stripping (`node scripts/x.ts`).
 - The difficulty report (a claude.ai artifact) is fed by `reports/dash/*.json`, written by
   `npm run levels`. Re-upload those files to refresh it.
@@ -74,6 +75,8 @@ about the code today.
 - Every committed level re-solves to exactly one solution and re-grades to its stored
   tier and score (`tests/levels.test.ts`)
 - No level in chapter 1 requires a technique above T2
+- Hint economy (simulated, `tests/economy.test.ts`): at most 5% of hint requests refused,
+  at least 95% of players clear chapter 1, no level above 40% hint use
 - No committed level is estimated over 5:00; chapter 1 levels stay under 1:00 and chapter 3
   under 4:00 (`DIFFICULTY_CONFIG.limits`)
 

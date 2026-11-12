@@ -26,6 +26,16 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 - `Platform` adapter interface and a local development adapter.
 - Docs: CLAUDE.md, ARCHITECTURE.md, ROADMAP.md, rules reference, Phase 0 and Phase 1 plans.
 
+### Added (simulated players and hint economy)
+- `simulate`/`combine` (`players.ts`): four kinds of portal player (newcomer, casual, puzzler,
+  expert) play the chapters along each level's grader trace, with skill, learning, patience,
+  hints paid by coins or ads, quits and churn. Seeded and deterministic.
+- Ramp builder places a teaching level (fewest steps of the new technique) where each new
+  tier first appears; hint demand at chapter 3's T4 debut dropped from 39% to 22%.
+- Shipped economy: 60 starting coins, 10 per solve, 30 per hint (best newcomer retention in an
+  18-economy sweep, almost no refused hints). Economy guardrails in `tests/economy.test.ts`.
+- `reports/dash/players.json` and `economy.json` feed the report's new sections.
+
 ### Changed (Phase 1 decisions, 2026-11-12)
 - Technique tiers: overlapping bushes is now T3 and one-step lookahead T4.
 - Mushrooms are numbered blockers counting only their 4 side neighbors

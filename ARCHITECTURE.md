@@ -46,7 +46,8 @@ line is swappable.
 | `rng.ts` | Seeded PRNG so every generated level can be regenerated from its spec |
 | `shapes.ts` | Garden masks: rectangle, ring, L, bridge, crescent |
 | `generator.ts` | Spec → unique, graded level (scatter, hidden answer, derive clues, repair, clue removal, grade) |
-| `ramp.ts` | Picks levels for each chapter and orders them as a sawtooth |
+| `ramp.ts` | Picks levels for each chapter, orders them as a sawtooth, and swaps in a teaching level where each new tier first appears |
+| `players.ts` | Simulated players (four kinds of portal player) walking grader traces with skill, learning, patience, hints and churn; the shipped hint economy (`PLAYER_CONFIG`) |
 
 Rules of the package: no DOM, no Node APIs, no dependencies, relative imports
 only (enforced by `tests/ratchets.test.ts` and its tsconfig). Everything is

@@ -18,5 +18,7 @@ export { makeMask, SHAPES } from './shapes.ts';
 export type { ShapeId } from './shapes.ts';
 export { generate } from './generator.ts';
 export type { GenSpec, Generated } from './generator.ts';
-export { buildRamp, sawtooth } from './ramp.ts';
+export { buildRamp, rampRoles, sawtooth } from './ramp.ts';
 export type { Chapter, ChapterSpec, RampLevel } from './ramp.ts';
+export { combine, PLAYER_CONFIG, simulate } from './players.ts';
+export type { Economy, LevelOutcome, LevelRole, PlayerProfile, SimLevel, SimResult, SimStep } from './players.ts';

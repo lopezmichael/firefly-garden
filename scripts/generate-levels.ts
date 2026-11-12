@@ -7,7 +7,8 @@
 // Writes levels/spike.json, levels/manifest.json and reports/phase1-data.json.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import {
-  buildRamp, cellIndex, DIFFICULTY_CONFIG, generate, type ChapterSpec, type Generated, type GenSpec, type Level, type RampLevel, type ShapeId,
+  buildBoard, buildRamp, cellIndex, combine, DIFFICULTY_CONFIG, generate, grade, PLAYER_CONFIG, rampRoles, simulate,
+  type ChapterSpec, type Economy, type SimLevel, type Generated, type GenSpec, type Level, type RampLevel, type ShapeId,
 } from '../packages/core/src/index.ts';
 
 const SIZES = [4, 5, 6, 7, 8, 9, 10];
@@ -106,6 +107,7 @@ const CHAPTERS: ChapterSpec[] = [
 ];
 const pool: RampLevel[] = census.map(({ row: r }) => ({
   id: r.id, tier: r.tier, score: r.score, estimatedSeconds: r.estimatedSeconds, area: r.area, mechanics: [],
+  tierSteps: [0, ...r.tierCounts],
 }));
 const chapters = buildRamp(pool, CHAPTERS);
 
@@ -136,11 +138,74 @@ writeFileSync('reports/dash/census.json', JSON.stringify(census.map(({ row: r })
 }))));
 let position = 0;
 const sizeOf = new Map(census.map(({ row: r }) => [r.id, `${r.w}x${r.h}`]));
+const roles = new Map(chapters.flatMap((c) => {
+  const r = rampRoles(c.levels);
+  return c.levels.map((l, i) => [l.id, r[i]!] as const);
+}));
 writeFileSync('reports/dash/ramp.json', JSON.stringify(chapters.flatMap((c) => c.levels.map((l, i) => ({
   position: ++position, chapter: c.id, title: c.title, inChapter: i + 1, id: l.id, size: sizeOf.get(l.id),
-  tier: l.tier, score: l.score, seconds: l.estimatedSeconds,
+  tier: l.tier, score: l.score, seconds: l.estimatedSeconds, role: roles.get(l.id),
 })))));
+
+// 4. Simulated players through chapters 1 to 3, and the hint-economy sweep.
+const levelById = new Map(census.map((c) => [c.level.id, c.level]));
+const simLevels: SimLevel[] = chapters.flatMap((c) => c.levels.map((l) => {
+  const g = grade(buildBoard(levelById.get(l.id)!));
+  return { id: l.id, chapter: c.id, role: roles.get(l.id)!, steps: g.steps.map((s) => ({ tier: s.tier, width: s.width })), fireflies: g.fireflies.length };
+}));
+const runAll = (economy: Economy) => PLAYER_CONFIG.profiles.map((p, k) => simulate(simLevels, p, economy, PLAYER_CONFIG.runs, 4242 + k));
+const shipped = runAll(PLAYER_CONFIG.economy);
+const pop = combine(shipped, PLAYER_CONFIG.profiles);
+let simPosition = 0;
+writeFileSync('reports/dash/players.json', JSON.stringify(simLevels.flatMap((l, i) => {
+  simPosition++;
+  const rows = shipped.map((r, k) => {
+    const o = r.levels[i]!;
+    return {
+      key: `${l.id}|${r.profile}`, position: simPosition, id: l.id, chapter: l.chapter, role: l.role,
+      profile: r.profile, label: PLAYER_CONFIG.profiles[k]!.label,
+      survival: o.reached / r.runs, cleared: o.solved / r.runs,
+      hintRate: o.plays ? o.hintedPlays / o.plays : 0, quitRate: o.plays ? o.quits / o.plays : 0,
+    };
+  });
+  const p = pop[i]!;
+  const cleared = rows.reduce((a, r, k) => a + PLAYER_CONFIG.profiles[k]!.share * r.cleared, 0);
+  return [...rows, {
+    key: `${l.id}|all`, position: simPosition, id: l.id, chapter: l.chapter, role: l.role,
+    profile: 'all', label: 'Everyone', survival: p.survival, cleared, hintRate: p.hintRate, quitRate: p.quitRate,
+  }];
+})));
+const economyRows = [];
+for (const startingCoins of PLAYER_CONFIG.sweep.startingCoins) {
+  for (const coinsPerSolve of PLAYER_CONFIG.sweep.coinsPerSolve) {
+    for (const hintCost of PLAYER_CONFIG.sweep.hintCost) {
+      const economy = { startingCoins, coinsPerSolve, hintCost };
+      const res = runAll(economy);
+      let coin = 0, ad = 0, refused = 0, finish = 0;
+      res.forEach((r, k) => {
+        const w = PLAYER_CONFIG.profiles[k]!.share;
+        finish += (w * r.finished) / r.runs;
+        for (const o of r.levels) {
+          coin += (w * o.coinHints) / r.runs;
+          ad += (w * o.adHints) / r.runs;
+          refused += (w * o.refusedHints) / r.runs;
+        }
+      });
+      const asked = coin + ad + refused;
+      const s = PLAYER_CONFIG.economy;
+      economyRows.push({
+        key: `${startingCoins}-${coinsPerSolve}-${hintCost}`, startingCoins, coinsPerSolve, hintCost,
+        shipped: startingCoins === s.startingCoins && coinsPerSolve === s.coinsPerSolve && hintCost === s.hintCost,
+        finish, newcomerFinish: res[0]!.finished / res[0]!.runs,
+        coinShare: asked ? coin / asked : 0, adShare: asked ? ad / asked : 0, refusedShare: asked ? refused / asked : 0,
+        casualEndCoins: Math.round(res[1]!.meanEndCoins),
+      });
+    }
+  }
+}
+writeFileSync('reports/dash/economy.json', JSON.stringify(economyRows));
 
 console.log(`census: ${census.length} levels (${censusFailures} specs failed)`);
 console.log(`chapters: ${chapters.map((c) => `${c.id}=${c.levels.length}${c.shortfall ? ` (short ${c.shortfall})` : ''}`).join(', ')}`);
+console.log(`simulated: ${PLAYER_CONFIG.profiles.length} profiles x ${PLAYER_CONFIG.runs} players, ${economyRows.length} economies`);
 console.log(`done in ${((performance.now() - started) / 1000).toFixed(1)}s`);

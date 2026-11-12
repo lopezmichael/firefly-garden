@@ -100,10 +100,10 @@ This is where we design the pull of the game while it is still cheap to change.
 - [ ] **Next-level policy** (pure function of player history → next level): warm-up
       level when returning after a gap, an easier breather after a quit or a long
       solve, steady climb otherwise. Simulated now, wired into the game in Phase 2.
-- [ ] **Simulated players**: models with a skill level (highest technique mastered),
+- [x] **Simulated players**: models with a skill level (highest technique mastered),
       speed, and a patience budget. Run them through a ramp to estimate solve time,
       hint demand and quit points per level. This lets us compare ramps before anyone plays.
-- [ ] **Hint economy check**: estimated hint demand of 10 to 25% on peak levels and
+- [x] **Hint economy check**: estimated hint demand of 10 to 25% on peak levels and
       under 5% on breathers (the plan's targets), and coins earned covering normal hint use
       so rewarded ads stay optional.
 - [ ] **Analytics event schema** (types only, in core): level start/solve/quit, time,
@@ -124,7 +124,7 @@ better game.
 - [x] Report (the "Firefly Garden difficulty report" artifact, fed by `reports/dash/`): tier histogram by board size and
       mechanic, technique frequency, estimated solve times. Answers the gate question:
       do 8x8+ boards still need T3/T4?
-- [x] A first ramp for chapters 1 to 3 (simulated-player curves still to come)
+- [x] A first ramp for chapters 1 to 3 with simulated-player curves
 - [x] Open question resolved: does the eight-neighbor rule hold up at 8x8+? If not,
       options to test: more hidden clues, more mushrooms/voids, larger necked shapes,
       or a 4-neighbor variant for some bushes
@@ -160,3 +160,12 @@ better game.
   unsound steps. Fixed: a repair lantern could land on a moonlit tile (latent; no current spec
   combines them), and the grader now needs every tile decided before calling a board solved.
   Hardening to do if levels ever come from players: node/step budgets on `isUnique` and `grade`.
+- **Simulated players (2026-11-12):** 79% of the simulated population reaches the end of
+  chapter 3, 96.5% clears chapter 1; newcomers 52.5%. Hint demand spikes where a new tier
+  first appears, not at peaks: breathers average 5.6% (target under 5%) and peaks 8.7%
+  (target 10 to 25%). Teaching levels at each tier debut are in; next is placing debuts
+  early in a chapter with practice before the peak.
+- **Hint economy:** price barely moves hint demand; it moves who pays. Shipped 60 starting
+  coins, 10 per solve, 30 per hint (retention first). Tradeoff for later: established players
+  bank coins and rarely watch rewarded ads for hints, so a coin sink matters.
+
