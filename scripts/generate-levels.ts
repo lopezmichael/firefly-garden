@@ -8,7 +8,7 @@
 // reports/ (census gate evidence, simulations, report tables).
 import { mkdirSync, writeFileSync } from 'node:fs';
 import {
-  buildBoard, buildRamp, canonicalKey, cellIndex, combine, DIFFICULTY_CONFIG, generate, grade, measure, PLAYER_CONFIG, rampRoles,
+  buildBoard, buildRamp, canonicalKey, cellIndex, combine, DIFFICULTY_CONFIG, generate, gradeLevel, measure, PLAYER_CONFIG, rampRoles,
   simulate, simulateWithPolicy,
   type Economy, type SimLevel, type Generated, type GenSpec, type Level, type RampLevel, type ShapeId,
 } from '../packages/core/src/index.ts';
@@ -176,7 +176,7 @@ writeFileSync('reports/phase1-data.json', JSON.stringify({
 
 // Flat, chart-ready tables for the difficulty report (attached to it as files).
 mkdirSync('reports/dash', { recursive: true });
-const TECHS = ['T1-satisfied', 'T1-needs-all', 'T2-one-source', 'T2-bush-room', 'T3-overlap', 'T4-lookahead', 'T5-trial'];
+const TECHS = ['T1-satisfied', 'T1-needs-all', 'T1-count-complete', 'T2-one-source', 'T2-bush-room', 'T3-overlap', 'T3-count-bound', 'T4-lookahead', 'T5-trial'];
 const modeLabel = (m: string) => (m === 'max' ? 'Hidden clues' : 'All clues');
 writeFileSync('reports/dash/census.json', JSON.stringify(census.map(({ row: r }) => ({
   id: r.id, size: r.w, mode: modeLabel(r.mode), shape: r.shape, tier: r.tier,
@@ -201,7 +201,7 @@ const levelById = new Map([...launchLevels, ...reserveLevels].map((l) => [l.id, 
 const toSim = (id: string, chapter: string, role: SimLevel['role']): SimLevel => {
   const level = levelById.get(id)!;
   const board = buildBoard(level);
-  const g = grade(board);
+  const g = gradeLevel(level, board); // the firefly count is shown, so players' traces use it
   const d = measure(level, board, g);
   return {
     id, chapter, role, steps: g.steps.map((s) => ({ tier: s.tier, width: s.width })), fireflies: g.fireflies.length,

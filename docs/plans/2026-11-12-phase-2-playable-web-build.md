@@ -306,6 +306,50 @@ the same transitions are tested in Node and in Playwright.
 - [ ] Gate read-out: how many friends passed 20 levels unprompted, where they stopped,
       hint and quit rates per level against the Phase 1 simulation. Findings go in this file.
 
+## Michael's play feedback (2026-11-12)
+
+Two things confused him on first play, plus two ideas worth keeping.
+
+1. **Light crossing light reads as wrong.** It is allowed (only fireflies may not see each other),
+   but the status line "Fireflies in the same row or column need a bush between them" invites the
+   misreading "light can't overlap". Planned, all in the open look:
+   - [ ] On a conflict, draw a pink beam between the two fireflies that see each other (the broken
+         rule made visible), not only a pink tint on each.
+   - [ ] Tiles lit by two beams look a touch brighter, so crossing reads as fine.
+   - [ ] A one-line tip the first time beams cross in the opening levels: "Light can cross. Only
+         fireflies can't see each other."
+   - [ ] Optional: press-and-hold (hover on desktop) previews a firefly's light before placing it.
+2. **No set number of fireflies.** Every level's count is fixed by its unique answer, but the game
+   never says it. Michael wants a countdown ("firefly jar"). It is extra information, so it may make
+   levels easier than their grade:
+   - [x] Experiment: an opt-in known-count mode in the grader (default grading unchanged), all 680
+         levels regraded with and without it; data in `reports/archive/count-experiment-2026-11-12.json`.
+   - [x] Decide from the data: show the count everywhere, only early, or retune the ramp with it.
+         **Decided (Michael, 2026-11-12): show the count on every level**, and grade every shipped
+         level as players will experience it. `gradeLevel` (core) always passes the count; the
+         generator, stored tiers/scores/seconds, ramp, simulated players, level ratchets and
+         `hint` all use it, and the packs were regenerated. Before/after:
+         `reports/archive/count-aware-pack-2026-11-12.json`. Chapter 1 is unchanged; c2 and c3
+         swapped some levels (every ratchet holds). The game's `hintStep` trace uses `gradeLevel` too.
+   - [x] Jar mock-up on the design canvas: row 3 (playable jar phone and a storyboard), with two
+         decisions for Michael (does the jar cap placements; status card or top bar).
+         *Decided:* the jar caps placements, and it lives in the status card. Open: jar with a
+         number (A), jar plus a slot per firefly (B, recommended) or a lantern tube (C).
+   - [x] **Ship the jar before the friends playtest.** *Done 2026-11-12 (milestone 3):* the jar
+         plus a slot per firefly in the status card (design option B), capped placements with an
+         empty-jar shake, fireflies flying out of the jar to the tile and home again (hints send a
+         gold one), saves validated against the jar size. Follow-up for the juice pass: light the
+         tile when the firefly lands, not on tap.
+   - [ ] After launch, a level whose content changes gets a new id (saves also carry a level
+         fingerprint, so a stale board is dropped, but `solved` would still credit the old one).
+   - Framing to explore with it: the jar holds exactly the fireflies the garden needs; a hint sends
+     one of them to the right spot (gold, locked). Hints must never be required to finish a level
+     (portal rule), so a hint can't be the only way to get a firefly.
+3. **Idea, Phase 4 twist: coloured beams.** Beams that cross mix colours; some tiles want a given
+   mix (red + blue = purple), others must avoid one. Related to, but different from, the planned
+   two-colour fireflies (there, bushes want a colour). Needs new rules in the solver and grader.
+   Recorded in `docs/references/rules.md` ("Not yet implemented").
+
 ## Order of work
 
 Each milestone ends with typecheck, tests, build, screenshots and a commit (when asked).

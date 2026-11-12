@@ -43,6 +43,8 @@ class FlyView {
   kind: FlyKind | null = null;
   phase: number;
   drop = 1;
+  /** Milliseconds to stay invisible before dropping in (a firefly still flying from the jar). */
+  wait = 0;
 
   constructor(private readonly size: number, private readonly pal: Palette, haloTex: Texture, phase: number) {
     this.phase = phase;
@@ -86,6 +88,11 @@ class FlyView {
   }
 
   tick(t: number, motion: boolean, dt: number): void {
+    if (this.wait > 0) {
+      this.wait = motion ? this.wait - dt : 0;
+      this.root.alpha = this.wait > 0 ? 0 : 1;
+      if (this.wait > 0) return;
+    }
     if (this.drop < 1) this.drop = motion ? Math.min(1, this.drop + dt / 480) : 1;
     const drop = (1 - easeOutBack(this.drop)) * -this.size * 0.8;
     if (!motion) {
@@ -403,8 +410,11 @@ export class BoardView {
     if (this.state) this.render(this.state, { quiet: true });
   }
 
-  /** Draw a position. `quiet` skips placement animations (resize, level load). */
-  render(state: BoardState, opts: { quiet?: boolean; removed?: number | null } = {}): void {
+  /**
+   * Draw a position. `quiet` skips placement animations (resize, level load); `arriving`
+   * is a cell whose firefly is still flying in from the jar, so it lands `arrivalMs` later.
+   */
+  render(state: BoardState, opts: { quiet?: boolean; removed?: number | null; arriving?: number | null; arrivalMs?: number } = {}): void {
     const prev = this.state;
     this.state = state;
     if (!this.board || !this.fit) return;
@@ -427,6 +437,8 @@ export class BoardView {
           if (!v.fly!.root.visible) {
             v.fly!.root.visible = true;
             v.fly!.drop = opts.quiet || prevFlies.has(v.cell) ? 1 : 0;
+            v.fly!.wait = opts.arriving === v.cell && !opts.quiet ? (opts.arrivalMs ?? 0) : 0;
+            v.fly!.root.alpha = v.fly!.wait > 0 ? 0 : 1;
           }
         } else {
           v.fly!.root.visible = false;
@@ -472,6 +484,15 @@ export class BoardView {
       }
     }
     if (opts.removed !== undefined && opts.removed !== null) this.liftAway(opts.removed);
+  }
+
+  /** A cell's centre in viewport pixels (for flights between the jar and the board). */
+  cellScreenCenter(cell: number): { x: number; y: number } | null {
+    const v = this.cells.find((c) => c.cell === cell);
+    if (!v || !this.fit) return null;
+    const r = this.app.canvas.getBoundingClientRect();
+    const half = this.fit.cell / 2;
+    return { x: r.left + this.stage.x + v.root.x + half, y: r.top + this.stage.y + (v.root.y + half) * TILT };
   }
 
   private liftAway(cell: number): void {

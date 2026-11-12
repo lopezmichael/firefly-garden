@@ -39,6 +39,8 @@ export const DEFAULT_SETTINGS: Settings = { sound: true, motion: 'device' };
 /** The level on the board when the game was closed. */
 export interface CurrentPlay {
   readonly levelId: string;
+  /** `catalog.levelKey` when saved: a mismatch means the level changed, so the board is dropped. */
+  readonly key: string;
   readonly reason: NextReason;
   readonly placed: readonly number[];
   readonly locked: readonly number[];
@@ -154,6 +156,11 @@ function parseCurrent(v: unknown, catalog: Catalog, problems: string[]): Current
     problems.push('current: unknown level or reason');
     return null;
   }
+  const key = own(v, 'key');
+  if (key !== catalog.levelKey(levelId)) {
+    problems.push('current: the level changed since this save (or the save predates fingerprints); dropped');
+    return null;
+  }
   const board = catalog.board(levelId);
   const solution = catalog.solution(levelId);
 
@@ -163,8 +170,9 @@ function parseCurrent(v: unknown, catalog: Catalog, problems: string[]): Current
   const lockedCoords = parseCells(own(v, 'locked') ?? [], board.w, board.h);
   if (lockedCoords) {
     const cells = [...new Set(lockedCoords.map((c) => cellIndex(board, c)))];
-    if (cells.every((c) => solution.has(c))) locked = cells;
-    else problems.push('current.locked: a cell is not part of the answer; dropped');
+    // A lantern is part of the answer but is never a hint firefly (it would also steal a jar slot).
+    if (cells.every((c) => solution.has(c) && !board.lantern[c])) locked = cells;
+    else problems.push('current.locked: a cell is not a placeable answer cell; dropped');
   } else problems.push('current.locked is malformed; dropped');
 
   // Player fireflies: path cells, not lanterns, not locked; otherwise the whole set is dropped.
@@ -173,8 +181,11 @@ function parseCurrent(v: unknown, catalog: Catalog, problems: string[]): Current
   const placedCoords = parseCells(own(v, 'placed') ?? [], board.w, board.h);
   if (placedCoords) {
     const cells = [...new Set(placedCoords.map((c) => cellIndex(board, c)))];
-    if (cells.every((c) => canPlace(board, c, lockedSet))) placed = cells;
-    else problems.push('current.placed: a cell cannot hold a firefly; dropped');
+    const lanterns = board.lanterns.filter((l) => solution.has(l)).length;
+    const jarSize = solution.size - lanterns;
+    if (!cells.every((c) => canPlace(board, c, lockedSet))) problems.push('current.placed: a cell cannot hold a firefly; dropped');
+    else if (cells.length + locked.length > jarSize) problems.push('current.placed: more fireflies than the jar holds; dropped');
+    else placed = cells;
   } else problems.push('current.placed is malformed; dropped');
 
   const count = (k: string) => {
@@ -185,7 +196,7 @@ function parseCurrent(v: unknown, catalog: Catalog, problems: string[]): Current
   };
   const seconds = own(v, 'seconds');
   return {
-    levelId, reason: reason as NextReason, placed, locked,
+    levelId, key, reason: reason as NextReason, placed, locked,
     seconds: isSeconds(seconds) ? Math.floor(seconds) : 0,
     placements: count('placements'), undos: count('undos'), restarts: count('restarts'), hints: count('hints'),
   };
@@ -270,7 +281,7 @@ export function serializeSave(d: SaveData, catalog: Catalog): string {
     playedReserve: [...d.playedReserve],
     quitMain: [...d.quitMain],
     current: cur && {
-      levelId: cur.levelId, reason: cur.reason,
+      levelId: cur.levelId, key: cur.key, reason: cur.reason,
       placed: coords(cur.placed, cur.levelId), locked: coords(cur.locked, cur.levelId),
       seconds: cur.seconds, placements: cur.placements, undos: cur.undos, restarts: cur.restarts, hints: cur.hints,
     },

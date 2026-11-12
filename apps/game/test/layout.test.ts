@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bandFor, fitBoard, keepOrTurn, MIN_TAP, orientFor } from '../src/view/layout.ts';
+import { bandFor, fitBoard, flightPath, keepOrTurn, MIN_TAP, orientFor } from '../src/view/layout.ts';
 
 describe('layout bands follow the screen shape', () => {
   it.each([
@@ -48,5 +48,15 @@ describe('orientation', () => {
     expect(keepOrTurn('identity', 9, 5, 600, 560)).toBe('identity');
     // Folding to a narrow screen where the wide board gets tiny: turn.
     expect(keepOrTurn('identity', 9, 5, 330, 600)).toBe('rot90');
+  });
+});
+
+describe('jar flight path', () => {
+  it('starts at the jar, ends on the tile and rises above both', () => {
+    const from = { x: 60, y: 600 }, to = { x: 300, y: 200 };
+    const p = flightPath(from, to);
+    expect(p[0]).toEqual(from);
+    expect(p[p.length - 1]).toEqual(to);
+    expect(Math.min(...p.map((q) => q.y))).toBeLessThan(200);
   });
 });

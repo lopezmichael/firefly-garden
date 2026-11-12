@@ -41,12 +41,12 @@ line is swappable.
 | `rules.ts` | `evaluate`: lit tiles, conflicts, bush states, solved. `canPlace` (refuses lanterns and locked hint cells) |
 | `solver.ts` | `solve` / `isUnique`: exact search with propagation, stops at a solution limit |
 | `transform.ts` | The 8 rotations/mirrors, so one stored orientation serves portrait and landscape; `canonicalKey` spots disguised duplicates |
-| `grader.ts` | Human-style technique solver: one deduction at a time, simplest first, records the trace (tier, width, reason); can start from a position |
-| `hints.ts` | `hint`: removes a wrong firefly or places the grader's next one from the player's position, with a one-line reason; `hintStep` maps a hint to the full trace for analytics |
+| `grader.ts` | Human-style technique solver: one deduction at a time, simplest first, records the trace (tier, width, reason); can start from a position. `gradeLevel` grades a shipped level as players see it (firefly count known); every difficulty decision goes through it |
+| `hints.ts` | `hint`: removes a wrong firefly or places the grader's next one from the player's position (count known), with a one-line reason; `hintStep` maps a hint to the full trace for analytics |
 | `difficulty.ts` | Features, score, tier and estimated solve time from a trace; all weights in `DIFFICULTY_CONFIG` |
 | `rng.ts` | Seeded PRNG so every generated level can be regenerated from its spec |
 | `shapes.ts` | Garden masks: rectangle, ring, L, bridge, crescent |
-| `generator.ts` | Spec → unique, graded level (scatter, hidden answer, derive clues, repair, clue removal, grade) |
+| `generator.ts` | Spec → unique, graded level (scatter, hidden answer, derive clues, repair, clue removal, grade; count-aware via `gradeLevel`) |
 | `ramp.ts` | Picks levels for each chapter, orders them as a sawtooth, swaps in a teaching level where each new tier first appears, and places that debut early in the chapter with practice alternating with easier levels |
 | `policy.ts` | Next-level policy: main path by default, one detour (warm-up after a break; breather after a quit, a long solve or repeated hints) from a reserve pool, never two in a row |
 | `events.ts` | Analytics event schema and `validateEvent`; what Phase 2 logs and Phase 4 refits from (`docs/references/analytics.md`) |
@@ -81,7 +81,7 @@ The look follows the Phase 2 design baseline (`docs/design/phase-2/`).
 | --- | --- | --- |
 | `src/state/` | Level catalog (`catalog.ts`), one play with undo, reset, hints and active time (`play.ts`), coins and hint bank (`wallet.ts`), progress and the next-level policy (`session.ts`), status-card wording (`status.ts`), saved progress and its validation (`save.ts`), the local analytics log (`events.ts`) | `@firefly/core` only, no browser globals (ratchet) |
 | `src/view/` | Pure layout math: bands, board fit, orientation (`layout.ts`); the PixiJS board (`board.ts`); CSS tokens read into a Pixi palette (`theme.ts`) | `state/`, `pixi.js` |
-| `src/ui/` | The play screen's DOM (`screen.ts`, `game.css`), the hint and settings sheets (`sheets.ts`) and the controller (`app.ts`) | `state/`, `view/`, `platform/` |
+| `src/ui/` | The play screen's DOM (`screen.ts`, `game.css`) including the firefly jar, the hint and settings sheets (`sheets.ts`), jar-to-tile flights (`flight.ts`) and the controller (`app.ts`) | `state/`, `view/`, `platform/` |
 | `src/platform/` | The `Platform` interface and adapters; the only door to SDKs (ratchet) | |
 
 - **Layout follows the screen's shape** (`bandFor`): tall (phones in portrait), square

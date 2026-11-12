@@ -62,6 +62,11 @@
   --ff-wing: #ffffff;
   --ff-shadow: #281800;
 
+  /* Firefly jar */
+  --ff-jar-glass: #cde6df;
+  --ff-cork: #b8862b;
+  --ff-cork-hi: #d9a54a;
+
   /* Petals */
   --ff-petal-pink: #f7a8c4;
   --ff-petal-cream: #fbe3c2;

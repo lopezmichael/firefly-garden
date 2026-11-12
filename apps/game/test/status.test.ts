@@ -43,5 +43,12 @@ describe('status card', () => {
     expect(noticeStatus({ kind: 'hint', hint: { ...base, ruledOut: [5] } }, ev).sub).toMatch(/crossed-out/);
     expect(noticeStatus({ kind: 'hint', hint: { kind: 'remove', cell: 0, reason: 'X' } }, ev).title).toMatch(/can't stay/);
     expect(noticeStatus({ kind: 'no-coins', coinsPerSolve: coins }, ev).sub).toContain(String(coins));
+    expect(noticeStatus({ kind: 'jar-empty' }, ev).title).toBe('The jar is empty');
+  });
+
+  it('an empty jar on an unsolved board says so, after conflicts and overfull bushes', () => {
+    const p = new Play(catalog.board(id), catalog.solution(id), clock);
+    expect(boardStatus(p.evaluation, false, coins, 0).sub).toMatch(/Every firefly is out/);
+    expect(boardStatus(p.evaluation, false, coins, 2).title).toMatch(/still dark/);
   });
 });

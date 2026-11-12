@@ -4,12 +4,33 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+- The firefly jar (milestone 3, first item): the status card shows a jar plus one slot per firefly
+  the garden needs, replacing the progress bar; placements are capped by the jar (an empty-jar tap
+  shakes it and places nothing); a firefly flies out of the jar to the tile and home again when
+  called back, and hints send a gold one; saves holding more fireflies than the jar are dropped.
+
+### Fixed
+- The board no longer jumps on the first move: the status card keeps a steady height (its
+  wording changed length and the board resized to fill the space).
+
 ### Changed
+- Shipped grading is count-aware: the game will show how many fireflies each garden needs (the
+  firefly jar), so `gradeLevel(level, board)` (new, core) grades with the count known, and the
+  generator, stored tier/score/seconds, ramp inputs, simulated players, level ratchets and `hint`
+  all use it. Plain `grade()` is unchanged. Packs regenerated: chapter 1 unchanged; launch T4
+  levels 159 → 107, T3 59 → 117; every ratchet holds without changes. Hints may now rule cells
+  out by count, and the property test checks those steps read true. Before/after in
+  `reports/archive/count-aware-pack-2026-11-12.json`.
 - Look pass 1 (`docs/design/phase-2/README.md`): teal and plum night, glow only on the board, an
   outlined Hint button, sentence-case labels, visible gold on satisfied bushes, the firefly mark in
   place of a stock sparkle, a crescent moon placed per layout band, and plainer copy.
 
 ### Added
+- Firefly jar experiment: `grade(board, { knownCount })` grades as if the total firefly count
+  were shown (count complete, T1; count bound, T3; count contradictions inside T4/T5). Default
+  grading is unchanged. `scripts/experiment-count.ts` writes
+  `reports/archive/count-experiment-2026-11-12.json`; soundness tested on every shipped level.
 - Phase 2 milestone 2: saved progress (`state/save.ts`: versioned, validated field by field per
   rules.md, fuzz-tested with 3,000 hostile saves; the board resumes exactly after a reload), the
   local analytics log (`state/events.ts`, schema-validated ring buffer), the hint sheet (coins or a

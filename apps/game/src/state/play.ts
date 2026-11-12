@@ -8,7 +8,8 @@ import type { Board, Evaluation, Hint } from '@firefly/core';
  *
  * Rules from docs/references/rules.md: a locked hint firefly can never be
  * toggled, undone or reset away (a paid hint is never lost); undo never brings
- * back a firefly a hint removed.
+ * back a firefly a hint removed. The firefly jar holds exactly as many
+ * fireflies as the answer needs: player plus locked fireflies never exceed it.
  */
 
 export interface Clock {
@@ -19,7 +20,11 @@ export interface Clock {
 /** Active time is capped just under the analytics schema's one-week bound. */
 export const MAX_PLAY_SECONDS = 7 * 86_400 - 1;
 
-export type TapResult = 'placed' | 'removed' | 'locked' | 'blocked';
+/** `jar-empty`: every firefly the garden needs is already out; nothing was placed. */
+/** `jar-full`: undoing would bring back more fireflies than the jar has room for; nothing changed. */
+export type UndoResult = 'undone' | 'nothing' | 'jar-full';
+
+export type TapResult = 'placed' | 'removed' | 'locked' | 'blocked' | 'jar-empty';
 
 type Op =
   | { readonly kind: 'toggle'; readonly cell: number; readonly placed: boolean }
@@ -63,12 +68,15 @@ export class Play {
     this.solution = solution;
     this.clock = clock;
     for (const c of start.locked ?? []) {
-      if (!solution.has(c)) throw new RangeError(`locked cell ${c} is not part of the answer`);
+      if (!solution.has(c) || board.lantern[c]) throw new RangeError(`locked cell ${c} is not a placeable answer cell`);
       this.lockedSet.add(c);
     }
     for (const c of start.placed ?? []) {
       if (!canPlace(board, c, this.lockedSet)) throw new RangeError(`cell ${c} cannot hold a player firefly`);
       this.placedSet.add(c);
+    }
+    if (this.placedSet.size + this.lockedSet.size > this.jarSize) {
+      throw new RangeError(`${this.placedSet.size + this.lockedSet.size} fireflies do not fit a jar of ${this.jarSize}`);
     }
     this.activeMs = Math.max(0, start.seconds ?? 0) * 1000;
     this.placements = start.placements ?? 0;
@@ -94,6 +102,21 @@ export class Play {
     return this.evaluation.solved;
   }
 
+  /**
+   * The jar's size: fireflies the player places to finish (the answer's count minus
+   * its lanterns, which are already on the board and never in the jar).
+   */
+  get jarSize(): number {
+    let lanterns = 0;
+    for (const l of this.board.lanterns) if (this.solution.has(l)) lanterns++;
+    return this.solution.size - lanterns;
+  }
+
+  /** Fireflies still in the jar. */
+  get remaining(): number {
+    return Math.max(0, this.jarSize - this.placedSet.size - this.lockedSet.size);
+  }
+
   get canUndo(): boolean {
     return this.ops.length > 0;
   }
@@ -106,6 +129,10 @@ export class Play {
     }
     if (!canPlace(this.board, cell, this.lockedSet)) return 'blocked';
     const placed = !this.placedSet.has(cell);
+    if (placed && this.remaining === 0) {
+      this.shown = null;
+      return 'jar-empty';
+    }
     if (placed) {
       this.placedSet.add(cell);
       this.placements++;
@@ -122,10 +149,16 @@ export class Play {
    * can reach a solved position the player never had: callers must check
    * `solved` afterwards, as after a tap.
    */
-  undo(): boolean {
-    if (this.solved) return false;
-    const op = this.ops.pop();
-    if (!op) return false;
+  undo(): UndoResult {
+    if (this.solved) return 'nothing';
+    const op = this.ops.at(-1);
+    if (!op) return 'nothing';
+    // Bringing fireflies back can't overfill the jar (a hint may have used a slot since).
+    // Refuse instead of restoring part of it: the step stays, so it can be undone once
+    // the player frees room, and nothing changes behind their back.
+    const returning = op.kind === 'toggle' ? (op.placed ? 0 : 1) : op.cells.length;
+    if (returning > this.remaining) return 'jar-full';
+    this.ops.pop();
     if (op.kind === 'toggle') {
       if (op.placed) this.placedSet.delete(op.cell);
       else this.placedSet.add(op.cell);
@@ -134,7 +167,7 @@ export class Play {
     }
     this.undos++;
     this.changed();
-    return true;
+    return 'undone';
   }
 
   /** Clears the player's fireflies; locked hint fireflies stay. */

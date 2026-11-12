@@ -94,10 +94,34 @@
 .ff-app[data-band='wide'] .ff-status { padding: 12px 14px; }
 .ff-app[data-band='wide'] .ff-status-title { font-size: 16px; }
 .ff-app[data-band='wide'] .ff-status-sub { font-size: 14px; }
-.ff-bar { height: 8px; border-radius: 999px; background: var(--ff-track); overflow: hidden; }
-.ff-bar-fill {
-  height: 100%; width: 0; border-radius: 999px; background: var(--ff-gold); transition: width 400ms ease;
-}
+/* Firefly jar and slots (design: jar plus slot row, chosen 2026-11-12). */
+.ff-jar { width: 44px; height: 56px; flex-shrink: 0; }
+.ff-jar svg { width: 100%; height: 100%; overflow: visible; }
+.ff-jar-glow { fill: var(--ff-glow); opacity: calc(0.12 + var(--ff-jar-fill, 1) * 0.45); filter: blur(10px); transition: opacity 400ms ease; }
+.ff-jar-glass { fill: color-mix(in srgb, var(--ff-jar-glass) 16%, transparent); stroke: color-mix(in srgb, var(--ff-jar-glass) 75%, transparent); stroke-width: 2.5; }
+.ff-jar-shine { fill: none; stroke: color-mix(in srgb, var(--ff-wing) 45%, transparent); stroke-width: 2.5; stroke-linecap: round; }
+.ff-jar-cork { fill: var(--ff-cork); }
+.ff-jar-cork-hi { fill: var(--ff-cork-hi); }
+.ff-jar-lid { transform-box: view-box; transform-origin: 18px 16px; }
+.ff-jar-open .ff-jar-lid { animation: ff-lid 620ms ease-in-out; }
+.ff-jar-shake { animation: ff-shake 420ms ease-in-out; }
+@keyframes ff-lid { 0%, 100% { transform: none; } 25%, 70% { transform: translate(-3px, -9px) rotate(-22deg); } }
+@keyframes ff-shake { 0%, 100% { transform: none; } 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
+.ff-jar-count { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.ff-jar-line { font-size: 14px; font-weight: 700; color: var(--ff-label); }
+.ff-slots { display: flex; flex-wrap: wrap; gap: 5px; }
+.ff-slot { width: 16px; height: 16px; box-sizing: border-box; border-radius: 999px; border: 2px solid var(--ff-panel-edge); transition: background 200ms ease, border-color 200ms ease; }
+.ff-slot[data-on='true'] { border-color: var(--ff-gold); background: var(--ff-firefly); box-shadow: 0 0 8px 2px color-mix(in srgb, var(--ff-glow) 55%, transparent); }
+.ff-status-row { align-items: center; }
+
+/* A firefly in flight between the jar and the board. */
+.ff-flier { position: fixed; left: 0; top: 0; width: 30px; height: 30px; margin: -15px 0 0 -15px; pointer-events: none; z-index: 20; }
+.ff-flier svg { width: 100%; height: 100%; overflow: visible; }
+.ff-flier-halo { fill: var(--ff-glow); opacity: 0.35; }
+.ff-flier-wing { fill: var(--ff-wing); opacity: 0.85; }
+.ff-flier-body { fill: var(--ff-firefly); stroke: var(--ff-firefly-edge); stroke-width: 1.5; }
+.ff-flier[data-gold='true'] .ff-flier-body { fill: var(--ff-hint-firefly); stroke: var(--ff-hint-firefly-edge); }
+.ff-flier-head { fill: var(--ff-firefly-head); }
 
 .ff-next { border: 0; background: var(--ff-gold); color: var(--ff-on-gold); font-weight: 800; cursor: pointer; }
 /* Hint is a secondary action: outlined, so the paid move is never the loudest thing on screen. */
@@ -126,11 +150,11 @@
 
 .ff-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-@media (prefers-reduced-motion: reduce) {
-  .ff-star { animation: none; }
-  .ff-bar-fill { transition: none; }
-}
+/* Reduced motion follows the in-game setting, which itself defaults to the device's
+   (data-motion is set by the controller), so "Off" can override a device preference too. */
 .ff-app[data-motion='reduced'] .ff-star { animation: none; }
+.ff-app[data-motion='reduced'] .ff-slot, .ff-app[data-motion='reduced'] .ff-jar-glow { transition: none; }
+.ff-app[data-motion='reduced'] .ff-jar-open .ff-jar-lid, .ff-app[data-motion='reduced'] .ff-jar-shake { animation: none; }
 
 /* Wide band: the narrow info panel puts coins above the chapter label, and the
    moon moves off the control column. */
@@ -179,3 +203,9 @@
   background: var(--ff-panel); color: var(--ff-ink); display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer;
 }
 .ff-gear .ff-icon { width: 20px; height: 20px; }
+
+/* The status card keeps its height from move to move (room for a one-line title and a two-line
+   sub-line), so the board above it never jumps when the wording changes. */
+.ff-app[data-band='tall'] .ff-status-text, .ff-app[data-band='square'] .ff-status-text {
+  min-height: calc(18px * 1.2 + 2px + 15px * 1.4 * 2);
+}

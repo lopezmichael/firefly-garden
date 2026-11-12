@@ -26,7 +26,7 @@ function good(): SaveData {
     history: catalog.mainPath.slice(0, 4).map((l, i) => ({ levelId: l, reason: 'main' as const, solved: true, seconds: 30 + i, hints: 0, endedAt: NOW - 1000 * (4 - i) })),
     playedReserve: new Set([catalog.reserve[0]!.id]),
     quitMain: new Set([catalog.mainPath[3]!]),
-    current: { levelId: id, reason: 'main', placed: [solution[1]!], locked: [solution[0]!], seconds: 12, placements: 3, undos: 1, restarts: 0, hints: 1 },
+    current: { levelId: id, key: catalog.levelKey(id), reason: 'main', placed: [solution[1]!], locked: [solution[0]!], seconds: 12, placements: 3, undos: 1, restarts: 0, hints: 1 },
     settings: { sound: false, motion: 'off' },
   };
 }
@@ -74,6 +74,42 @@ describe('save validation (rules.md)', () => {
     expect(problems.join()).toMatch(/install id/);
   });
 
+  it('never locks a lantern, even though lanterns are part of the answer', () => {
+    // Chapters 1 to 3 have no lanterns: use a catalog that includes the first lantern chapter.
+    const manifest = read('manifest.json') as { chapters: { id: string; levels: string[] }[] };
+    const launch = read('launch.json') as { levels: { id: string; twists?: { lanterns?: unknown[] } }[] };
+    const lanternLevel = launch.levels.find((l) => (l.twists?.lanterns?.length ?? 0) > 0)!;
+    const chapter = manifest.chapters.find((c) => c.levels.includes(lanternLevel.id))!;
+    const cat = createCatalog({ launch, reserve: read('reserve.json'), manifest }, ['c1', chapter.id]);
+    const withLantern = lanternLevel.id;
+    const b = cat.board(withLantern);
+    const lantern = b.lanterns[0]!;
+    const raw = tamper((o) => {
+      o.current = { levelId: withLantern, key: cat.levelKey(withLantern), reason: 'main', placed: [], locked: [cellCoord(b, lantern)], seconds: 0, placements: 0, undos: 0, restarts: 0, hints: 0 };
+    });
+    const parsed = parseSave(raw, cat, NOW, fresh);
+    expect(parsed.data!.current).not.toBeNull();
+    expect(parsed.data!.current!.locked).toEqual([]);
+    expect(parsed.problems.join()).toMatch(/not a placeable answer cell/);
+  });
+
+  it('drops a saved board holding more fireflies than the jar', () => {
+    const tooMany = board.paths.filter((c) => !board.lantern[c] && c !== solution[0]).slice(0, solution.length).map((c) => cellCoord(board, c));
+    const { data, problems } = parseSave(tamper((o) => { (o.current as Record<string, unknown>).placed = tooMany; }), catalog, NOW, fresh);
+    expect(data!.current!.placed).toEqual([]);
+    expect(data!.current!.locked).toEqual([solution[0]]);
+    expect(problems.join()).toMatch(/more fireflies than the jar/);
+  });
+
+  it('drops the saved board when the level changed under the same id', () => {
+    const { data, problems } = parseSave(tamper((o) => { (o.current as Record<string, unknown>).key = 'deadbeef'; }), catalog, NOW, fresh);
+    expect(data!.current).toBeNull();
+    expect(data!.coins).toBe(70); // the rest of the save is kept
+    expect(problems.join()).toMatch(/level changed/);
+    const old = parseSave(tamper((o) => { delete (o.current as Record<string, unknown>).key; }), catalog, NOW, fresh);
+    expect(old.data!.current).toBeNull();
+  });
+
   it('refuses an oversized save before parsing it', () => {
     const raw = tamper((o) => { o.pad = 'x'.repeat(MAX_SAVE_CHARS); });
     expect(parseSave(raw, catalog, NOW, fresh).data).toBeNull();
@@ -83,7 +119,7 @@ describe('save validation (rules.md)', () => {
     const raw = tamper((o) => { (o.current as Record<string, unknown>).locked = [cellCoord(board, solution[0]!), cellCoord(board, wrong)]; });
     const { data, problems } = parseSave(raw, catalog, NOW, fresh);
     expect(data!.current!.locked).toEqual([]);
-    expect(problems.join()).toMatch(/not part of the answer/);
+    expect(problems.join()).toMatch(/not a placeable answer cell/);
   });
 
   it('drops player fireflies on bushes, off the board, or on a locked cell', () => {
@@ -167,6 +203,8 @@ describe('save fuzz', () => {
         if (rng.next() < 0.3 && o.current && typeof o.current === 'object') {
           const cur = o.current as Record<string, unknown>;
           cur.levelId = pick([...catalog.mainPath, catalog.reserve[0]!.id, 'nope']);
+          // Keep the fingerprint in step so the fuzz reaches the cell checks, not the early drop.
+          if (catalog.has(cur.levelId as string)) cur.key = catalog.levelKey(cur.levelId as string);
           cur.locked = Array.from({ length: Math.floor(rng.next() * 4) }, () => [Math.floor(rng.next() * 9) - 1, Math.floor(rng.next() * 9) - 1]);
         }
       });

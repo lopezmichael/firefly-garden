@@ -61,11 +61,11 @@ describe('play', () => {
     expect(p.tap(b!)).toBe('placed');
     expect(p.tap(b!)).toBe('removed');
     expect(p.placed.has(b!)).toBe(false);
-    expect(p.undo()).toBe(true);
+    expect(p.undo()).toBe('undone');
     expect(p.placed.has(b!)).toBe(true);
     p.reset();
     expect(p.placed.size).toBe(0);
-    expect(p.undo()).toBe(true); // undo the reset
+    expect(p.undo()).toBe('undone'); // undo the reset
     expect([...p.placed].sort()).toEqual([a, b].sort());
     expect({ placements: p.placements, undos: p.undos, restarts: p.restarts }).toEqual({ placements: 2, undos: 2, restarts: 1 });
   });
@@ -84,7 +84,7 @@ describe('play', () => {
     expect(h).toMatchObject({ kind: 'remove', cell: w });
     expect(p.placed.has(w)).toBe(false);
     expect(p.canUndo).toBe(false);
-    expect(p.undo()).toBe(false);
+    expect(p.undo()).toBe('nothing');
     expect(p.placed.has(w)).toBe(false);
   });
 
@@ -126,7 +126,7 @@ describe('play', () => {
       expect(p.solved, lid).toBe(true);
       expect(p.applyHint().kind).toBe('none');
       expect(p.tap(p.board.paths[0]!)).toBe('blocked');
-      expect(p.undo()).toBe(false);
+      expect(p.undo()).toBe('nothing');
     }
   });
 
@@ -237,23 +237,13 @@ describe('session', () => {
 });
 
 describe('play: undo after a hint', () => {
-  it('an undo can solve the board once a hint has rewritten history, and solved is then final', () => {
+  it('a solved board is final: undo is refused and keeps its history entry', () => {
     const id = catalog.mainPath[3]!;
-    const b = catalog.board(id);
-    const sol = [...catalog.solution(id)];
-    // A wrong firefly that conflicts with some answer cell keeps the board unsolved.
-    const w = b.paths.find((c) => !catalog.solution(id).has(c) && b.rays[c]!.some((d) => catalog.solution(id).has(d)))!;
     const p = playOf(id);
-    p.tap(w);
-    for (const c of sol) p.tap(c);
-    expect(p.solved).toBe(false);
-    p.tap(sol[0]!); // lift one answer firefly
-    expect(p.applyHint()).toMatchObject({ kind: 'remove', cell: w });
-    expect(p.solved).toBe(false);
-    expect(p.undo()).toBe(true); // brings sol[0] back: solved without a tap
+    for (const c of catalog.solution(id)) if (!p.board.lantern[c]) p.tap(c);
     expect(p.solved).toBe(true);
-    expect(p.undo()).toBe(false);
-    expect(p.canUndo).toBe(true); // the refused undo kept its history entry
+    expect(p.undo()).toBe('nothing');
+    expect(p.canUndo).toBe(true);
   });
 
   it('tapping a locked firefly or a refused undo clears the hint outlines', () => {
@@ -279,5 +269,82 @@ describe('play: resume', () => {
     p.resume();
     clock.advance(5000);
     expect(p.seconds).toBe(45);
+  });
+});
+
+describe('play: the firefly jar', () => {
+  it('holds exactly the fireflies the answer needs and refuses one more', () => {
+    const id = catalog.mainPath[6]!;
+    const b = catalog.board(id);
+    const sol = [...catalog.solution(id)];
+    const p = playOf(id);
+    expect(p.jarSize).toBe(sol.length - b.lanterns.length);
+    // Fill the jar with wrong-but-placeable fireflies where possible, else answer cells.
+    const free = b.paths.filter((c) => !b.lantern[c]);
+    for (const c of free) {
+      if (p.remaining === 0) break;
+      p.tap(c);
+    }
+    expect(p.remaining).toBe(0);
+    const extra = free.find((c) => !p.placed.has(c))!;
+    expect(p.tap(extra)).toBe('jar-empty');
+    expect(p.placed.has(extra)).toBe(false);
+    // Calling one back frees a slot.
+    const back = [...p.placed][0]!;
+    expect(p.tap(back)).toBe('removed');
+    expect(p.remaining).toBe(1);
+  });
+
+  it('a full but wrong jar always gets a removal hint, never an overfilling placement', () => {
+    for (const id of catalog.mainPath) {
+      const b = catalog.board(id);
+      const p = playOf(id);
+      for (const c of b.paths) if (p.remaining > 0 && !b.lantern[c] && !p.solution.has(c)) p.tap(c);
+      for (const c of b.paths) if (p.remaining > 0 && !b.lantern[c]) p.tap(c);
+      for (let i = 0; i < 60 && !p.solved; i++) {
+        const before = p.placed.size + p.locked.size;
+        const h = p.applyHint();
+        expect(p.placed.size + p.locked.size, id).toBeLessThanOrEqual(p.jarSize);
+        if (before === p.jarSize && !p.solved) expect(h.kind, id).toBe('remove');
+      }
+      expect(p.solved, id).toBe(true);
+    }
+  });
+
+  it('undo refuses to overfill the jar after a hint used a slot: nothing changes, the step stays', () => {
+    // The one way it can happen: a full jar holding a wrong firefly is reset, a hint locks a
+    // cell that was not among the cleared ones, and undo would bring the whole reset back.
+    let found = 0;
+    for (const id of catalog.mainPath) {
+      const b = catalog.board(id);
+      const sol = [...catalog.solution(id)].filter((c) => !b.lantern[c]);
+      const wrong = b.paths.find((c) => !b.lantern[c] && !catalog.solution(id).has(c));
+      if (wrong === undefined) continue;
+      for (const leftOut of sol) {
+        const p = playOf(id);
+        p.tap(wrong);
+        for (const c of sol) if (c !== leftOut) p.tap(c);
+        if (p.remaining !== 0 || p.solved) continue;
+        const cleared = new Set(p.placed);
+        p.reset();
+        const h = p.applyHint();
+        if (h.kind !== 'place' || cleared.has(h.cell)) continue;
+        const before = [...p.placed].sort();
+        expect(p.undo(), id).toBe('jar-full');
+        expect([...p.placed].sort()).toEqual(before);
+        expect(p.canUndo).toBe(true);
+        expect(p.placed.size + p.locked.size).toBeLessThanOrEqual(p.jarSize);
+        found++;
+        break;
+      }
+    }
+    expect(found).toBeGreaterThan(0);
+  });
+
+  it('refuses to resume a board with more fireflies than the jar', () => {
+    const id = catalog.mainPath[2]!;
+    const b = catalog.board(id);
+    const tooMany = b.paths.filter((c) => !b.lantern[c]).slice(0, catalog.solution(id).size + 1);
+    expect(() => new Play(b, catalog.solution(id), fakeClock(), { placed: tooMany })).toThrow(RangeError);
   });
 });
