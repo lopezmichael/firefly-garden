@@ -122,7 +122,12 @@ plus mark), the jar with its slots, one button, one sheet, and one full tall-pho
 - [x] Components board (2026-11-12): every remaining board state (conflict, too many, ruled
       out, lit twice, no-number bush, wants-none bush, hint reason outline, solve moment) and the
       icon set (undo, reset, hint, settings, sound on/off, map, next, close, locked, motion, play
-      log) plus the coin, all in ink line on a 24 px grid. Waiting for Michael's review.
+      log) plus the coin, all in ink line on a 24 px grid. Reviewed: reset arrowhead realigned,
+      conflict fireflies softened from "electric" to worried (shiver lines, slow sway).
+
+- [x] Screens in ink and wash (2026-11-12): garden map, level complete (the board's real unique
+      solution, all bushes blooming), hint sheet and settings with play log. Same contents and
+      copy as the Phase 2 baseline; the play log stays one line (look pass 1 decision).
 
 ### 4. Full screen set, chosen direction (canvas row 3)
 
