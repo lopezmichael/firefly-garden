@@ -56,7 +56,7 @@ Each checkpoint is a stop: I show the work and wait.
       a first palette guess); the phase 2 canvas stays as the locked baseline.
 - [ ] For each direction, write one paragraph naming what it takes from the references and
       what it avoids.
-- [ ] **Checkpoint A:** Michael reacts (more of this, none of that) and adds his own references.
+- [x] **Checkpoint A:** Michael reacts (more of this, none of that) and adds his own references.
 
 ### 2. Technique spike (scratch only, nothing in the repo)
 

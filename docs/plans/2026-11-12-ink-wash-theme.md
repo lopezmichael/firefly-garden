@@ -1,6 +1,6 @@
 # Ink and wash theme: implementation plan
 
-**Status:** draft for Michael's review. **Owner:** Michael. **Written:** 2026-11-12.
+**Status:** approved by Michael (2026-11-12), ready to start. **Owner:** Michael. **Written:** 2026-11-12.
 **Source of truth:** the "Firefly Garden · Character" canvas
 (https://claude.ai/artifact/JYTEsJmpHaWKATru6UMvDG): Round 4 (locked), Components, Twists, the
 four screens and the three play bands; the asset list, tokens and motion table in
@@ -31,15 +31,16 @@ Out of scope here (each gets its own plan, using the designs already on the canv
   Phase 4, with the twist chapters
 - Michael's optional painting kit
 
-## Decisions to confirm before starting
+## Decisions (confirmed by Michael, 2026-11-12)
 
 1. **Board tilt.** The board is drawn with a slight downward camera tilt today (`TILT = 0.94` in
    `view/board.ts`). The ink and wash designs are flat-on with a visible front edge on each tile.
-   Recommendation: drop the tilt and let the front edge carry the 2.5D.
+   **Decided: drop the tilt**; the front edge carries the 2.5D.
 2. **The tray goes.** The board currently sits on a dark rounded tray. The designs put tiles
-   straight onto the night with hills behind the status card. Recommendation: remove the tray.
+   straight onto the night with hills behind the status card. **Decided: remove the tray.**
 3. **Copy changes that come with the look:** "A bush blooms when all its dots are gold." (was
    "is done"), and the hint sheet keeps its current wording. Everything else stays as written.
+   **Decided: make the change.**
 
 ## Constraints and how each is kept
 
@@ -63,7 +64,7 @@ milestone that changes what's on screen.
 
 - [ ] Screenshot the current build in tall, square and wide, motion on and off, for the
       before/after record
-- [ ] Michael confirms the three decisions above
+- [x] Michael confirms the three decisions above (2026-11-12: drop tilt, remove tray, copy change)
 
 ### 1. Tokens, fonts and a contrast ratchet
 
@@ -103,7 +104,7 @@ milestone that changes what's on screen.
       fill gold one by one; happy number turns gold
 - [ ] Roses: one drawing, three per happy bush, variant chosen from the cell index so a garden
       always looks the same; placed inside the leaf mass, clear of number and dots
-- [ ] Remove the tray and (if confirmed) the tilt
+- [ ] Remove the tray and the tilt
 - [ ] Evidence: the state sheet reproduced in the real build (a dev-only route or test page that
       renders every state), compared side by side with the Components board
 
