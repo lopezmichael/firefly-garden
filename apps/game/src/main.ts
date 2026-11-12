@@ -24,7 +24,10 @@ async function start(): Promise<void> {
   // A font that fails to load is not fatal: the CSS stacks fall back to system faces.
   await Promise.all([document.fonts.load('700 24px Fredoka'), document.fonts.load('800 15px Nunito')]).catch(() => undefined);
   const catalog = createCatalog({ launch, reserve, manifest }, CHAPTERS);
-  await new GameApp(root, catalog, platform, readPalette()).start();
+  const app = new GameApp(root, catalog, platform, readPalette());
+  await app.start();
+  // End-to-end builds only (`--mode e2e`): a constant, so production drops this line.
+  if (import.meta.env.MODE === 'e2e') Object.assign(window, { __ff: app.e2eHooks() });
 }
 
 start().catch((err: unknown) => {

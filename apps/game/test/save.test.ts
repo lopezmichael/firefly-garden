@@ -29,6 +29,7 @@ function good(): SaveData {
     current: { levelId: id, key: catalog.levelKey(id), reason: 'main', placed: [solution[1]!], locked: [solution[0]!], seconds: 12, placements: 3, undos: 1, restarts: 0, hints: 1 },
     parked: [],
     settings: { sound: false, motion: 'off' },
+    tips: new Set(['cross']),
   };
 }
 
@@ -38,6 +39,19 @@ function tamper(edit: (o: Record<string, unknown>) => void): string {
   edit(o);
   return JSON.stringify(o);
 }
+
+describe('one-time tips', () => {
+  it('keep known tip ids and drop anything else', () => {
+    const { data, problems } = parseSave(tamper((o) => { o.tips = ['cross', 'cross', '__proto__', 7, 'free-coins']; }), catalog, NOW, fresh);
+    expect([...data!.tips]).toEqual(['cross']);
+    expect(problems.some((p) => p.startsWith('tips'))).toBe(true);
+  });
+
+  it('default to none when missing or malformed (older saves have no tips)', () => {
+    expect(parseSave(tamper((o) => { delete o.tips; }), catalog, NOW, fresh).data!.tips.size).toBe(0);
+    expect(parseSave(tamper((o) => { o.tips = 'cross'; }), catalog, NOW, fresh).data!.tips.size).toBe(0);
+  });
+});
 
 describe('save round trip', () => {
   it('reads back exactly what was written, with no problems', () => {

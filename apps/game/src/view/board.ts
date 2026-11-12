@@ -2,7 +2,7 @@
 import 'pixi.js/unsafe-eval';
 import { Application, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js';
 import type { Board, Evaluation, Transform } from '@firefly/core';
-import { fitBoard } from './layout.ts';
+import { canonicalCell, displayDims, fitBoard } from './layout.ts';
 import type { BoardFit } from './layout.ts';
 import type { Palette } from './theme.ts';
 
@@ -152,6 +152,9 @@ interface CellView {
   fly?: FlyView;
   ruled?: Graphics;
   outline?: Graphics;
+  /** What `ruled` and `outline` currently show, so a move redraws only the cells that changed. */
+  ruledOn?: boolean;
+  outlineOn?: boolean;
   clue?: Text;
   pips?: Graphics;
   extras?: Graphics;
@@ -178,6 +181,9 @@ export class BoardView {
   private readonly tray = new Graphics();
   private readonly cellsLayer = new Container();
   private readonly ghostLayer = new Container();
+  /** Keyboard focus ring (desktop portals): drawn only while the board has keyboard focus. */
+  private readonly focusRing = new Graphics();
+  private focusCell: number | null = null;
   private board: Board | null = null;
   private transform: Transform = 'identity';
   private fit: BoardFit | null = null;
@@ -187,15 +193,19 @@ export class BoardView {
   private state: BoardState | null = null;
   private time = 0;
   private area = { w: 0, h: 0 };
+  /** Frames drawn and milliseconds elapsed since load, for the fps readout and the perf check. */
+  private readonly frames = { count: 0, ms: 0 };
 
   private constructor(app: Application, opts: BoardViewOptions) {
     this.app = app;
     this.pal = opts.palette;
     this.onTap = opts.onTap;
     this.motion = !opts.reducedMotion;
-    this.stage.addChild(this.tray, this.cellsLayer, this.ghostLayer);
+    this.stage.addChild(this.tray, this.cellsLayer, this.ghostLayer, this.focusRing);
     app.stage.addChild(this.stage);
     app.ticker.add((ticker) => this.tick(ticker.deltaMS));
+    // A lost and restored WebGL context (common on phones in the background) needs a fresh frame.
+    app.canvas.addEventListener('webglcontextrestored', () => this.wake());
   }
 
   static async create(host: HTMLElement, opts: BoardViewOptions): Promise<BoardView> {
@@ -218,6 +228,29 @@ export class BoardView {
 
   setReducedMotion(reduced: boolean): void {
     this.motion = !reduced;
+    this.wake();
+  }
+
+  /**
+   * Frames are drawn only while something moves (a bobbing firefly, a drop, a
+   * pulsing hint outline, a firefly lifting away). A still board, which is
+   * every board in reduced motion and an empty one otherwise, draws once per
+   * change and then stops the ticker: no GPU or battery spent on identical frames.
+   */
+  /** Draw at least one more frame (the tab came back, the context was restored). */
+  redraw(): void {
+    this.wake();
+  }
+
+  private wake(): void {
+    if (!this.app.ticker.started) this.app.ticker.start();
+  }
+
+  private animating(): boolean {
+    if (this.ghosts.length > 0) return true;
+    if (!this.motion) return false;
+    if ((this.state?.because.size ?? 0) > 0) return true;
+    return this.cells.some((v) => v.fly?.root.visible === true);
   }
 
   setLevel(board: Board, transform: Transform): void {
@@ -242,16 +275,21 @@ export class BoardView {
     this.build();
   }
 
-  /** Display grid size for the current orientation. */
-  private dims(): [cols: number, rows: number] {
-    const b = this.board!;
-    return this.transform === 'rot90' ? [b.h, b.w] : [b.w, b.h];
+  /** Show the keyboard focus ring on a canonical cell, or hide it (null). */
+  setFocus(cell: number | null): void {
+    this.focusCell = cell;
+    this.drawFocus();
   }
 
-  /** Display (row, col) → canonical cell index. */
-  private canonical(dr: number, dc: number): number {
-    const b = this.board!;
-    return this.transform === 'rot90' ? (b.h - 1 - dc) * b.w + dr : dr * b.w + dc;
+  private drawFocus(): void {
+    this.wake();
+    this.focusRing.clear();
+    const v = this.focusCell === null ? undefined : this.cells.find((c) => c.cell === this.focusCell);
+    if (!v || !this.fit) return;
+    const { cell } = this.fit;
+    const inset = -Math.max(3, Math.round(cell * 0.07));
+    this.focusRing.roundRect(v.root.x + inset, v.root.y + inset, cell - 2 * inset, cell - 2 * inset, cell * 0.3)
+      .stroke({ width: 3, color: this.pal.glow });
   }
 
   private texture(key: string, size: number, draw: (ctx: CanvasRenderingContext2D, px: number) => void): Texture {
@@ -340,12 +378,13 @@ export class BoardView {
   }
 
   private build(): void {
+    this.wake();
     this.cellsLayer.removeChildren().forEach((c) => c.destroy({ children: true }));
     this.cells = [];
     this.tray.clear();
     if (!this.board || this.area.w < 10 || this.area.h < 10) return;
     const b = this.board;
-    const [cols, rows] = this.dims();
+    const [cols, rows] = displayDims(this.transform, b.w, b.h);
     const fit = fitBoard(cols, rows, this.area.w, this.area.h / TILT);
     this.fit = fit;
     this.pruneTextures(fit.cell);
@@ -357,7 +396,7 @@ export class BoardView {
     const halo = this.haloTexture();
     for (let dr = 0; dr < rows; dr++) {
       for (let dc = 0; dc < cols; dc++) {
-        const i = this.canonical(dr, dc);
+        const i = canonicalCell(this.transform, b.w, b.h, dr, dc);
         const kind = b.kind[i]!;
         const root = new Container();
         root.position.set(pad + dc * (cell + gap), pad + dr * (cell + gap));
@@ -408,6 +447,7 @@ export class BoardView {
       }
     }
     if (this.state) this.render(this.state, { quiet: true });
+    this.drawFocus();
   }
 
   /**
@@ -417,6 +457,7 @@ export class BoardView {
   render(state: BoardState, opts: { quiet?: boolean; removed?: number | null; arriving?: number | null; arrivalMs?: number } = {}): void {
     const prev = this.state;
     this.state = state;
+    this.wake();
     if (!this.board || !this.fit) return;
     const { cell } = this.fit;
     const ev = state.evaluation;
@@ -443,12 +484,14 @@ export class BoardView {
         } else {
           v.fly!.root.visible = false;
         }
-        v.ruled!.clear();
-        if (state.ruledOut.has(v.cell) && !has) {
+        const ruled = state.ruledOut.has(v.cell) && !has;
+        if (ruled !== (v.ruledOn ?? false)) v.ruled!.clear();
+        if (ruled && !v.ruledOn) {
           const r = cell * 0.18, cx = cell / 2, cy = cell / 2;
           v.ruled!.circle(cx, cy, r).stroke({ width: Math.max(2, cell * 0.035), color: this.pal.ruled, alpha: 0.9 })
             .moveTo(cx - r * 0.7, cy + r * 0.7).lineTo(cx + r * 0.7, cy - r * 0.7).stroke({ width: Math.max(2, cell * 0.035), color: this.pal.ruled, cap: 'round' });
         }
+        v.ruledOn = ruled;
       } else if (v.kind === 'bush' && v.clue && v.pips) {
         const s = bushes.get(v.cell);
         const want = s?.want ?? 0, have = s?.have ?? 0, st = s?.state ?? 'under';
@@ -479,8 +522,14 @@ export class BoardView {
         if (state.solved) flower(v.extras, cell * 0.18, cell * 0.16, cell * 0.12, this.pal.petalPink, this.pal.glow);
       }
       if (v.outline) {
-        v.outline.clear();
-        if (state.because.has(v.cell)) dashedRect(v.outline, -3, -3, cell + 6, cell + 6, Math.max(4, cell * 0.08), this.pal.glow, 2);
+        const on = state.because.has(v.cell);
+        if (on !== (v.outlineOn ?? false)) {
+          v.outline.clear();
+          if (on) dashedRect(v.outline, -3, -3, cell + 6, cell + 6, Math.max(4, cell * 0.08), this.pal.glow, 2);
+          // The pulse sets alpha each frame; a still board (reduced motion) needs it opaque.
+          v.outline.alpha = 1;
+        }
+        v.outlineOn = on;
       }
     }
     if (opts.removed !== undefined && opts.removed !== null) this.liftAway(opts.removed);
@@ -505,7 +554,14 @@ export class BoardView {
     this.ghosts.push({ fly, age: 0 });
   }
 
+  /** Frames drawn and time elapsed since load (dev readout, e2e perf check). */
+  frameStats(): { count: number; ms: number } {
+    return { ...this.frames };
+  }
+
   private tick(dt: number): void {
+    this.frames.count++;
+    this.frames.ms += dt;
     this.time += dt;
     for (const v of this.cells) {
       if (v.fly?.root.visible) v.fly.tick(this.time, this.motion, dt);
@@ -526,6 +582,8 @@ export class BoardView {
       }
       return true;
     });
+    // This frame still draws (the app renders after this listener); later ones wait for a change.
+    if (!this.animating()) this.app.ticker.stop();
   }
 
   destroy(): void {

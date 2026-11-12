@@ -2,6 +2,8 @@ import { cellCoord, cellIndex, canPlace } from '@firefly/core';
 import type { Coord, NextReason, PlayRecord } from '@firefly/core';
 import type { Catalog } from './catalog.ts';
 import { HISTORY_CAP } from './session.ts';
+import { isTipId, TIP_IDS } from './teach.ts';
+import type { TipId } from './teach.ts';
 import { MAX_BANKED_HINTS, MAX_COINS } from './wallet.ts';
 
 export { MAX_COINS };
@@ -71,6 +73,8 @@ export interface SaveData {
    */
   readonly parked: readonly CurrentPlay[];
   readonly settings: Settings;
+  /** One-time tips already shown (unknown ids are dropped on load). */
+  readonly tips: ReadonlySet<TipId>;
 }
 
 export interface ParsedSave {
@@ -265,6 +269,7 @@ export function parseSave(raw: string | null, catalog: Catalog, now: number, fre
     current: parseCurrent(own(json, 'current'), catalog, problems),
     parked: [],
     settings: parseSettings(own(json, 'settings'), problems),
+    tips: new Set([...idSet(own(json, 'tips'), TIP_IDS, TIP_IDS.size, 'tips', problems)].filter(isTipId)),
   };
   const rawParked = own(json, 'parked');
   if (rawParked !== undefined) {
@@ -312,6 +317,7 @@ export function serializeSave(d: SaveData, catalog: Catalog): string {
     current: cur && play(cur),
     parked: d.parked.slice(-MAX_PARKED).map(play),
     settings: { sound: d.settings.sound, motion: d.settings.motion },
+    tips: [...d.tips],
   });
 }
 

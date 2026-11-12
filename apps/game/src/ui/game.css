@@ -89,7 +89,7 @@
 .ff-status[data-tone='solved'] { background: color-mix(in srgb, var(--ff-solved-panel) 95%, transparent); }
 .ff-status-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .ff-status-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.ff-status-title { font-family: var(--ff-font-display); font-weight: 600; font-size: 18px; color: var(--ff-ink); }
+.ff-status-title { font-family: var(--ff-font-display); font-weight: 600; font-size: 18px; line-height: 1.2; color: var(--ff-ink); }
 .ff-status[data-tone='warn'] .ff-status-title { color: var(--ff-warn); }
 .ff-status[data-tone='glow'] .ff-status-title, .ff-status[data-tone='solved'] .ff-status-title { color: var(--ff-glow); }
 .ff-status-sub { font-size: 15px; line-height: 1.4; color: var(--ff-ink-quiet); }
@@ -360,3 +360,5 @@
 .ff-app[data-motion='reduced'] .ff-counting .ff-ring-fill,
 .ff-app[data-motion='reduced'] .ff-enter .ff-complete-chip { animation: none; }
 .ff-app[data-motion='reduced'] .ff-burst { display: none; }
+.ff-board:focus-visible { outline: none; } /* the board draws its own focus ring on the focused cell */
+.ff-fps { position: fixed; right: 6px; bottom: 6px; z-index: 50; font: 700 11px var(--ff-font-body); color: var(--ff-label); pointer-events: none; } /* dev builds only */

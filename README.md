@@ -8,6 +8,7 @@ first, iOS later, one TypeScript codebase.
 npm install
 npm run check   # typecheck, tests, build, bundle budget
 npm run dev     # game dev server
+npm run e2e     # browser smoke test (Playwright)
 ```
 
 - `Firefly Garden Project Plan.md`: the full vision

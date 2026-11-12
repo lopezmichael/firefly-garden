@@ -1,12 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { HINT_REASONS, PLAYER_CONFIG, REMOVE_REASONS, TRY_HERE_REASON } from '@firefly/core';
-import type { Evaluation, Hint, TechniqueId } from '@firefly/core';
+import { PLAYER_CONFIG } from '@firefly/core';
 import { createCatalog } from '../src/state/catalog.ts';
 import { Play } from '../src/state/play.ts';
-import { boardStatus, clockText, completeLine, finishedStatus, litPercent, noticeStatus } from '../src/state/status.ts';
-import type { Notice, StatusText } from '../src/state/status.ts';
+import { boardStatus, clockText, completeLine, litPercent, noticeStatus } from '../src/state/status.ts';
+import { everyStatus } from './status-samples.ts';
 
 const LEVELS = join(import.meta.dirname, '../../../levels');
 const read = (f: string): unknown => JSON.parse(readFileSync(join(LEVELS, f), 'utf8'));
@@ -72,49 +71,6 @@ describe('level-complete line', () => {
   });
 });
 
-/** A typed evaluation for wording tests: only what the status words read, nothing cast away. */
-function evaluation(o: { solved?: boolean; conflicts?: number[]; over?: boolean; unlit?: number }): Evaluation {
-  return {
-    fireflies: [], lit: [], conflicts: o.conflicts ?? [], unlit: o.unlit ?? 0, solved: o.solved ?? false,
-    bushes: o.over ? [{ cell: 0, want: 1, have: 2, state: 'over' }] : [],
-  };
-}
-
-/**
- * Every message the status card can show, with worst-case numbers, so the length budget below
- * covers all of them (hint reasons included). A new notice kind fails to compile until it has a
- * sample here.
- */
-function everyStatus(): StatusText[] {
-  const dark = evaluation({ unlit: 888 });
-  const notices: { readonly [K in Exclude<Notice['kind'], 'hint'>]: Extract<Notice, { kind: K }> } = {
-    locked: { kind: 'locked' },
-    'no-coins': { kind: 'no-coins', coinsPerSolve: 1000 },
-    reset: { kind: 'reset' },
-    'jar-empty': { kind: 'jar-empty' },
-  };
-  const hint = (h: Exclude<Hint, { kind: 'none' }>) => noticeStatus({ kind: 'hint', hint: h }, dark);
-  const out: StatusText[] = [
-    boardStatus(evaluation({ solved: true }), false, 1000),
-    boardStatus(evaluation({ conflicts: [1, 2] }), false, coins),
-    boardStatus(evaluation({ over: true }), false, coins),
-    boardStatus(dark, false, coins, 0),
-    boardStatus(dark, true, coins),
-    boardStatus(dark, false, coins),
-    boardStatus(evaluation({}), false, coins),
-    finishedStatus(),
-    ...Object.values(notices).map((n) => noticeStatus(n, dark)),
-    hint({ kind: 'try-here', cell: 0, reason: TRY_HERE_REASON }),
-  ];
-  for (const reason of Object.values(REMOVE_REASONS)) out.push(hint({ kind: 'remove', cell: 0, reason }));
-  for (const technique of Object.keys(HINT_REASONS) as TechniqueId[]) {
-    for (const ruledOut of [[], [1]]) {
-      out.push(hint({ kind: 'place', cell: 0, technique, reason: HINT_REASONS[technique], because: [], ruledOut }));
-    }
-  }
-  return out;
-}
-
 describe('status wording fits the card', () => {
   // The card reserves one title line, and two sub-lines (three below 290 px of text width; see
   // game.css, .ff-status-text). The tightest case is two sub-lines at 290 px (a ~360 px phone).
@@ -126,7 +82,7 @@ describe('status wording fits the card', () => {
 
   it('every title fits on one line and every sub-line in two', () => {
     const all = everyStatus();
-    expect(all).toHaveLength(34);
+    expect(all).toHaveLength(35);
     for (const s of all) {
       expect(s.title.length, s.title).toBeLessThanOrEqual(TITLE_MAX);
       expect(s.sub.length, s.sub).toBeLessThanOrEqual(SUB_MAX);

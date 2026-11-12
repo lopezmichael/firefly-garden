@@ -236,6 +236,18 @@ the same transitions are tested in Node and in Playwright.
       there, none hardcoded (ratchet).
 - [ ] Performance: object pools, a particle cap, an fps readout in dev builds; target
       60 fps at 4x CPU throttling in Chromium.
+      *Look-independent part done (milestone 3, 2026-11-12):* fps readout in dev builds; the board
+      draws only while something moves (a still board, i.e. any board in reduced motion or an
+      empty one, renders once per change and stops the ticker; an e2e test holds it); hint
+      outlines and ruled-out marks redraw only where they changed. Measured on c3-00 (8x8, 9
+      fireflies) at 4x CPU throttling, 390x844 at 2x: game script about 2.5 ms per frame, DOM and
+      CSS animations about 4 ms per frame with the canvas hidden, 19 draw calls per frame;
+      reduced-motion idle went from ~100% main thread to 2%. Frame rate itself can't be judged in
+      this container: Chromium falls back to SwiftShader (software GPU), which caps the board at
+      ~17 fps even unthrottled, so the 60 fps target needs a real-GPU check (a laptop, a
+      Chromebook). Waiting for the juice pass: pools and the particle cap (no particles yet), and
+      batching the additive halos into one layer (fewer draw calls, but halos would then glow over
+      neighbouring tiles, a look decision).
 
 ### E. UI, layout, accessibility (`ui/`)
 
@@ -262,20 +274,34 @@ the same transitions are tested in Node and in Playwright.
       were the card's title). Hints now have short one-line titles with the reason below; the card
       reserves three sub-lines when it is narrower than 290 px; a test holds every message to one
       title line and two sub-lines at a 360 px phone (72 characters, a proxy for width). Browser check at 320/360/390: no board change
-      through a tap and two hints. Still to come: the same check in the CI browser smoke test.
-- [ ] Settings: sound, reduced motion (defaults to `prefers-reduced-motion`, overridable),
-      play log.
+      through a tap and two hints. *Now in the CI browser smoke test, for every message.*
+- [x] Settings: sound, reduced motion (defaults to `prefers-reduced-motion`, overridable),
+      play log. *Sound On/Off added (milestone 3), saved, applied at load.*
 - [ ] First-level teaching: the one-line hint from the plan ("Tap a tile to place a
       firefly"), no text tutorial.
-- [ ] Keyboard for desktop portals: arrows move a focus ring, space/enter toggles, Z undo,
+- [x] Keyboard for desktop portals: arrows move a focus ring, space/enter toggles, Z undo,
       H hint. Board has an accessible label and a live region announcing "solved".
+      *Done (milestone 3):* the ring follows the board as drawn (rotation-aware, skips cells outside
+      the garden) and shows only after keyboard use; Ctrl/Cmd+Z also undoes; the focused cell is
+      announced ("Row 2, column 3: dark path"), and after a toggle the jar count and which two
+      fireflies see each other. Next on the complete card hands focus to the new board. The ring
+      uses the buttons' focus colour (`--ff-glow`); its final look comes with the design.
 
 ### F. Audio (`audio/`)
 
 - [ ] Synthesized with Web Audio (no audio files, nothing added to the bundle): placement
       chime pitched by row, bush-satisfied chime, solve flourish, soft conflict tone.
-- [ ] Starts on first user gesture; master mute in settings and saved; muted while any ad
-      placeholder is up and while the tab is hidden.
+      *Plumbing done, voices are placeholders (milestone 3):* `state/cues.ts` decides which moment
+      gets which sound (tested), `audio/engine.ts` synthesizes seven voices; tuning waits for the
+      design. Landing sounds wait for the firefly's flight to arrive.
+- [x] Starts on first user gesture; master mute in settings and saved; muted while any ad
+      placeholder is up and while the tab is hidden. *Done:* no AudioContext before a gesture;
+      muted means suspended (no CPU) and sounds asked for meanwhile are dropped, not queued;
+      checked in the browser smoke test (hidden tab, ad, setting across a reload).
+      Unlock listens to pointerup, touchend and click as well as pointerdown and keydown: touch
+      activates only on the former, and iOS unlocks audio only from touchend or click. Headless
+      Chromium doesn't enforce that rule, so **this needs a real phone check (iPhone Safari,
+      Android Chrome) before the playtest**.
 - [ ] Stretch: ambient night loop (crickets, wind), off by default.
 
 ### G. Analytics, logged locally (`state/events.ts`)
@@ -294,12 +320,21 @@ the same transitions are tested in Node and in Playwright.
 - [x] Local adapter: rewarded ads per decision 3, `gameplayStart/Stop` around active play,
       everything else unchanged. A scriptable test adapter (ad completes, ad cancelled)
       for unit and Playwright tests. Interface unchanged unless a need shows up.
+      *Correction (milestone 3): the test adapter did not exist yet; it does now* (`platform/test.ts`,
+      e2e builds only).
 
 ### I. Evidence and checks
 
-- [ ] Playwright smoke test (decision 6): load, solve level 1 by tapping its solution, buy a
+- [x] Playwright smoke test (decision 6): load, solve level 1 by tapping its solution, buy a
       hint, cancel an ad with the test adapter (no credit), reload and resume, rotate to
       landscape, fold/unfold resize mid-level.
+      *Done (milestone 3):* `apps/game/e2e/smoke.spec.ts`, CI job `e2e`, against `vite build --mode
+      e2e`. Also covers the keyboard, sound muting (hidden tab, ad, setting), a still board drawing
+      no frames, and the status card at 320 and 360 px for every message (one height, no clipped
+      text, board unchanged). That check found a real 0.4 px wobble (fixed). `@playwright/test` is
+      pinned to 1.63.0, the version of the Chromium preinstalled in Claude's cloud sessions.
+      No garden in this build is non-square, so the board never turns in play; rot90 is covered by
+      the display-mapping unit tests, and the fold test asserts the board stays upright.
 - [ ] Screenshots for review: 390x844, 360x740, 844x390, 1280x720, iPhone Duo inner
       626x890 and 890x626, outer 470x670; reduced motion on; each juice moment; a short
       clip of a solve; the fold/unfold resize test.
@@ -328,10 +363,14 @@ Two things confused him on first play, plus two ideas worth keeping.
    but the status line "Fireflies in the same row or column need a bush between them" invites the
    misreading "light can't overlap". Planned, all in the open look:
    - [ ] On a conflict, draw a pink beam between the two fireflies that see each other (the broken
-         rule made visible), not only a pink tint on each.
-   - [ ] Tiles lit by two beams look a touch brighter, so crossing reads as fine.
-   - [ ] A one-line tip the first time beams cross in the opening levels: "Light can cross. Only
-         fireflies can't see each other."
+         rule made visible), not only a pink tint on each. *Logic done:* `conflictPairs` (core) gives
+         the nearest pairs, cross-checked against `evaluate` on every shipped level; screen readers
+         already hear the pair. The beam itself waits for the design.
+   - [ ] Tiles lit by two beams look a touch brighter, so crossing reads as fine. *Logic done:*
+         `lightCounts` / `crossings` (core). Drawing waits for the design.
+   - [x] A one-line tip the first time beams cross in the opening levels: "Light can cross. Only
+         fireflies can't see each other." *Done (milestone 3):* chapter 1 only, once per install
+         (saved `tips`, validated), never over a conflict message or a solve.
    - [ ] Optional: press-and-hold (hover on desktop) previews a firefly's light before placing it.
 2. **No set number of fireflies.** Every level's count is fixed by its unique answer, but the game
    never says it. Michael wants a countdown ("firefly jar"). It is extra information, so it may make
