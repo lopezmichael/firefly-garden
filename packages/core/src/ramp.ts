@@ -49,7 +49,7 @@ export interface Chapter {
 
 export function buildRamp(pool: readonly RampLevel[], specs: readonly ChapterSpec[]): Chapter[] {
   const used = new Set<string>();
-  let seenTier = 0;
+  const introduced = new Set<number>();
   return specs.map((spec) => {
     const allowed = new Set(spec.mechanics ?? []);
     const [tlo, thi] = spec.tiers;
@@ -67,20 +67,32 @@ export function buildRamp(pool: readonly RampLevel[], specs: readonly ChapterSpe
     const ordered = sawtooth(picked, spec.breatherEvery ?? 3);
 
     // Teaching levels: the first appearance of each new tier gets the gentlest
-    // available introduction to it.
+    // available introduction to it. A debut on the chapter's peak keeps the
+    // peak and puts the teaching level just before it instead.
+    const last = ordered.length - 1;
     for (let i = 0; i < ordered.length; i++) {
       const level = ordered[i]!;
-      if (level.tier <= seenTier) continue;
+      if (introduced.has(level.tier)) continue;
+      introduced.add(level.tier);
+      if (!level.tierSteps) continue;
+      const slot = i === last && last > 0 ? i - 1 : i;
+      const displaced = ordered[slot]!;
+      // A teacher may come from the unused pool, or from later in this chapter (then the two swap places).
+      const laterHere = new Set(ordered.slice(slot + 1, last >= 0 && slot < last ? last : ordered.length).map((l) => l.id));
       const teachers = candidates
-        .filter((c) => c.tier === level.tier && c.tierSteps && (!used.has(c.id) || c.id === level.id))
+        .filter((c) => c.tier === level.tier && c.tierSteps && (!used.has(c.id) || c.id === displaced.id || laterHere.has(c.id)))
         .sort((a, b) => (a.tierSteps![a.tier] ?? 0) - (b.tierSteps![b.tier] ?? 0) || a.score - b.score || a.id.localeCompare(b.id));
       const teacher = teachers[0];
-      if (teacher && teacher.id !== level.id) {
-        used.delete(level.id);
-        used.add(teacher.id);
-        ordered[i] = teacher;
+      if (teacher && teacher.id !== displaced.id) {
+        const j = ordered.findIndex((l) => l.id === teacher.id);
+        if (j >= 0) {
+          ordered[j] = displaced; // swap within the chapter
+        } else {
+          used.delete(displaced.id);
+          used.add(teacher.id);
+        }
+        ordered[slot] = teacher;
       }
-      seenTier = level.tier;
     }
     return { id: spec.id, title: spec.title, levels: ordered, shortfall: spec.count - picked.length };
   });

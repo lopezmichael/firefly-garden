@@ -35,6 +35,34 @@ describe('simulate', () => {
     expect(rate(5)).toBeLessThan(rate(0) / 2);
   });
 
+  it('keeps its books balanced on every level', () => {
+    const lv = [level('a', [1, 2, 2]), level('b', [2, 3, 3], 1), level('c', [3, 4, 4], 1), level('d', [4, 4, 5], 1)];
+    for (const skill of [1, 2, 3]) {
+      const r = simulate(lv, profile({ skill, churnOnQuit: 0.3 }), { ...economy, startingCoins: 0 }, 400, 11 + skill);
+      r.levels.forEach((o, i) => {
+        expect(o.solved + o.churned).toBe(o.reached); // everyone who arrives solves or leaves
+        expect(o.plays).toBe(o.solved + o.quits);
+        expect(o.churned).toBeLessThanOrEqual(o.quits);
+        if (i + 1 < r.levels.length) expect(r.levels[i + 1]!.reached).toBe(o.solved);
+      });
+      expect(r.finished).toBe(r.levels.at(-1)!.solved);
+    }
+  });
+
+  it('charges for hints, so coins run out and later hints come from ads', () => {
+    // 30 coins buys exactly one hint; this level needs many.
+    const lv = [level('x', [5, 5, 5, 5, 5, 5, 5, 5])];
+    const o = simulate(lv, profile({ skill: 1, adWillingness: 1, patience: 1e9 }), { startingCoins: 30, coinsPerSolve: 0, hintCost: 30 }, 200, 9).levels[0]!;
+    expect(o.coinHints).toBeLessThanOrEqual(o.plays); // at most one paid hint per player
+    expect(o.adHints).toBeGreaterThan(o.coinHints);
+  });
+
+  it('counts a level finished past the time limit as solved', () => {
+    const lv = [level('slow', [1])];
+    const o = simulate(lv, profile({ skill: 5, patience: 0.001 }), economy, 50, 10).levels[0]!;
+    expect(o.solved).toBe(50);
+  });
+
   it('pays hints in coins while it can, then ads, and refuses the rest', () => {
     const lv = [level('x', [4, 4, 4, 4, 4, 4])];
     const rich = simulate(lv, profile({ skill: 1, adWillingness: 0 }), { ...economy, startingCoins: 10_000 }, 200, 4).levels[0]!;

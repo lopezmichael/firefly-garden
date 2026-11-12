@@ -92,6 +92,37 @@ describe('ramp', () => {
     expect(dips).toBeGreaterThanOrEqual(2);
   });
 
+  const tl = (id: string, score: number, tier: number, newTierSteps: number): RampLevel => {
+    const tierSteps = [0, 0, 0, 0, 0, 0];
+    tierSteps[tier] = newTierSteps;
+    return { ...lv(id, score, tier), tierSteps };
+  };
+
+  it('debuts each new tier on its gentlest level', () => {
+    // 'soft' is later in the same chapter, so it swaps places with 'hard'; the peak stays put.
+    const pool = [tl('a', 10, 1, 1), tl('b', 12, 1, 1), tl('c', 14, 1, 1), tl('hard', 30, 2, 5), tl('soft', 31, 2, 1), tl('top', 60, 2, 4)];
+    const [ch] = buildRamp(pool, [{ id: 'c', title: 'C', count: 5, tiers: [1, 2] }]);
+    const ids = ch!.levels.map((l) => l.id);
+    expect(ch!.levels.find((l) => l.tier === 2)?.id).toBe('soft');
+    expect(ids.at(-1)).toBe('top');
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('keeps the peak when a new tier first appears on it, teaching just before', () => {
+    const pool = [tl('a', 10, 1, 1), tl('t', 11, 2, 1), tl('a2', 12, 1, 1), tl('a3', 14, 1, 1), tl('p', 50, 2, 6)];
+    const [ch] = buildRamp(pool, [{ id: 'c', title: 'C', count: 3, tiers: [1, 2] }]);
+    const ids = ch!.levels.map((l) => l.id);
+    expect(ids.at(-1)).toBe('p'); // the peak survives
+    expect(ids.at(-2)).toBe('t'); // the teacher sits right before it
+  });
+
+  it('teaches a lower tier even when a higher one appeared first', () => {
+    const pool = [tl('a', 10, 1, 1), tl('t3', 40, 3, 1), tl('t2hard', 45, 2, 6), tl('t2soft', 46, 2, 1), tl('z', 99, 3, 2)];
+    const [ch] = buildRamp(pool, [{ id: 'c', title: 'C', count: 4, tiers: [1, 3] }]);
+    const firstT2 = ch!.levels.find((l) => l.tier === 2);
+    expect(firstT2?.id).toBe('t2soft');
+  });
+
   it('builds chapters from matching levels without reusing any', () => {
     const pool = [
       ...Array.from({ length: 20 }, (_, i) => lv(`a${i}`, i, 1 + (i % 2), 16)),

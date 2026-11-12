@@ -31,7 +31,8 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
   expert) play the chapters along each level's grader trace, with skill, learning, patience,
   hints paid by coins or ads, quits and churn. Seeded and deterministic.
 - Ramp builder places a teaching level (fewest steps of the new technique) where each new
-  tier first appears; hint demand at chapter 3's T4 debut dropped from 39% to 22%.
+  tier first appears (a debut on a chapter peak keeps the peak and teaches just before it);
+  hint demand at chapter 3's T4 debut dropped from 39% to 22%.
 - Shipped economy: 60 starting coins, 10 per solve, 30 per hint (best newcomer retention in an
   18-economy sweep, almost no refused hints). Economy guardrails in `tests/economy.test.ts`.
 - `reports/dash/players.json` and `economy.json` feed the report's new sections.

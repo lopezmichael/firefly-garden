@@ -81,7 +81,6 @@ export const PLAYER_CONFIG = {
     { id: 'puzzler', label: 'Puzzler', share: 0.2, skill: 3, speed: 0.9, patience: 420, learnSteps: 2, adWillingness: 0.3, churnOnQuit: 0.3 },
     { id: 'expert', label: 'Expert', share: 0.05, skill: 4, speed: 0.7, patience: 600, learnSteps: 2, adWillingness: 0.2, churnOnQuit: 0.2 },
   ] as readonly PlayerProfile[],
-  /** The shipped economy (project plan: a few coins per solve, hints optional). */
   /**
    * The shipped economy, chosen from the Phase 1 sweep (2026-11-12): enough
    * starting coins for two hints so a stuck newcomer is never refused, and a
@@ -209,7 +208,9 @@ function playOnce(level: SimLevel, profile: PlayerProfile, economy: Economy, sta
   const [n0, n1] = cfg.noise;
   const out: PlayResult = { solved: false, seconds: level.fireflies * time.secondsPerTap * profile.speed, coinHints: 0, adHints: 0, refusedHints: 0 };
 
-  for (const step of level.steps) {
+  for (const [k, step] of level.steps.entries()) {
+    // Give up between steps once far past patience; finishing the last step always counts.
+    if (k > 0 && out.seconds > profile.patience * cfg.hardStopFactor) return out;
     const base = time.secondsPerTier[step.tier]! * (1 + time.spread / (step.width + 1));
     const noise = n0 + rng.next() * (n1 - n0);
     const gap = step.tier - state.skill;
@@ -243,7 +244,6 @@ function playOnce(level: SimLevel, profile: PlayerProfile, economy: Economy, sta
       learn(state, profile, 1);
     }
 
-    if (out.seconds > profile.patience * cfg.hardStopFactor) return out;
   }
   out.solved = true;
   return out;

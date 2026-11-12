@@ -160,10 +160,9 @@ better game.
   unsound steps. Fixed: a repair lantern could land on a moonlit tile (latent; no current spec
   combines them), and the grader now needs every tile decided before calling a board solved.
   Hardening to do if levels ever come from players: node/step budgets on `isUnique` and `grade`.
-- **Simulated players (2026-11-12):** 79% of the simulated population reaches the end of
-  chapter 3, 96.5% clears chapter 1; newcomers 52.5%. Hint demand spikes where a new tier
-  first appears, not at peaks: breathers average 5.6% (target under 5%) and peaks 8.7%
-  (target 10 to 25%). Teaching levels at each tier debut are in; next is placing debuts
+- **Simulated players (2026-11-12):** 78% of the simulated population clears chapter 3,
+  96% clears chapter 1; newcomers 54%. Hint demand spikes where a new tier first appears,
+  not at peaks: breathers average 5.4% (target under 5%) and peaks 8.3% (target 10 to 25%). Teaching levels at each tier debut are in; next is placing debuts
   early in a chapter with practice before the peak.
 - **Hint economy:** price barely moves hint demand; it moves who pays. Shipped 60 starting
   coins, 10 per solve, 30 per hint (retention first). Tradeoff for later: established players
