@@ -245,7 +245,10 @@ the same transitions are tested in Node and in Playwright.
 - [ ] Safe-area insets; every button at least 44 px; the board's cells sized from the
       viewport. **Known squeeze:** 8x8 on a 360 px-wide phone gives about 42 px cells, so
       the board gets no outer gutter in portrait; checked in a 360x740 screenshot.
-- [ ] Garden map: the Rose Bed with chapter progress toward the next area, "Continue".
+- [x] Garden map: the Rose Bed with chapter progress toward the next area, "Continue".
+      *Done (milestone 3):* the top bar's map button leaves a level; an unsolved level counts as
+      a quit and its board is parked (up to five) so the retry resumes it. First launch goes
+      straight to garden 1; a returning player without an unfinished board opens on the map.
 - [x] Hint dialog: bank count, "Use 30 coins", "Watch an ad for 3 hints" (video icon),
       equal-size "No thanks".
 - [ ] Level complete: celebration, +10 coins, auto-advance with the next board preloaded.

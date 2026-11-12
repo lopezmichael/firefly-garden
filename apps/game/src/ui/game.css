@@ -209,3 +209,56 @@
 .ff-app[data-band='tall'] .ff-status-text, .ff-app[data-band='square'] .ff-status-text {
   min-height: calc(18px * 1.2 + 2px + 15px * 1.4 * 2);
 }
+
+/* Garden map (design baseline: Map artboard). A screen over the play screen. */
+.ff-map {
+  position: absolute; inset: 0; z-index: 5; box-sizing: border-box; overflow-y: auto;
+  background: linear-gradient(180deg, var(--ff-night-0) 0%, var(--ff-night-1) 45%, var(--ff-night-2) 100%);
+  padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  display: flex; flex-direction: column; gap: 16px;
+}
+.ff-map[hidden] { display: none; }
+.ff-map > * { width: 100%; max-width: 520px; align-self: center; box-sizing: border-box; }
+.ff-map-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ff-map-top-right { display: flex; align-items: center; gap: 8px; }
+.ff-map-title { margin: 0; font-family: var(--ff-font-display); font-weight: 700; font-size: 30px; color: var(--ff-glow); }
+.ff-map-card { background: color-mix(in srgb, var(--ff-panel) 90%, transparent); border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.ff-map-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.ff-map-area { margin: 0; font-family: var(--ff-font-display); font-weight: 600; font-size: 22px; color: var(--ff-ink); }
+.ff-map-count { font-size: 14px; font-weight: 800; color: var(--ff-glow); }
+.ff-map-bar { height: 8px; border-radius: 999px; background: var(--ff-track); overflow: hidden; }
+.ff-map-fill { height: 100%; width: 0; border-radius: 999px; background: var(--ff-gold); }
+.ff-map-note { margin: 0; font-size: 14px; color: var(--ff-ink-quiet); }
+.ff-map-beds { list-style: none; margin: 0; padding: 4px 8px; display: flex; flex-direction: column-reverse; gap: 14px; flex: 1; justify-content: flex-start; }
+.ff-map-bed { display: flex; align-items: center; gap: 12px; width: 76%; }
+.ff-map-bed:nth-child(even) { align-self: flex-end; flex-direction: row-reverse; text-align: right; }
+.ff-map-patch {
+  width: 96px; height: 66px; flex-shrink: 0; border-radius: 50% 48% 52% 46% / 58% 54% 46% 42%;
+  background: radial-gradient(circle at 40% 35%, var(--ff-tile-dark-hi) 0%, var(--ff-tile-dark) 60%, var(--ff-tile-dark-lo) 100%);
+  box-shadow: 0 7px 0 var(--ff-tile-dark-edge);
+}
+.ff-map-bed[data-state='done'] .ff-map-patch {
+  background:
+    radial-gradient(circle at 26% 34%, var(--ff-petal-pink) 0 6px, transparent 7px),
+    radial-gradient(circle at 58% 26%, var(--ff-petal-cream) 0 5px, transparent 6px),
+    radial-gradient(circle at 72% 60%, var(--ff-petal-pink) 0 6px, transparent 7px),
+    radial-gradient(circle at 40% 66%, var(--ff-petal-cream) 0 5px, transparent 6px),
+    radial-gradient(circle at 40% 35%, var(--ff-moss-hi) 0%, var(--ff-moss) 60%, var(--ff-moss-lo) 100%);
+  box-shadow: 0 7px 0 var(--ff-moss-edge), 0 0 26px color-mix(in srgb, var(--ff-gold) 30%, transparent);
+}
+.ff-map-bed[data-state='now'] .ff-map-patch {
+  background: radial-gradient(circle at 40% 35%, var(--ff-moss-hidden-hi) 0%, var(--ff-moss-hidden) 60%, var(--ff-moss-lo) 100%);
+  box-shadow: 0 7px 0 var(--ff-moss-edge), 0 0 0 3px var(--ff-gold);
+}
+.ff-map-bed-text { display: flex; flex-direction: column; gap: 2px; }
+.ff-map-bed-text strong { font-size: 15px; font-weight: 800; color: var(--ff-ink); }
+.ff-map-bed-text span { font-size: 13px; font-weight: 700; color: var(--ff-label); }
+.ff-map-bed[data-state='now'] .ff-map-bed-text span, .ff-map-bed[data-state='done'] .ff-map-bed-text span { color: var(--ff-glow); }
+.ff-map-teaser { border: 2px dashed var(--ff-panel-edge); border-radius: 14px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; color: var(--ff-ink-quiet); font-size: 14px; }
+.ff-map-teaser strong { color: var(--ff-ink); }
+.ff-map-continue {
+  min-height: 64px; border: 0; border-radius: 18px; background: var(--ff-gold); color: var(--ff-on-gold);
+  font-weight: 800; font-size: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer;
+}
+.ff-map-continue:disabled { opacity: 0.6; cursor: default; }
+.ff-map-continue-sub { font-size: 13px; font-weight: 700; }

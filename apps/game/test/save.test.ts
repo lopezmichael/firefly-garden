@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { cellCoord, createRng } from '@firefly/core';
 import { createCatalog } from '../src/state/catalog.ts';
-import { DEFAULT_SETTINGS, MAX_COINS, MAX_SAVE_CHARS, newInstallId, parseSave, SAVE_VERSION, serializeSave } from '../src/state/save.ts';
+import { DEFAULT_SETTINGS, MAX_COINS, MAX_PARKED, MAX_SAVE_CHARS, newInstallId, parseSave, SAVE_VERSION, serializeSave } from '../src/state/save.ts';
 import type { SaveData } from '../src/state/save.ts';
 import { HISTORY_CAP } from '../src/state/session.ts';
 import { MAX_BANKED_HINTS } from '../src/state/wallet.ts';
@@ -27,6 +27,7 @@ function good(): SaveData {
     playedReserve: new Set([catalog.reserve[0]!.id]),
     quitMain: new Set([catalog.mainPath[3]!]),
     current: { levelId: id, key: catalog.levelKey(id), reason: 'main', placed: [solution[1]!], locked: [solution[0]!], seconds: 12, placements: 3, undos: 1, restarts: 0, hints: 1 },
+    parked: [],
     settings: { sound: false, motion: 'off' },
   };
 }
@@ -183,6 +184,47 @@ describe('save validation (rules.md)', () => {
   });
 });
 
+describe('parked boards (quit levels kept for their retry)', () => {
+  const quitId = catalog.mainPath[6]!;
+  const qb = catalog.board(quitId);
+  const qsol = [...catalog.solution(quitId)];
+  const parkedPlay = (levelId: string) => ({
+    levelId, key: catalog.levelKey(levelId), reason: 'retry' as const, placed: [], locked: [], seconds: 9, placements: 2, undos: 0, restarts: 0, hints: 0,
+  });
+
+  it('round-trips a parked board with its fireflies', () => {
+    const d = { ...good(), parked: [{ ...parkedPlay(quitId), placed: [qsol[0]!], locked: [qsol[1]!] }] };
+    expect(parseSave(serializeSave(d, catalog), catalog, NOW, fresh).data!.parked).toEqual(d.parked);
+    void qb;
+  });
+
+  it('keeps the newest copy when a level is parked twice', () => {
+    const raw = tamper((o) => { o.parked = [{ ...parkedPlay(quitId), seconds: 1 }, { ...parkedPlay(quitId), seconds: 2 }]; });
+    expect(parseSave(raw, catalog, NOW, fresh).data!.parked.map((p) => p.seconds)).toEqual([2]);
+  });
+
+  it('drops parked boards for the current level, solved levels, duplicates and unknown levels, and caps the list', () => {
+    const raw = tamper((o) => {
+      o.parked = [
+        parkedPlay(id), // the current level
+        parkedPlay(catalog.mainPath[0]!), // solved in good()
+        parkedPlay(quitId),
+        parkedPlay(quitId), // duplicate
+        { ...parkedPlay(quitId), levelId: 'nope' },
+      ];
+    });
+    expect(parseSave(raw, catalog, NOW, fresh).data!.parked.map((p) => p.levelId)).toEqual([quitId]);
+    const many = tamper((o) => { o.parked = catalog.mainPath.slice(8, 8 + MAX_PARKED + 3).map(parkedPlay); });
+    expect(parseSave(many, catalog, NOW, fresh).data!.parked.length).toBeLessThanOrEqual(MAX_PARKED);
+  });
+
+  it('validates parked cells like the current board: no locked cell outside the answer', () => {
+    const wrong = qb.paths.find((c) => !catalog.solution(quitId).has(c))!;
+    const raw = tamper((o) => { o.parked = [{ ...parkedPlay(quitId), locked: [cellCoord(qb, wrong)] }]; });
+    expect(parseSave(raw, catalog, NOW, fresh).data!.parked[0]!.locked).toEqual([]);
+  });
+});
+
 describe('save fuzz', () => {
   const rng = createRng(20261112);
   const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rng.next() * xs.length)]!;
@@ -194,12 +236,20 @@ describe('save fuzz', () => {
     for (let i = 0; i < 5; i++) o[pick(['levelId', 'reason', 'placed', 'locked', 'coins', 'bank', 'x', '__proto__', 'constructor', 'seconds'])] = junk(depth + 1);
     return o;
   };
-  const FIELDS = ['session', 'coins', 'bank', 'solved', 'history', 'playedReserve', 'quitMain', 'current', 'settings'];
+  const FIELDS = ['session', 'coins', 'bank', 'solved', 'history', 'playedReserve', 'quitMain', 'current', 'parked', 'settings'];
 
   it('never throws, never locks a wrong cell, never exceeds a cap, over 3000 hostile saves', () => {
     for (let i = 0; i < 3000; i++) {
       const raw = tamper((o) => {
         for (const f of FIELDS) if (rng.next() < 0.4) o[f] = junk(0);
+        if (rng.next() < 0.3) {
+          o.parked = Array.from({ length: Math.floor(rng.next() * 9) }, () => {
+            const lid = pick([...catalog.mainPath, 'nope']);
+            const kb = catalog.has(lid) ? catalog.board(lid) : null;
+            return { levelId: lid, key: kb ? catalog.levelKey(lid) : 'x', reason: pick(['retry', 'main', 'skip']),
+              placed: junk(1), locked: Array.from({ length: Math.floor(rng.next() * 3) }, () => [Math.floor(rng.next() * 9), Math.floor(rng.next() * 9)]) };
+          });
+        }
         if (rng.next() < 0.3 && o.current && typeof o.current === 'object') {
           const cur = o.current as Record<string, unknown>;
           cur.levelId = pick([...catalog.mainPath, catalog.reserve[0]!.id, 'nope']);
@@ -213,6 +263,14 @@ describe('save fuzz', () => {
       expect(data.coins).toBeLessThanOrEqual(MAX_COINS);
       expect(data.bank).toBeLessThanOrEqual(MAX_BANKED_HINTS);
       expect(data.history.length).toBeLessThanOrEqual(HISTORY_CAP);
+      expect(data.parked.length).toBeLessThanOrEqual(MAX_PARKED);
+      expect(new Set(data.parked.map((p) => p.levelId)).size).toBe(data.parked.length);
+      for (const pk of data.parked) {
+        expect(data.solved.has(pk.levelId)).toBe(false);
+        expect(pk.levelId).not.toBe(data.current?.levelId);
+        const sol = catalog.solution(pk.levelId);
+        expect(pk.locked.every((c) => sol.has(c))).toBe(true);
+      }
       const cur = data.current;
       if (cur) {
         const sol = catalog.solution(cur.levelId);

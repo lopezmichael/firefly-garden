@@ -9,6 +9,7 @@ import type { Band } from '../view/layout.ts';
 const ICONS = {
   undo: '<path d="M9 14L4 9l5-5"></path><path d="M4 9h10a6 6 0 0 1 0 12h-3"></path>',
   reset: '<path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path>',
+  map: '<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"></path><path d="M9 4v14"></path><path d="M15 6v14"></path>',
   gear: '<circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path>',
   // The game's firefly, not a stock star: wings, body, head.
   hint: '<ellipse cx="7.5" cy="9" rx="4.5" ry="3" transform="rotate(-25 7.5 9)"></ellipse><ellipse cx="16.5" cy="9" rx="4.5" ry="3" transform="rotate(25 16.5 9)"></ellipse><circle cx="12" cy="15" r="4.6" fill="currentColor"></circle><circle cx="12" cy="8.6" r="2.4" fill="currentColor" stroke="none"></circle>',
@@ -55,6 +56,7 @@ export interface ScreenHandlers {
   hint(): void;
   next(): void;
   settings(): void;
+  map(): void;
 }
 
 export class PlayScreen {
@@ -76,6 +78,7 @@ export class PlayScreen {
   private readonly hintButton = el('button', 'ff-hint');
   private readonly hintCost = el('span');
   private readonly announcer = el('div', 'ff-sr');
+  private mapButton: HTMLButtonElement | null = null;
 
   constructor(handlers: ScreenHandlers) {
     const sky = el('div', 'ff-sky');
@@ -100,7 +103,13 @@ export class PlayScreen {
     gear.setAttribute('aria-label', 'Settings');
     gear.append(icon('gear'));
     gear.addEventListener('click', () => handlers.settings());
-    top.append(chapter, coinBox, gear);
+    const mapButton = el('button', 'ff-gear');
+    mapButton.type = 'button';
+    mapButton.setAttribute('aria-label', 'Garden map');
+    mapButton.append(icon('map'));
+    mapButton.addEventListener('click', () => handlers.map());
+    this.mapButton = mapButton;
+    top.append(mapButton, chapter, coinBox, gear);
 
     this.status.setAttribute('role', 'status');
     this.status.setAttribute('aria-live', 'polite');
@@ -227,6 +236,11 @@ export class PlayScreen {
     this.undoButton.disabled = !canUndo || solved;
     this.resetButton.disabled = !canReset || solved;
     this.hintButton.disabled = solved;
+  }
+
+  /** Put keyboard focus on the top bar's map button (after leaving the map). */
+  focusMap(): void {
+    this.mapButton?.focus({ preventScroll: true });
   }
 
   announce(text: string): void {

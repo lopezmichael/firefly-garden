@@ -5,6 +5,9 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Added
+- The garden map (milestone 3): chapter beds glowing, in progress or still dark, the area's
+  progress, the next area as a teaser and Continue. Leaving a level for the map is a quit (the
+  policy can serve a breather); its board is parked in the save so the retry resumes it.
 - The firefly jar (milestone 3, first item): the status card shows a jar plus one slot per firefly
   the garden needs, replacing the progress bar; placements are capped by the jar (an empty-jar tap
   shakes it and places nothing); a firefly flies out of the jar to the tile and home again when

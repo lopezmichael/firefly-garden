@@ -6,7 +6,7 @@ import { EVENT_LOG_KEY, EventLog, parseEventLog } from '../state/events.ts';
 import type { EventBody } from '../state/events.ts';
 import { Play } from '../state/play.ts';
 import type { ShownHint } from '../state/play.ts';
-import { DEFAULT_SETTINGS, newInstallId, parseSave, SAVE_KEY, serializeSave } from '../state/save.ts';
+import { DEFAULT_SETTINGS, MAX_PARKED, newInstallId, parseSave, SAVE_KEY, serializeSave } from '../state/save.ts';
 import type { CurrentPlay, MotionSetting, SaveData, Settings } from '../state/save.ts';
 import { Session } from '../state/session.ts';
 import { boardStatus, noticeStatus } from '../state/status.ts';
@@ -18,6 +18,8 @@ import type { Palette } from '../view/theme.ts';
 import { cancelFlights, fly, FLIGHT_MS } from './flight.ts';
 import { PlayScreen } from './screen.ts';
 import { HintSheet, SettingsSheet } from './sheets.ts';
+import { MapScreen } from './map.ts';
+import type { BedView } from './map.ts';
 
 /**
  * The game controller: loads and validates saved progress, picks the next
@@ -42,6 +44,9 @@ export class GameApp {
   private readonly screen: PlayScreen;
   private readonly hintSheet = new HintSheet();
   private readonly settingsSheet: SettingsSheet;
+  private readonly mapScreen: MapScreen;
+  /** Boards of levels left unsolved, kept so their retry resumes them (newest last). */
+  private parked: CurrentPlay[] = [];
   private board!: BoardView;
   private session!: Session;
   private wallet!: Wallet;
@@ -90,6 +95,11 @@ export class GameApp {
       hint: () => void this.hint(),
       next: () => this.advance(),
       settings: () => this.openSettings(),
+      map: () => this.openMap(),
+    });
+    this.mapScreen = new MapScreen({
+      continue: () => this.leaveMap(),
+      settings: () => this.openSettings(),
     });
     this.settingsSheet = new SettingsSheet({
       motion: (m) => this.setMotion(m),
@@ -102,7 +112,7 @@ export class GameApp {
     const stored = await this.loadStored();
     this.restoreState(stored);
     this.host.replaceChildren(this.screen.root);
-    this.screen.root.append(this.hintSheet.backdrop, this.settingsSheet.backdrop);
+    this.screen.root.append(this.mapScreen.root, this.hintSheet.backdrop, this.settingsSheet.backdrop);
     const behind = () => [...this.screen.root.children].filter(
       (c): c is HTMLElement => c instanceof HTMLElement && c !== this.hintSheet.backdrop && c !== this.settingsSheet.backdrop);
     this.hintSheet.background = behind;
@@ -123,8 +133,13 @@ export class GameApp {
     this.startSessionClock();
     this.emit({ type: 'session_start', platform: this.platform.name, coins: this.wallet.coins });
 
+    // Launch: back into an unfinished board; a first-time player straight into the first garden;
+    // anyone else to the map, with Continue.
     const saved = stored.save?.current;
-    if (!(saved && !this.session.isSolved(saved.levelId) && this.resume(saved))) this.advance();
+    if (!(saved && !this.session.isSolved(saved.levelId) && this.resume(saved))) {
+      if (this.session.progress.history.length === 0) this.advance();
+      else this.showMap();
+    }
     // Write back at once, so storage holds the validated version, not whatever was loaded.
     this.scheduleSave();
   }
@@ -147,6 +162,7 @@ export class GameApp {
   private restoreState({ save, install, events }: Stored): void {
     this.install = install;
     this.settings = save?.settings ?? DEFAULT_SETTINGS;
+    this.parked = [...(save?.parked ?? [])];
     this.log = new EventLog(this.install, (save?.session ?? 0) + 1, new Set(this.catalog.levels.keys()), this.wallClock, events.events);
     this.log.dropped = events.dropped;
     this.session = new Session(this.catalog, save && {
@@ -170,7 +186,7 @@ export class GameApp {
     return {
       install: this.install, session: this.log.session, coins: this.wallet.coins, bank: this.wallet.bank,
       solved: pr.solved, history: pr.history, playedReserve: pr.playedReserve, quitMain: pr.quitMain,
-      current, settings: this.settings,
+      current, parked: this.parked, settings: this.settings,
     };
   }
 
@@ -239,7 +255,7 @@ export class GameApp {
 
   /** A sheet or an ad is in front of the board: no taps, moves, hints or clock. */
   private blocked(): boolean {
-    return this.adShowing || this.hintSheet.isOpen || this.settingsSheet.isOpen;
+    return this.adShowing || this.hintSheet.isOpen || this.settingsSheet.isOpen || this.mapScreen.isOpen;
   }
 
   private reducedMotion(): boolean {
@@ -259,7 +275,7 @@ export class GameApp {
   }
 
   private openSettings(): void {
-    if (this.blocked()) return;
+    if (this.adShowing || this.hintSheet.isOpen || this.settingsSheet.isOpen) return;
     this.play?.pause();
     const s = this.log.summary();
     this.settingsSheet.open({ motion: this.settings.motion, played: s.played, solved: s.solved, hints: s.hints });
@@ -318,7 +334,7 @@ export class GameApp {
     }
     const board = this.catalog.board(next.id);
     this.attempt = this.session.attempt(next.id);
-    this.show(next, new Play(board, this.catalog.solution(next.id), this.clock));
+    this.show(next, this.unpark(next.id) ?? new Play(board, this.catalog.solution(next.id), this.clock));
     this.emit({ type: 'level_start', level: next.id, reason: next.reason, attempt: this.attempt });
     this.scheduleSave();
   }
@@ -337,6 +353,109 @@ export class GameApp {
     this.attempt = this.session.attempt(saved.levelId);
     this.show({ id: saved.levelId, reason: saved.reason }, play);
     return true;
+  }
+
+  /** A parked board for this level, resumed (and no longer parked); undefined if none or unusable. */
+  private unpark(levelId: string): Play | undefined {
+    const i = this.parked.findIndex((p) => p.levelId === levelId);
+    if (i < 0) return undefined;
+    const [saved] = this.parked.splice(i, 1);
+    try {
+      // The retry keeps the board's fireflies but starts its own counters: its level_end and
+      // history describe this attempt, so breather triggers (long solve, hint streak) stay fair.
+      const play = new Play(this.catalog.board(levelId), this.catalog.solution(levelId), this.clock, { placed: saved!.placed, locked: saved!.locked });
+      // A parked board can't be already solved (only edited saves get here): start fresh instead.
+      return play.solved ? undefined : play;
+    } catch (err) {
+      // parseSave validated it; a throw is a validation bug. The retry starts fresh instead.
+      console.warn('Could not resume the parked board:', err);
+      return undefined;
+    }
+  }
+
+  // ---------------------------------------------------------------- map
+
+  /** Leave the board for the map. An unsolved level counts as a quit; its board is parked. */
+  private openMap(): void {
+    if (this.blocked()) return;
+    if (this.advanceTimer !== null) clearTimeout(this.advanceTimer);
+    this.advanceTimer = null;
+    this.advancePending = false;
+    cancelFlights();
+    const play = this.play, cur = this.current;
+    // Peeking at the map from an untouched board is not a quit: the board waits, unchanged.
+    const untouched = play !== null && play.placements === 0 && play.undos === 0 && play.hints === 0 && play.restarts === 0;
+    if (play && cur && !play.solved && untouched) {
+      play.pause();
+      this.showMap();
+      return;
+    }
+    if (play && cur && !play.solved) {
+      play.pause();
+      this.platform.gameplayStop();
+      const endedAt = Date.now();
+      this.session.record({ levelId: cur.id, reason: cur.reason, solved: false, seconds: play.seconds, hints: play.hints, endedAt });
+      this.emit({
+        type: 'level_end', level: cur.id, reason: cur.reason, attempt: this.attempt, outcome: 'quit', seconds: play.seconds,
+        placements: play.placements, undos: play.undos, restarts: play.restarts, hints: play.hints,
+      });
+      // Only main-path boards come back (as a retry); a quit detour is never served again.
+      this.parked = this.parked.filter((p) => p.levelId !== cur.id);
+      if (this.catalog.mainIds.has(cur.id)) {
+        this.parked.push({
+          levelId: cur.id, key: this.catalog.levelKey(cur.id), reason: cur.reason,
+          placed: [...play.placed], locked: [...play.locked], seconds: play.seconds,
+          placements: play.placements, undos: play.undos, restarts: play.restarts, hints: play.hints,
+        });
+        this.parked = this.parked.slice(-MAX_PARKED);
+      }
+      this.play = null;
+      this.current = null;
+    }
+    this.showMap();
+    this.flushSave();
+  }
+
+  private showMap(): void {
+    const solved = (id: string) => this.session.isSolved(id);
+    const nextMain = this.catalog.mainPath.find((id) => !solved(id));
+    const nextPlace = nextMain ? this.catalog.place(nextMain) : undefined;
+    const beds: BedView[] = this.catalog.chapters.map((ch, i) => {
+      const done = ch.levels.filter(solved).length;
+      const state = done === ch.levels.length ? 'done' : nextPlace?.chapter.id === ch.id ? 'now' : 'dark';
+      return { title: `Chapter ${i + 1}`, solved: done, total: ch.levels.length, state };
+    });
+    const chapterNo = nextPlace ? this.catalog.chapters.findIndex((c) => c.id === nextPlace.chapter.id) + 1 : 0;
+    for (const el of this.mapBackground()) el.inert = true;
+    this.mapScreen.show({
+      area: (nextPlace?.chapter ?? this.catalog.chapters[0])?.area ?? 'Garden',
+      solved: this.catalog.mainPath.filter(solved).length,
+      total: this.catalog.mainPath.length,
+      beds,
+      coins: this.wallet.coins,
+      continueLabel: nextMain ? 'Continue' : 'Every garden is glowing',
+      continueSub: nextPlace ? `Chapter ${chapterNo} · Garden ${nextPlace.index + 1}` : 'More gardens are on the way',
+      finished: !nextMain,
+    });
+  }
+
+  private leaveMap(): void {
+    this.mapScreen.hide();
+    for (const el of this.mapBackground()) el.inert = false;
+    // An untouched board was left waiting behind the map: go back to it.
+    if (this.play && !this.play.solved && this.current) {
+      this.resumeClock();
+      this.screen.focusMap();
+      return;
+    }
+    this.advance();
+    this.screen.focusMap();
+  }
+
+  /** The play screen under the map: inert while the map is open (focus and screen readers). */
+  private mapBackground(): HTMLElement[] {
+    return [...this.screen.root.children].filter((c): c is HTMLElement =>
+      c instanceof HTMLElement && c !== this.mapScreen.root && c !== this.hintSheet.backdrop && c !== this.settingsSheet.backdrop);
   }
 
   private show(next: NextLevel, play: Play): void {
