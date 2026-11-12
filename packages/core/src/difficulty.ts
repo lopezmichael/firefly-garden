@@ -24,6 +24,15 @@ export const DIFFICULTY_CONFIG = {
     /** Seconds to tap a firefly in. */
     secondsPerTap: 0.8,
   },
+  /**
+   * Content policy for shipped levels (estimated seconds). Casual portal
+   * players: nothing asks for more than five minutes, and the opening
+   * chapter stays under one (project plan: "under a minute each").
+   */
+  limits: {
+    maxSecondsAnyLevel: 300,
+    maxSecondsChapter1: 60,
+  },
 } as const;
 
 export interface LevelFeatures {
@@ -74,7 +83,7 @@ export function measure(level: Level, board: Board, g: Grade): Difficulty {
     minWidth,
     area: board.w * board.h,
     pathCells: board.paths.length,
-    bushes: level.bushes.length + (level.twists?.sporecaps?.length ?? 0),
+    bushes: level.bushes.length + (level.twists?.mushrooms?.length ?? 0),
     hiddenBushes: level.bushes.filter(([, , n]) => n === null).length,
     fireflies: g.fireflies.length - board.lanterns.length,
     mechanics,

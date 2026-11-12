@@ -11,9 +11,9 @@ for (let i = 0; i < 60; i++) {
     shape: (['rect', 'ring', 'L', 'bridge', 'crescent'] as const)[i % 5]!,
     hide: i % 2 === 0 ? 'max' : 'none',
     ...(i % 6 === 1 ? { mushrooms: 0.06 } : {}),
+    ...(i % 6 === 4 ? { mushrooms: 0.06, moonlit: 0.06, lanterns: true } : {}),
     ...(i % 6 === 2 ? { moonlit: 0.08 } : {}),
-    ...(i % 6 === 3 ? { toadstools: 0.06 } : {}),
-    ...(i % 6 === 4 ? { sporecaps: 0.06 } : {}),
+    ...(i % 6 === 3 ? { mushrooms: 0.1, hide: 'none' as const } : {}),
     ...(i % 6 === 5 ? { lanterns: true } : {}),
   });
 }
@@ -69,7 +69,7 @@ describe('grade', () => {
       const gen = generate(spec);
       if (gen) for (const st of gen.grade.steps) used.add(st.technique);
     }
-    for (const t of ['T1-satisfied', 'T1-needs-all', 'T2-one-source', 'T2-bush-room', 'T3-lookahead']) {
+    for (const t of ['T1-satisfied', 'T1-needs-all', 'T2-one-source', 'T2-bush-room', 'T4-lookahead']) {
       expect(used, t).toContain(t);
     }
   });

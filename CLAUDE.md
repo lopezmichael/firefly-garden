@@ -74,6 +74,7 @@ about the code today.
 - Every committed level re-solves to exactly one solution and re-grades to its stored
   tier and score (`tests/levels.test.ts`)
 - No level in chapter 1 requires a technique above T2
+- No committed level is estimated over 5:00, none in chapter 1 over 1:00 (`DIFFICULTY_CONFIG.limits`)
 
 ## Security, scaled to a client-only game
 

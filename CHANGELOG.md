@@ -11,7 +11,6 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
   uniqueness repair and clue removal; ramp builder (`buildRamp`).
 - 252 generated, unique, graded levels (`levels/spike.json`) and chapters 1 to 3
   (`levels/manifest.json`), re-validated by `tests/levels.test.ts`.
-- Experimental mushroom variants: toadstool and sporecap, compared in the difficulty report.
 - `npm run levels` regenerates packs and report data.
 - Phase 0 foundation: npm workspaces (`packages/core`, `apps/game`), strict TypeScript 7,
   Vitest, Vite build, CI workflow, pre-commit hook, Claude Code typecheck hook.
@@ -26,6 +25,13 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 - Architecture ratchets: core purity, SDKs only behind the platform adapter, 8 MB bundle budget.
 - `Platform` adapter interface and a local development adapter.
 - Docs: CLAUDE.md, ARCHITECTURE.md, ROADMAP.md, rules reference, Phase 0 and Phase 1 plans.
+
+### Changed (Phase 1 decisions, 2026-11-12)
+- Technique tiers: overlapping bushes is now T3 and one-step lookahead T4.
+- Mushrooms are numbered blockers counting only their 4 side neighbors
+  (`twists.mushrooms: [row, col, n]`). The toadstool and sporecap experiments are removed.
+- Shipped levels are capped at an estimated five minutes, and chapter 1 at one minute
+  (`DIFFICULTY_CONFIG.limits`), enforced by the generator, the ramp builder and CI.
 
 ### Security
 - `parseLevel` caps list lengths, mask row width and text fields before any per-item work.

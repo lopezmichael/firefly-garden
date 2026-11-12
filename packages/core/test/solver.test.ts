@@ -96,8 +96,8 @@ describe('solve', () => {
       const level: Level = {
         id: `rand-${t}`, w, h, mask, bushes,
         twists: {
-          mushrooms: take(0.05), moonlit: take(0.05), lanterns: take(0.03), toadstools: take(0.05),
-          sporecaps: take(0.05).map(([r, c]) => [r, c, pick([0, 1, 1, 2])] as const),
+          mushrooms: take(0.08).map(([r, c]) => [r, c, pick([0, 1, 1, 2])] as const),
+          moonlit: take(0.05), lanterns: take(0.03),
         },
       };
       const board = buildBoard(level);

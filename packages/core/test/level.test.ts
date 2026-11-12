@@ -49,6 +49,9 @@ describe('parseLevel', () => {
     ['an oversized bush list', withChanges({ bushes: Array.from({ length: 1025 }, () => [0, 4, 0]) }), /more than 1024/],
     ['an overlong mask row', withChanges({ mask: ['#'.repeat(33), ...PLAN_SAMPLE.mask.slice(1)] }), /may not exceed 32/],
     ['an overlong id', withChanges({ id: 'x'.repeat(129) }), /id must be/],
+    ['a mushroom number above 4', withChanges({ twists: { mushrooms: [[0, 8, 5]] } }), /must be 0\.\.4/],
+    ['a mushroom without a number', withChanges({ twists: { mushrooms: [[0, 8]] } }), /twists.mushrooms must be/],
+    ['an old experimental twist', withChanges({ twists: { toadstools: [[0, 8]] } }), /unknown twist "toadstools"/],
     ['a solution missing a lantern', withChanges({ twists: { lanterns: [[0, 8]] } }), /missing the lantern/],
   ])('rejects %s', (_name, json, pattern) => {
     expect(problemsOf(json).join('\n')).toMatch(pattern);

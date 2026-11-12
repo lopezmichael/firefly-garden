@@ -7,7 +7,7 @@
 // Writes levels/spike.json, levels/manifest.json and reports/phase1-data.json.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import {
-  buildBoard, buildRamp, cellIndex, generate, grade, type ChapterSpec, type Generated, type GenSpec, type Level, type RampLevel, type ShapeId,
+  buildRamp, cellIndex, DIFFICULTY_CONFIG, generate, type ChapterSpec, type Generated, type GenSpec, type Level, type RampLevel, type ShapeId,
 } from '../packages/core/src/index.ts';
 
 const SIZES = [4, 5, 6, 7, 8, 9, 10];
@@ -36,10 +36,8 @@ interface Row {
   fireflies: number;
   tierCounts: number[];
   techniques: Record<string, number>;
-  /** Share of steps whose justification involves a twist tile (experiment only). */
+  /** Share of steps whose justification involves a mushroom (null without mushrooms). */
   twistParticipation: number | null;
-  /** Tier if overlapping-bush reasoning is ranked before lookahead. */
-  tierOverlapFirst: number;
   attempts: number;
   repairs: number;
 }
@@ -51,10 +49,7 @@ function row(gen: Generated, set: string, spec: GenSpec, variant: string): Row {
 
   let twistParticipation: number | null = null;
   const t = gen.level.twists;
-  const twistCells = new Set<number>([
-    ...(t?.toadstools ?? []).map((c) => cellIndex(gen.board, c)),
-    ...(t?.sporecaps ?? []).map(([r, c]) => cellIndex(gen.board, [r, c])),
-  ]);
+  const twistCells = new Set<number>((t?.mushrooms ?? []).map(([r, c]) => cellIndex(gen.board, [r, c])));
   if (twistCells.size > 0 && gen.grade.steps.length > 0) {
     const involved = gen.grade.steps.filter((s) => s.because.some((b) => twistCells.has(b))).length;
     twistParticipation = involved / gen.grade.steps.length;
@@ -67,7 +62,6 @@ function row(gen: Generated, set: string, spec: GenSpec, variant: string): Row {
     minWidth: Number.isFinite(d.features.minWidth) ? d.features.minWidth : null,
     bushes: d.features.bushes, hiddenBushes: d.features.hiddenBushes, fireflies: d.features.fireflies,
     tierCounts: gen.grade.tierCounts.slice(1, 6), techniques, twistParticipation,
-    tierOverlapFirst: grade(buildBoard(gen.level), { overlapFirst: true }).maxTier,
     attempts: gen.attempts, repairs: gen.repairs,
   };
 }
@@ -85,6 +79,7 @@ for (const size of SIZES) {
         id: `spike-${size}x${size}-${mode}-${String(i).padStart(2, '0')}`,
         seed: size * 10_000 + i * 7 + (mode === 'max' ? 1 : 0),
         w: size, h: size, shape, bushDensity: 0.14 + (i % 5) * 0.02, hide: mode,
+        maxSeconds: DIFFICULTY_CONFIG.limits.maxSecondsAnyLevel,
         symmetric: i % 3 === 0,
       };
       const gen = generate(spec);
@@ -97,28 +92,13 @@ for (const size of SIZES) {
   }
 }
 
-// 2. Mushroom experiment: same seeds, 7x7, clues hidden as far as uniqueness allows.
-const VARIANTS: { id: string; label: string; spec: Partial<GenSpec> }[] = [
-  { id: 'base', label: 'No twist', spec: {} },
-  { id: 'A', label: 'A · Blocker (current)', spec: { mushrooms: 0.08 } },
-  { id: 'B', label: 'B · Toadstool', spec: { toadstools: 0.08 } },
-  { id: 'C', label: 'C · Sporecap', spec: { sporecaps: 0.08 } },
-];
-const experiment: Row[] = [];
-for (const v of VARIANTS) {
-  for (let i = 0; i < 40; i++) {
-    const spec: GenSpec = {
-      id: `exp-${v.id}-${String(i).padStart(2, '0')}`, seed: 777_000 + i, w: 7, h: 7,
-      bushDensity: 0.14, hide: 'max', ...v.spec,
-    };
-    const gen = generate(spec);
-    if (gen) experiment.push(row(gen, 'experiment', spec, v.id));
-  }
-}
+// 2. The three-way mushroom experiment that chose the 4-neighbor mushroom is
+// archived in reports/archive/mushroom-experiment-2026-11-12.json; the losing
+// variants no longer exist in core, so it is not regenerated.
 
 // 3. Ramp: the first three chapters, built from the census pool.
 const CHAPTERS: ChapterSpec[] = [
-  { id: 'c1', title: 'The Rose Bed', count: 10, tiers: [1, 2], areas: [16, 25] },
+  { id: 'c1', title: 'The Rose Bed', count: 10, tiers: [1, 2], areas: [16, 25], maxSeconds: DIFFICULTY_CONFIG.limits.maxSecondsChapter1 },
   { id: 'c2', title: 'The Orchard', count: 12, tiers: [1, 3], areas: [25, 49] },
   { id: 'c3', title: 'The Koi Pond', count: 12, tiers: [2, 4], areas: [36, 100] },
 ];
@@ -139,25 +119,18 @@ writeFileSync('reports/phase1-data.json', JSON.stringify({
   generatedAt: new Date().toISOString().slice(0, 10),
   census: census.map((c) => c.row),
   censusFailures,
-  experiment,
-  variants: VARIANTS.map(({ id, label }) => ({ id, label })),
   chapters: chapters.map((c) => ({ id: c.id, title: c.title, shortfall: c.shortfall, levels: c.levels })),
 }) + '\n');
 
 // Flat, chart-ready tables for the difficulty report (attached to it as files).
 mkdirSync('reports/dash', { recursive: true });
-const TECHS = ['T1-satisfied', 'T1-needs-all', 'T2-one-source', 'T2-bush-room', 'T3-lookahead', 'T4-overlap', 'T5-trial'];
+const TECHS = ['T1-satisfied', 'T1-needs-all', 'T2-one-source', 'T2-bush-room', 'T3-overlap', 'T4-lookahead', 'T5-trial'];
 const modeLabel = (m: string) => (m === 'max' ? 'Hidden clues' : 'All clues');
 writeFileSync('reports/dash/census.json', JSON.stringify(census.map(({ row: r }) => ({
-  id: r.id, size: r.w, mode: modeLabel(r.mode), shape: r.shape, tier: r.tier, tierOverlapFirst: r.tierOverlapFirst,
+  id: r.id, size: r.w, mode: modeLabel(r.mode), shape: r.shape, tier: r.tier,
   score: r.score, seconds: r.estimatedSeconds, steps: r.steps, t3PlusSteps: r.t3PlusSteps,
   bushes: r.bushes, hiddenBushes: r.hiddenBushes,
   ...Object.fromEntries(TECHS.map((t) => [t, r.techniques[t] ?? 0])),
-}))));
-const labels = new Map(VARIANTS.map((v) => [v.id, v.label]));
-writeFileSync('reports/dash/experiment.json', JSON.stringify(experiment.map((r) => ({
-  id: r.id, variant: r.variant, label: labels.get(r.variant), tier: r.tier, score: r.score, seconds: r.estimatedSeconds,
-  steps: r.steps, t3PlusSteps: r.t3PlusSteps, participation: r.twistParticipation,
 }))));
 let position = 0;
 const sizeOf = new Map(census.map(({ row: r }) => [r.id, `${r.w}x${r.h}`]));
@@ -167,6 +140,5 @@ writeFileSync('reports/dash/ramp.json', JSON.stringify(chapters.flatMap((c) => c
 })))));
 
 console.log(`census: ${census.length} levels (${censusFailures} specs failed)`);
-console.log(`experiment: ${experiment.length} levels`);
 console.log(`chapters: ${chapters.map((c) => `${c.id}=${c.levels.length}${c.shortfall ? ` (short ${c.shortfall})` : ''}`).join(', ')}`);
 console.log(`done in ${((performance.now() - started) / 1000).toFixed(1)}s`);

@@ -55,15 +55,22 @@ describe('evaluate', () => {
     expect(canPlace(board, 2)).toBe(true); // moonlit tiles still take fireflies
   });
 
-  it('treats mushrooms and hidden bushes as blockers without a count', () => {
-    const level: Level = {
-      id: 't', w: 5, h: 1, mask: ['#####'], bushes: [[0, 1, null]], twists: { mushrooms: [[0, 3]] },
-    };
+  it('treats a hidden bush as a blocker without a count', () => {
+    const level: Level = { id: 't', w: 3, h: 1, mask: ['###'], bushes: [[0, 1, null]] };
     const board = buildBoard(level);
     expect(board.numbered).toEqual([]);
-    expect(board.kind[3]).toBe('mushroom');
-    expect(evaluate(board, [0]).unlit).toBe(2); // cells 2 and 4 stay dark
-    expect(evaluate(board, [0, 2, 4]).solved).toBe(true);
+    expect(evaluate(board, [0]).unlit).toBe(1);
+    expect(evaluate(board, [0, 2]).solved).toBe(true);
+  });
+
+  it('has mushrooms count only their 4 side neighbors, not diagonals', () => {
+    // Mushroom at the center wants 1. A diagonal firefly does not count; a side one does.
+    const level: Level = { id: 'm', w: 3, h: 3, mask: ['###', '###', '###'], bushes: [], twists: { mushrooms: [[1, 1, 1]] } };
+    const board = buildBoard(level);
+    expect(board.kind[4]).toBe('mushroom');
+    expect(board.around[4]).toEqual([1, 3, 5, 7]);
+    expect(evaluate(board, [0]).bushes[0]).toMatchObject({ have: 0, state: 'under' });
+    expect(evaluate(board, [1]).bushes[0]).toMatchObject({ have: 1, state: 'met' });
   });
 
   it('rejects a firefly on a cell that cannot hold one', () => {

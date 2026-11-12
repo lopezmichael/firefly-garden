@@ -17,9 +17,7 @@ Every active cell is one of:
 | Moonlit tile (twist) | Yes | No | Starts lit; never needs covering |
 | Lantern (twist) | Already has one, fixed | No | |
 | Bush | No | Yes | A number 0 to 8, or hidden (`null`) |
-| Mushroom (twist) | No | Yes | Never |
-| Toadstool (experimental) | No, never | No | Needs light like a path tile |
-| Sporecap (experimental) | No | Yes | A number 0 to 4, counting only the 4 side neighbors |
+| Mushroom (twist) | No | Yes | A number 0 to 4, counting only its 4 side neighbors |
 
 ## Rules
 
@@ -28,16 +26,19 @@ Every active cell is one of:
 2. Two fireflies may not see each other along a row or column (lanterns included).
 3. A numbered bush wants exactly that many fireflies among its **8** surrounding
    tiles, diagonals included. (Standard Akari counts only the 4 orthogonal tiles.)
+   A mushroom wants exactly its number among its **4** side tiles (up, down,
+   left, right); diagonals do not count.
 4. Solved: every path tile that is not moonlit is lit, no two fireflies see each
    other, and every numbered bush has exactly its number.
 
-Fireflies may sit on moonlit tiles. Hidden bushes and mushrooms impose no count.
+Fireflies may sit on moonlit tiles. Hidden bushes impose no count.
 
-**Design note.** A hidden-number bush and a mushroom are identical to the rules:
-both block light and carry no count. The difference is only what the player
-sees (a bush that *has* a number they can't see, versus a plant that never has
-one). Keep that distinction in the art, or the clue-removal difficulty lever
-and the mushroom twist read as the same thing.
+**Design note.** Mushrooms read differently from bushes on purpose: the same
+tile can count for a bush (diagonal) and not for a mushroom. The art must make
+each one's counting area obvious (for example, a mushroom's glow shaped like a
+plus sign). A plain blocker with no number plays exactly like a hidden bush,
+which is why the original mushroom was replaced (see below); if scenery such as
+rocks is wanted later, it is a skin for a hidden bush, not a new rule.
 
 ## Level file
 
@@ -57,26 +58,26 @@ and the mushroom twist read as the same thing.
 | `w`, `h` | Yes | 1 to 32 |
 | `mask` | Yes | `h` strings of `w` chars, `#` or `.` |
 | `bushes` | Yes | `[row, col, clue]`, clue 0 to 8 or `null` (hidden) |
-| `twists` | | `mushrooms`, `moonlit`, `lanterns`, `toadstools`: arrays of `[row, col]`; `sporecaps`: `[row, col, n]`. Unknown keys are rejected |
+| `twists` | | `mushrooms`: `[row, col, n]` with n 0 to 4; `moonlit`, `lanterns`: `[row, col]`. Unknown keys are rejected |
 | `solution` | | Every firefly in the answer, **lanterns included** |
 | `tier`, `score`, `techniques` | | Written by the grader |
 
 Validation (`parseLevel`) rejects unknown keys, off-board or outside-mask
 coordinates, two things on one cell (including a lantern on a moonlit tile),
-clues outside 0 to 8, and solutions that sit on blockers, repeat a cell, or
+clues outside 0 to 8 (0 to 4 for mushrooms), and solutions that sit on blockers, repeat a cell, or
 omit a lantern. Coordinates are `[row, col]` with row 0 at the top.
 
 Levels are stored in one canonical orientation. `transformLevel` gives any of
 the 8 rotations/mirrors; the rules are symmetric, so the solution count never
 changes.
 
-## Mushroom redesign (Phase 1 experiment)
+## Mushroom redesign (decided 2026-11-12)
 
-Because the current mushroom plays exactly like a hidden bush, two alternatives
-are implemented for comparison: the **toadstool** (variant B) and the
-**sporecap** (variant C). The difficulty report compares all three on the same
-seeds. Once a direction is chosen, the losers are removed and the winner takes
-the `mushrooms` name.
+The original mushroom (blocks light, no number) played exactly like a hidden
+bush. Phase 1 compared it with a "toadstool" (needs light, no firefly may
+land) and a "sporecap" (a 4-neighbor numbered blocker) on the same 40 seeds.
+The sporecap took part in 33% of deduction steps, the toadstool in 2%, so the
+sporecap became the mushroom. Data: `reports/archive/mushroom-experiment-2026-11-12.json`.
 
 ## Not yet implemented
 

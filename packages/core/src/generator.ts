@@ -27,10 +27,8 @@ export interface GenSpec {
   readonly area?: string;
   /** Fraction of active cells that become bushes. */
   readonly bushDensity: number;
-  /** Fractions of active cells for each twist. */
+  /** Fractions of active cells for each twist. Mushrooms are numbered (4-neighbor) blockers. */
   readonly mushrooms?: number;
-  readonly toadstools?: number;
-  readonly sporecaps?: number;
   readonly moonlit?: number;
   /** Allow lanterns as a uniqueness repair (a twist; off for early chapters). */
   readonly lanterns?: boolean;
@@ -38,6 +36,11 @@ export interface GenSpec {
   readonly hide?: 'none' | 'max';
   /** With hide: never hide a number if that pushes the tier above this. */
   readonly maxTier?: number;
+  /**
+   * Longest estimated solve time allowed, in seconds. Clue hiding stops short
+   * of it, and a level still over it is rejected.
+   */
+  readonly maxSeconds?: number;
   readonly symmetric?: boolean;
   /** Accept only levels whose tier is within [min, max]. */
   readonly targetTiers?: readonly [number, number];
@@ -73,8 +76,6 @@ interface Parts {
   bushes: Coord[];
   hidden: Set<string>;
   mushrooms: Coord[];
-  toadstools: Coord[];
-  sporecaps: Coord[];
   moonlit: Coord[];
   lanterns: Coord[];
 }
@@ -113,8 +114,6 @@ function attempt(spec: GenSpec, rng: Rng): Omit<Generated, 'attempts'> | null {
     bushes: take(Math.max(1, count(spec.bushDensity)), spec.symmetric ?? false),
     hidden: new Set(),
     mushrooms: take(count(spec.mushrooms)),
-    sporecaps: take(count(spec.sporecaps)),
-    toadstools: take(count(spec.toadstools)),
     moonlit: take(count(spec.moonlit)),
     lanterns: [],
   };
@@ -153,7 +152,11 @@ function attempt(spec: GenSpec, rng: Rng): Omit<Generated, 'attempts'> | null {
       const trial = toLevel(spec, parts, solution);
       const trialBoard = buildBoard(trial);
       let keep = isUnique(trialBoard);
-      if (keep && spec.maxTier !== undefined) keep = grade(trialBoard).maxTier <= spec.maxTier;
+      if (keep && (spec.maxTier !== undefined || spec.maxSeconds !== undefined)) {
+        const tg = grade(trialBoard);
+        if (spec.maxTier !== undefined && tg.maxTier > spec.maxTier) keep = false;
+        if (keep && spec.maxSeconds !== undefined && measure(trial, trialBoard, tg).estimatedSeconds > spec.maxSeconds) keep = false;
+      }
       if (keep) {
         level = trial;
         board = trialBoard;
@@ -171,6 +174,7 @@ function attempt(spec: GenSpec, rng: Rng): Omit<Generated, 'attempts'> | null {
   const difficulty = measure(level, board, g);
   const [lo, hi] = spec.targetTiers ?? [1, 5];
   if (difficulty.tier < lo || difficulty.tier > hi) return null;
+  if (spec.maxSeconds !== undefined && difficulty.estimatedSeconds > spec.maxSeconds) return null;
 
   const techniques = [...new Set(g.steps.map((s) => s.technique))].sort();
   const graded: Level = { ...level, tier: difficulty.tier, score: difficulty.score, techniques };
@@ -190,7 +194,7 @@ function placeAnswer(board: Board, rng: Rng): number[] | null {
   for (const p of rng.shuffle(board.needsLight)) {
     if (lit[p]) continue;
     // An unlit cell sees no firefly, so any unlit landable cell in view is legal.
-    const options = [p, ...board.rays[p]!].filter((c) => !lit[c] && !board.noLand[c]);
+    const options = [p, ...board.rays[p]!].filter((c) => !lit[c]);
     if (options.length === 0) return null;
     const c = rng.pick(options);
     fly.push(c);
@@ -246,9 +250,7 @@ function toLevel(spec: GenSpec, parts: Parts, solution: readonly Coord[] | null)
   };
   const bushes: BushSpec[] = parts.bushes.map((b) => [b[0], b[1], parts.hidden.has(key(b)) ? null : count(b, true)]);
   const twists: { -readonly [K in keyof LevelTwists]: LevelTwists[K] } = {};
-  if (parts.mushrooms.length) twists.mushrooms = parts.mushrooms;
-  if (parts.toadstools.length) twists.toadstools = parts.toadstools;
-  if (parts.sporecaps.length) twists.sporecaps = parts.sporecaps.map((s) => [s[0], s[1], count(s, false)] as const);
+  if (parts.mushrooms.length) twists.mushrooms = parts.mushrooms.map((m) => [m[0], m[1], count(m, false)] as const);
   if (parts.moonlit.length) twists.moonlit = parts.moonlit;
   if (parts.lanterns.length) twists.lanterns = parts.lanterns;
 

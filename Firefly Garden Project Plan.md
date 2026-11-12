@@ -46,7 +46,7 @@ The core is settled: Light Up with an eight-neighbor clue rule, short early leve
 
 | Twist | Rule | Why it's fun |
 | --- | --- | --- |
-| Mushrooms | Block light, carry no number | More walls without more clues to read |
+| Mushrooms | Block light and carry a number that counts only the 4 side tiles (bushes count all 8) | A second way of counting on the same board; a new skill without new controls. (Changed 2026-11-12: the original no-number mushroom played exactly like a hidden bush) |
 | Moonlit tiles | Pre-lit; never need covering | Frees up placements, changes deductions |
 | Lanterns | Fixed fireflies already placed | Starting constraints you work around |
 | Ponds | Light can't cross; fireflies can't see across either | Splits the board into regions |
@@ -177,11 +177,13 @@ It solves the way a person would, always trying the simplest technique first, an
 | --- | --- | --- |
 | T1 | Bush bookkeeping | A bush already has its number: its other neighbors stay empty. It needs every open neighbor: fill them all |
 | T2 | Only one light source | A dark tile that only one open tile can light: put a firefly there |
-| T3 | One-step lookahead | Placing here would leave some tile impossible to light: never place here |
-| T4 | Overlapping bushes | Two bushes share neighbors; their numbers together pin down the shared tiles |
+| T3 | Overlapping bushes | Two bushes share neighbors; their numbers together pin down the shared tiles |
+| T4 | One-step lookahead | Placing here would leave some tile impossible to light: never place here |
 | T5 | Deep trial | Needs a guess followed several steps ahead; reserve for late, optional "expert" gardens |
 
-**Difficulty score** = the hardest technique required (dominant), plus how many times T3 or higher was needed, plus board size and step count as tie-breakers. The eight-neighbor rule makes bushes interact more than in standard Akari, so T4 should show up earlier; the grader will tell us how much.
+**Difficulty score** = the hardest technique required (dominant), plus how many times T3 or higher was needed, plus board size and step count as tie-breakers. The eight-neighbor rule makes bushes interact more than in standard Akari; the Phase 1 grader confirmed it, so overlapping bushes moved to T3, ahead of lookahead (changed 2026-11-12).
+
+**Length limit.** No shipped level is estimated over five minutes, and the first chapter stays under one; the generator and CI enforce both (`DIFFICULTY_CONFIG.limits`).
 
 **The ramp**
 

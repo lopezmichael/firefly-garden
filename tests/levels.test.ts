@@ -6,7 +6,15 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { buildBoard, cellIndex, evaluate, grade, isUnique, measure, parseLevel, type Level } from '../packages/core/src/index.ts';
+import {
+  buildBoard, cellIndex, DIFFICULTY_CONFIG, evaluate, grade, isUnique, measure, parseLevel, type Level,
+} from '../packages/core/src/index.ts';
+
+const { maxSecondsAnyLevel, maxSecondsChapter1 } = DIFFICULTY_CONFIG.limits;
+const seconds = (level: Level) => {
+  const board = buildBoard(level);
+  return measure(level, board, grade(board)).estimatedSeconds;
+};
 
 const DIR = join(import.meta.dirname, '..', 'levels');
 const packs = readdirSync(DIR).filter((f) => f.endsWith('.json') && f !== 'manifest.json');
@@ -48,6 +56,19 @@ describe('committed levels', () => {
       expect(json.levels.length, p.file).toBe(p.count);
     }
     for (const c of manifest.chapters) for (const id of c.levels) expect(byId.has(id), `${c.id}: ${id}`).toBe(true);
+  });
+
+  it(`no level is estimated over ${maxSecondsAnyLevel} seconds`, () => {
+    const over = levels.filter((l) => seconds(l) > maxSecondsAnyLevel).map((l) => `${l.id}: ${seconds(l)}s`);
+    expect(over).toEqual([]);
+  });
+
+  it(`every chapter 1 level is estimated at ${maxSecondsChapter1} seconds or less`, () => {
+    const over = manifest.chapters[0]!.levels
+      .map((id) => byId.get(id)!)
+      .filter((l) => seconds(l) > maxSecondsChapter1)
+      .map((l) => `${l.id}: ${seconds(l)}s`);
+    expect(over).toEqual([]);
   });
 
   it('chapter 1 needs nothing above T2', () => {

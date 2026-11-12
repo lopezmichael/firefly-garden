@@ -26,6 +26,8 @@ export interface ChapterSpec {
   readonly mechanics?: readonly string[];
   /** Twists every level in this chapter must use (the chapter's debut twist). */
   readonly requires?: readonly string[];
+  /** Longest estimated solve time allowed in this chapter, in seconds. */
+  readonly maxSeconds?: number;
   /** A breather after every `breatherEvery` climbing levels. Default 3. */
   readonly breatherEvery?: number;
 }
@@ -47,6 +49,7 @@ export function buildRamp(pool: readonly RampLevel[], specs: readonly ChapterSpe
     const candidates = pool
       .filter((l) => !used.has(l.id))
       .filter((l) => l.tier >= tlo && l.tier <= thi && l.area >= alo && l.area <= ahi)
+      .filter((l) => l.estimatedSeconds <= (spec.maxSeconds ?? Infinity))
       .filter((l) => l.mechanics.every((m) => allowed.has(m)))
       .filter((l) => (spec.requires ?? []).every((m) => l.mechanics.includes(m)))
       .sort((a, b) => a.score - b.score || a.id.localeCompare(b.id));

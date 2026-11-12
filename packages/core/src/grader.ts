@@ -10,22 +10,25 @@ import type { Board } from './board.ts';
  *   T1 bush bookkeeping   a bush has its number (others empty) or needs every open neighbor
  *   T2 only one source    a dark tile with exactly one cell left that can light it
  *      bush room          a bush's open spots that can all hold fireflies together leave no choice
- *   T3 one-step lookahead assuming a cell leads straight to a contradiction
- *   T4 overlapping bushes two bushes share neighbors; their numbers pin the shared/unshared parts
+ *   T3 overlapping bushes two bushes share neighbors; their numbers pin the shared/unshared parts
+ *   T4 one-step lookahead assume a cell, apply the moves that become obvious, hit a contradiction
+ * (The project plan had lookahead as T3 and overlap as T4. Phase 1 data showed
+ * the eight-neighbor rule makes overlaps constant and that lookahead swallowed
+ * them when tried first, so overlap became its own, easier tier.)
  *   T5 deep trial         an assumption followed several deductions ahead to a contradiction
  * A level the grader cannot finish even with T5 is graded tier 6 ("beyond").
  */
 
 export type TechniqueId =
-  | 'T1-satisfied' | 'T1-needs-all' | 'T2-one-source' | 'T2-bush-room' | 'T3-lookahead' | 'T4-overlap' | 'T5-trial';
+  | 'T1-satisfied' | 'T1-needs-all' | 'T2-one-source' | 'T2-bush-room' | 'T3-overlap' | 'T4-lookahead' | 'T5-trial';
 
 export const TECHNIQUE_TIER: Readonly<Record<TechniqueId, number>> = {
   'T1-satisfied': 1,
   'T1-needs-all': 1,
   'T2-one-source': 2,
   'T2-bush-room': 2,
-  'T3-lookahead': 3,
-  'T4-overlap': 4,
+  'T3-overlap': 3,
+  'T4-lookahead': 4,
   'T5-trial': 5,
 };
 
@@ -75,18 +78,11 @@ interface Deduction {
 export interface GradeOptions {
   /** Stop after this many steps (safety net). Default: 4 × cell count. */
   readonly maxSteps?: number;
-  /**
-   * Try overlapping-bush reasoning (T4) before one-step lookahead (T3).
-   * Default false, matching the plan's tier order. Used to test how
-   * sensitive the grades are to that ordering.
-   */
-  readonly overlapFirst?: boolean;
 }
 
 export function grade(board: Board, options: GradeOptions = {}): Grade {
   const n = board.w * board.h;
   const s: State = { st: new Int8Array(n), lit: new Uint8Array(n) };
-  for (const p of board.paths) if (board.noLand[p]) s.st[p] = NO;
   for (const l of board.lanterns) place(board, s, l);
 
   const steps: Step[] = [];
@@ -95,7 +91,7 @@ export function grade(board: Board, options: GradeOptions = {}): Grade {
 
   while (!isSolved(board, s) && steps.length < maxSteps) {
     let found: Deduction[] = [];
-    for (const finder of options.overlapFirst ? FINDERS_OVERLAP_FIRST : FINDERS) {
+    for (const finder of FINDERS) {
       found = finder(board, s);
       if (found.length > 0) break;
     }
@@ -281,9 +277,9 @@ function settleOneRound(board: Board, s: State): boolean {
   return applyAll(board, s, ds);
 }
 
-const t3: Finder = (board, s) => lookahead(board, s, 'T3-lookahead', (x) => settleOneRound(board, x));
+const lookahead1: Finder = (board, s) => lookahead(board, s, 'T4-lookahead', (x) => settleOneRound(board, x));
 
-const t4: Finder = (board, s) => {
+const overlap: Finder = (board, s) => {
   const out: Deduction[] = [];
   const nb = board.numbered;
   for (let i = 0; i < nb.length; i++) {
@@ -304,7 +300,7 @@ const t4: Finder = (board, s) => {
       if (lo > hi) continue; // contradiction; T3 or the exact solver will see it
       const because = [a, b];
       const all = (cells: number[], value: 'firefly' | 'empty') => {
-        for (const c of cells) out.push({ technique: 'T4-overlap', cell: c, value, because });
+        for (const c of cells) out.push({ technique: 'T3-overlap', cell: c, value, because });
       };
       if (hi === 0) all(shared, 'empty');
       if (lo === shared.length) all(shared, 'firefly');
@@ -323,7 +319,7 @@ function settleWithBasics(board: Board, s: State, budget = 60): boolean {
     let ds = t1(board, s);
     if (ds.length === 0) ds = t2(board, s);
     if (ds.length === 0) ds = t2room(board, s);
-    if (ds.length === 0) ds = t4(board, s);
+    if (ds.length === 0) ds = overlap(board, s);
     if (ds.length === 0) return true;
     if (!applyAll(board, s, ds) || contradiction(board, s)) return false;
   }
@@ -346,5 +342,5 @@ function applyAll(board: Board, s: State, ds: readonly Deduction[]): boolean {
 
 const t5: Finder = (board, s) => lookahead(board, s, 'T5-trial', (x) => settleWithBasics(board, x));
 
-const FINDERS: readonly Finder[] = [t1, t2, t2room, t3, t4, t5];
-const FINDERS_OVERLAP_FIRST: readonly Finder[] = [t1, t2, t2room, t4, t3, t5];
+// Simplest first. `overlap` is tier 3 and `lookahead` tier 4 (see header).
+const FINDERS: readonly Finder[] = [t1, t2, t2room, overlap, lookahead1, t5];

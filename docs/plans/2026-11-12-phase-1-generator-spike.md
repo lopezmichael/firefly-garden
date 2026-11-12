@@ -142,12 +142,15 @@ better game.
 - **Two techniques were missing** and made the grader over-rate levels as T5: "bush room"
   (a bush's open spots that see each other can't both hold fireflies) and following one round
   of forced moves inside a lookahead. Both are now in, as T2 and T3.
-- **T4 almost never fires** in the plan's order: one-step lookahead catches the same moves.
-  With overlap tried first, 79 of 142 T3 levels become T4. Recommendation: swap T3 and T4.
-  Pending decision.
-- **Mushroom:** the sporecap (4-neighbor numbered mushroom) takes part in 33% of steps; the
-  toadstool in 2%; the current blocker is rules-identical to a hidden bush. Recommendation:
-  sporecap. Pending decision.
+- **T4 almost never fired** in the plan's order: one-step lookahead caught the same moves.
+  With overlap tried first, 79 of 142 T3 levels became T4. **Decided:** overlap is T3,
+  lookahead T4.
+- **Mushroom:** the sporecap (4-neighbor numbered mushroom) took part in 33% of steps; the
+  toadstool in 2%; the old blocker is rules-identical to a hidden bush. **Decided:** the
+  mushroom is now the 4-neighbor numbered blocker; the other variants were removed.
+- **Length:** the first census had levels estimated up to 9:23. **Decided:** five-minute
+  limit on every level, one minute in chapter 1, enforced by the generator and CI.
+  After regenerating: longest 4:59, gate still passes (73% of 8x8+ need T3+).
 - **Score resolution:** chapter 1 is flat (all T2, scores 51 to 56). The score needs finer
   weight inside a tier before the early ramp shows a climb.
 - **Review (2026-11-12):** grader fuzzed on ~29,000 boards in both technique orders with zero

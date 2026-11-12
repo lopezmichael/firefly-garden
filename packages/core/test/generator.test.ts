@@ -41,7 +41,7 @@ describe('generate', () => {
   it('never puts a repair lantern on a moonlit tile (regression)', () => {
     const spec = {
       id: 'f925', seed: 152132, w: 5, h: 4, shape: 'rect' as const, bushDensity: 0.1, hide: 'max' as const,
-      mushrooms: 0.06, sporecaps: 0.08, moonlit: 0.1, lanterns: true, attempts: 10,
+      mushrooms: 0.08, moonlit: 0.1, lanterns: true, attempts: 10,
     };
     expect(() => generate(spec)).not.toThrow();
     for (let i = 0; i < 40; i++) {
@@ -49,14 +49,23 @@ describe('generate', () => {
     }
   });
 
-  it('places the twists it is asked for, and never a firefly on a toadstool', () => {
-    const gen = generate({ id: 'tw', seed: 11, w: 7, h: 7, bushDensity: 0.15, toadstools: 0.06, sporecaps: 0.06, moonlit: 0.06 })!;
+  it('places numbered mushrooms with 4-neighbor counts derived from the answer', () => {
+    const gen = generate({ id: 'tw', seed: 11, w: 7, h: 7, bushDensity: 0.15, mushrooms: 0.08, moonlit: 0.06 })!;
     const t = gen.level.twists!;
-    expect(t.toadstools?.length).toBeGreaterThan(0);
-    expect(t.sporecaps?.length).toBeGreaterThan(0);
+    expect(t.mushrooms?.length).toBeGreaterThan(0);
     expect(t.moonlit?.length).toBeGreaterThan(0);
-    const toad = new Set(t.toadstools!.map(([r, c]) => `${r},${c}`));
-    expect(gen.level.solution!.some(([r, c]) => toad.has(`${r},${c}`))).toBe(false);
+    const fly = new Set(gen.level.solution!.map(([r, c]) => `${r},${c}`));
+    for (const [r, c, n] of t.mushrooms!) {
+      const sides = [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]].filter(([a, b]) => fly.has(`${a},${b}`)).length;
+      expect(n).toBe(sides);
+    }
+  });
+
+  it('respects maxSeconds', () => {
+    for (let i = 0; i < 6; i++) {
+      const gen = generate({ id: `ms${i}`, seed: 600 + i, w: 10, h: 10, bushDensity: 0.16, hide: 'max', maxSeconds: 150 });
+      if (gen) expect(gen.difficulty.estimatedSeconds).toBeLessThanOrEqual(150);
+    }
   });
 });
 
@@ -80,11 +89,12 @@ describe('ramp', () => {
       ...Array.from({ length: 10 }, (_, i) => lv(`m${i}`, 30 + i, 2, 36, ['moonlit'])),
     ];
     const chapters = buildRamp(pool, [
-      { id: 'c1', title: 'One', count: 8, tiers: [1, 2], areas: [16, 25] },
+      { id: 'c1', title: 'One', count: 8, tiers: [1, 2], areas: [16, 25], maxSeconds: 15 },
       { id: 'c2', title: 'Two', count: 8, tiers: [1, 3], mechanics: ['moonlit'], requires: ['moonlit'] },
       { id: 'c3', title: 'Three', count: 30, tiers: [3, 3] },
     ]);
     expect(chapters[0]!.levels.every((l) => l.tier <= 2 && l.area <= 25 && l.mechanics.length === 0)).toBe(true);
+    expect(chapters[0]!.levels.every((l) => l.estimatedSeconds <= 15)).toBe(true);
     expect(chapters[1]!.levels.every((l) => l.mechanics.includes('moonlit'))).toBe(true);
     expect(chapters[2]!.shortfall).toBe(10);
     const ids = chapters.flatMap((c) => c.levels.map((l) => l.id));

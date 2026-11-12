@@ -9,23 +9,17 @@ export type BushSpec = readonly [row: number, col: number, clue: number | null];
  * absent key means the twist is not used in this level.
  */
 export interface LevelTwists {
-  /** Block light like a bush, never carry a number. */
-  readonly mushrooms?: readonly Coord[];
+  /**
+   * Mushrooms: numbered blockers that count only their 4 side neighbors (up,
+   * down, left, right), unlike bushes, which count all 8. Entries are
+   * [row, col, number 0..4]. Chosen in Phase 1 over a plain blocker (which
+   * played exactly like a hidden bush) and a "toadstool" (rarely mattered).
+   */
+  readonly mushrooms?: readonly (readonly [row: number, col: number, clue: number])[];
   /** Pre-lit path tiles: they never need covering, fireflies may still sit on them. */
   readonly moonlit?: readonly Coord[];
   /** Fixed fireflies, placed before the player starts. */
   readonly lanterns?: readonly Coord[];
-  /**
-   * EXPERIMENTAL mushroom variant B. Tiles that need light like a path, let
-   * light pass, but never take a firefly. Under evaluation in Phase 1.
-   */
-  readonly toadstools?: readonly Coord[];
-  /**
-   * EXPERIMENTAL mushroom variant C. Numbered blockers that count only the 4
-   * orthogonal neighbors (classic Akari), mixed into an 8-neighbor garden.
-   * Entries are [row, col, number 0..4]. Under evaluation in Phase 1.
-   */
-  readonly sporecaps?: readonly (readonly [row: number, col: number, clue: number])[];
 }
 
 /** The on-disk level format. See docs/references/rules.md for the full spec. */
