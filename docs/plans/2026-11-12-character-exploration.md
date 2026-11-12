@@ -162,11 +162,20 @@ plus mark), the jar with its slots, one button, one sheet, and one full tall-pho
       flight, in the direction's own character.
 - [ ] Copy voice: a short voice note and a pass over the existing strings (wording only, same
       places).
+- [x] Play in the other two bands (2026-11-12): square (iPhone Duo inner, level c3-11, 7x7)
+      and wide (phone landscape, level c1-t1-0), both drawn from the real level data mid-game,
+      with hills behind the status card and the lantern jar. Boards InkDuo and InkWide.
+- [x] State sheet: the Components and Twists boards together hold every tile, bush, firefly
+      and twist state; the motion table is in `docs/design/assets.md`.
 - [ ] **Checkpoint C:** Michael signs off the set.
 
 ### 5. Asset plan (`docs/design/assets.md`)
 
-- [ ] Every asset: what it is, how it's made (code / procedural / drawn by Michael / sourced),
+- [x] Written 2026-11-12: tokens, fonts (Young Serif and Figtree, both OFL-1.1 on npm), every
+      board, scene, chrome and twist asset with method and budget, the planned synthesized sound
+      set, the motion table, Michael's optional painting kit, the bundle budget and the licence
+      log. Everything is drawn in the repo; nothing needs sourcing.
+      Covers every asset: what it is, how it's made (code / procedural / drawn by Michael / sourced),
       source and licence if sourced, format, size budget, and which seam it goes in
       (`theme.css`, `view/theme.ts`, the board's texture builders, `ui/`).
 - [ ] A painting kit for Michael: what to paint, at what size, on what paper or brush, how to
