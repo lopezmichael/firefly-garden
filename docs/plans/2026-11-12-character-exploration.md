@@ -139,6 +139,11 @@ plus mark), the jar with its slots, one button, one sheet, and one full tall-pho
       shaped beds, two-colour fireflies (gold round tail, mint diamond tail; bush dots match the
       tail shape) and the coloured-beams idea, plus a bloom per chapter (rose, apple blossom, glow
       caps, moonflower, lantern plant, lotus, ivy stars, mixed posy). Board Twists.
+      Revised from Michael's review: mushrooms are a cluster of three toadstools (number on the
+      biggest cap); ponds are drawn as organic rounded water over the same grid cells (oblong
+      and round examples), with irregular stepping stones, notched lily pads and a koi seen from
+      above; outside-the-garden squares are plain night ground with grass, no tile; Mushroom
+      Glade bloom has two options (A bluebells, B foxfire). Michael likes the mint firefly.
 
 ### 4. Full screen set, chosen direction (canvas row 3)
 
