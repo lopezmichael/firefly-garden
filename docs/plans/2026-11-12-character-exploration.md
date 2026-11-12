@@ -74,6 +74,11 @@ really buildable and not a painting we can't reproduce. A short spike in the scr
 
 ### 3. Style tiles, one per direction (canvas row 2)
 
+- [x] Drafted 2026-11-12, after studying Michael's 19 screenshots: TileInk, TileDiorama and
+      TilePrint on the character canvas, all showing the same game state so only the look differs.
+      Contrast checked per tile. The sound audition pages come after the pick, for the chosen
+      direction (or the two finalists) only, so sound effort isn't spent on a direction that loses.
+
 Contents, from the brief: a palette with names, the type pairing, a tile (dark and lit), a bush
 (wanting, happy, too many), a player firefly and a hint firefly (the hint shown by shape: ring
 plus mark), the jar with its slots, one button, one sheet, and one full tall-phone play screen.
