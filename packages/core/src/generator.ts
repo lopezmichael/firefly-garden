@@ -32,6 +32,13 @@ export interface GenSpec {
   readonly moonlit?: number;
   /** Allow lanterns as a uniqueness repair (a twist; off for early chapters). */
   readonly lanterns?: boolean;
+  /** Place this many lanterns (fixed fireflies) from the hidden answer up front. */
+  readonly fixedLanterns?: number;
+  /**
+   * Teaching levels: reject a level whose hardest technique is needed more
+   * than this many times (e.g. 1 = "needs T3 exactly once").
+   */
+  readonly maxHardestSteps?: number;
   /** Clue removal: 'none' keeps every number, 'max' hides all it can. */
   readonly hide?: 'none' | 'max';
   /** With hide: never hide a number if that pushes the tier above this. */
@@ -123,6 +130,13 @@ function attempt(spec: GenSpec, rng: Rng): Omit<Generated, 'attempts'> | null {
   const answer = placeAnswer(shell, rng);
   if (!answer) return null;
 
+  // Optional fixed lanterns, chosen from the answer.
+  if (spec.fixedLanterns) {
+    const moonlitKeys = new Set(parts.moonlit.map(key));
+    const spots = rng.shuffle(answer).map((i) => [Math.floor(i / w), i % w] as Coord).filter((c) => !moonlitKeys.has(key(c)));
+    parts.lanterns.push(...spots.slice(0, spec.fixedLanterns));
+  }
+
   // Step 4 happens inside toLevel: numbers are derived from the answer.
   let level = toLevel(spec, parts, answer.map((i) => [Math.floor(i / w), i % w] as Coord));
   let board = buildBoard(level);
@@ -175,6 +189,7 @@ function attempt(spec: GenSpec, rng: Rng): Omit<Generated, 'attempts'> | null {
   const [lo, hi] = spec.targetTiers ?? [1, 5];
   if (difficulty.tier < lo || difficulty.tier > hi) return null;
   if (spec.maxSeconds !== undefined && difficulty.estimatedSeconds > spec.maxSeconds) return null;
+  if (spec.maxHardestSteps !== undefined && (g.tierCounts[difficulty.tier] ?? 0) > spec.maxHardestSteps) return null;
 
   const techniques = [...new Set(g.steps.map((s) => s.technique))].sort();
   const graded: Level = { ...level, tier: difficulty.tier, score: difficulty.score, techniques };

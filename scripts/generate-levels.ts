@@ -1,16 +1,18 @@
-// Generates the Phase 1 level pack, the chapter ramp, and the data behind the
-// difficulty report. Deterministic: rerunning produces identical level files
-// (the report data also records the date it was generated).
+// Generates the launch pack (main-path chapters plus the reserve), and the data
+// behind the difficulty report. Deterministic: rerunning produces identical
+// level files (the report data also records the date it was generated).
 //
 //   node scripts/generate-levels.ts
 //
-// Writes levels/spike.json, levels/manifest.json and reports/phase1-data.json.
+// Writes levels/launch.json, levels/reserve.json, levels/manifest.json and
+// reports/ (census gate evidence, simulations, report tables).
 import { mkdirSync, writeFileSync } from 'node:fs';
 import {
-  buildBoard, buildRamp, cellIndex, combine, DIFFICULTY_CONFIG, generate, grade, measure, PLAYER_CONFIG, rampRoles, simulate,
-  simulateWithPolicy,
-  type ChapterSpec, type Economy, type SimLevel, type Generated, type GenSpec, type Level, type RampLevel, type ShapeId,
+  buildBoard, buildRamp, canonicalKey, cellIndex, combine, DIFFICULTY_CONFIG, generate, grade, measure, PLAYER_CONFIG, rampRoles,
+  simulate, simulateWithPolicy,
+  type Economy, type SimLevel, type Generated, type GenSpec, type Level, type RampLevel, type ShapeId,
 } from '../packages/core/src/index.ts';
+import { launchPlan, reservePlan } from './launch-plan.ts';
 
 const SIZES = [4, 5, 6, 7, 8, 9, 10];
 const PER_SIZE_PER_MODE = 18;
@@ -70,7 +72,8 @@ function row(gen: Generated, set: string, spec: GenSpec, variant: string): Row {
 
 const started = performance.now();
 
-// 1. Census: the committed pack and the gate evidence.
+// 1. Census: the Phase 1 gate evidence (sizes 4 to 10, all clues and hidden clues).
+// Report data only; it is not shipped.
 const census: { level: Level; row: Row }[] = [];
 let censusFailures = 0;
 for (const size of SIZES) {
@@ -98,32 +101,76 @@ for (const size of SIZES) {
 // archived in reports/archive/mushroom-experiment-2026-11-12.json; the losing
 // variants no longer exist in core, so it is not regenerated.
 
-// 3. Ramp: the first three chapters, built from the census pool.
-const chapterLimit = (id: string) =>
-  DIFFICULTY_CONFIG.limits.chapterMaxSeconds[id] ?? DIFFICULTY_CONFIG.limits.maxSecondsAnyLevel;
-const CHAPTERS: ChapterSpec[] = [
-  { id: 'c1', title: 'The Rose Bed', count: 10, tiers: [1, 2], areas: [16, 25], maxSeconds: chapterLimit('c1') },
-  { id: 'c2', title: 'The Orchard', count: 12, tiers: [1, 3], areas: [25, 49], maxSeconds: chapterLimit('c2') },
-  { id: 'c3', title: 'The Koi Pond', count: 12, tiers: [2, 4], areas: [36, 100], maxSeconds: chapterLimit('c3') },
-];
-const pool: RampLevel[] = census.map(({ row: r }) => ({
-  id: r.id, tier: r.tier, score: r.score, estimatedSeconds: r.estimatedSeconds, area: r.area, mechanics: [],
-  tierSteps: [0, ...r.tierCounts],
-}));
-const chapters = buildRamp(pool, CHAPTERS);
+// 3. The launch pack: each chapter's own candidate pool, then the ramp builder
+// picks and orders each chapter. Rotations and mirrors of an earlier level are skipped.
+const plans = launchPlan();
+const seenKeys = new Set<string>();
+interface Made { level: Level; size: string; ramp: RampLevel }
+const made = new Map<string, Made>();
+let launchFailures = 0;
+let duplicatesSkipped = 0;
+const mechanicsOf = (l: Level, shape: ShapeId) => [
+  ...Object.entries(l.twists ?? {}).filter(([, v]) => Array.isArray(v) && v.length > 0).map(([k]) => k),
+  ...(shape === 'rect' ? [] : ['shaped']),
+].sort();
+for (const plan of plans) {
+  for (const spec of plan.pool) {
+    const gen = generate(spec);
+    if (!gen) {
+      launchFailures++;
+      continue;
+    }
+    const key = canonicalKey(gen.level);
+    if (seenKeys.has(key)) {
+      duplicatesSkipped++;
+      continue;
+    }
+    seenKeys.add(key);
+    const d = gen.difficulty;
+    made.set(gen.level.id, {
+      level: gen.level, size: `${spec.w}x${spec.h}`,
+      ramp: {
+        id: gen.level.id, tier: d.tier, score: d.score, estimatedSeconds: d.estimatedSeconds, area: spec.w * spec.h,
+        mechanics: mechanicsOf(gen.level, spec.shape ?? 'rect'), tierSteps: [0, ...gen.grade.tierCounts.slice(1, 6)], pool: plan.spec.id,
+      },
+    });
+  }
+}
+const chapters = buildRamp([...made.values()].map((m) => m.ramp), plans.map((p) => p.spec));
+const planById = new Map(plans.map((p) => [p.spec.id, p]));
+
+const RESERVE_SIZE = 250;
+const reserveLevels: Level[] = [];
+for (const spec of reservePlan()) {
+  if (reserveLevels.length >= RESERVE_SIZE) break;
+  const gen = generate(spec);
+  if (!gen) continue;
+  const key = canonicalKey(gen.level);
+  if (seenKeys.has(key)) {
+    duplicatesSkipped++;
+    continue;
+  }
+  seenKeys.add(key);
+  reserveLevels.push(gen.level);
+}
 
 // Write outputs.
 mkdirSync('levels', { recursive: true });
 mkdirSync('reports', { recursive: true });
-writeFileSync('levels/spike.json', JSON.stringify({ pack: 'spike', levels: census.map((c) => c.level) }) + '\n');
+const launchLevels = chapters.flatMap((c) => c.levels.map((l) => made.get(l.id)!.level));
+writeFileSync('levels/launch.json', JSON.stringify({ pack: 'launch', levels: launchLevels }) + '\n');
+writeFileSync('levels/reserve.json', JSON.stringify({ pack: 'reserve', levels: reserveLevels }) + '\n');
 writeFileSync('levels/manifest.json', JSON.stringify({
-  packs: [{ file: 'spike.json', count: census.length }],
-  chapters: chapters.map((c) => ({ id: c.id, title: c.title, levels: c.levels.map((l) => l.id) })),
+  packs: [{ file: 'launch.json', count: launchLevels.length }, { file: 'reserve.json', count: reserveLevels.length }],
+  chapters: chapters.map((c) => ({
+    id: c.id, title: c.title, area: planById.get(c.id)!.area, debut: planById.get(c.id)!.debut, levels: c.levels.map((l) => l.id),
+  })),
 }, null, 2) + '\n');
 writeFileSync('reports/phase1-data.json', JSON.stringify({
   generatedAt: new Date().toISOString().slice(0, 10),
   census: census.map((c) => c.row),
   censusFailures,
+  launch: { chapters: chapters.length, levels: launchLevels.length, reserve: reserveLevels.length, launchFailures, duplicatesSkipped },
   chapters: chapters.map((c) => ({ id: c.id, title: c.title, shortfall: c.shortfall, levels: c.levels })),
 }) + '\n');
 
@@ -138,18 +185,19 @@ writeFileSync('reports/dash/census.json', JSON.stringify(census.map(({ row: r })
   ...Object.fromEntries(TECHS.map((t) => [t, r.techniques[t] ?? 0])),
 }))));
 let position = 0;
-const sizeOf = new Map(census.map(({ row: r }) => [r.id, `${r.w}x${r.h}`]));
+const sizeOf = new Map([...made.values()].map((m) => [m.level.id, m.size]));
+const firstChapters = chapters.slice(0, 3);
 const roles = new Map(chapters.flatMap((c) => {
   const r = rampRoles(c.levels);
   return c.levels.map((l, i) => [l.id, r[i]!] as const);
 }));
-writeFileSync('reports/dash/ramp.json', JSON.stringify(chapters.flatMap((c) => c.levels.map((l, i) => ({
+writeFileSync('reports/dash/ramp.json', JSON.stringify(firstChapters.flatMap((c) => c.levels.map((l, i) => ({
   position: ++position, chapter: c.id, title: c.title, inChapter: i + 1, id: l.id, size: sizeOf.get(l.id),
   tier: l.tier, score: l.score, seconds: l.estimatedSeconds, role: roles.get(l.id),
 })))));
 
 // 4. Simulated players through chapters 1 to 3, and the hint-economy sweep.
-const levelById = new Map(census.map((c) => [c.level.id, c.level]));
+const levelById = new Map([...launchLevels, ...reserveLevels].map((l) => [l.id, l]));
 const toSim = (id: string, chapter: string, role: SimLevel['role']): SimLevel => {
   const level = levelById.get(id)!;
   const board = buildBoard(level);
@@ -160,7 +208,7 @@ const toSim = (id: string, chapter: string, role: SimLevel['role']): SimLevel =>
     tier: d.tier, score: d.score, estimatedSeconds: d.estimatedSeconds,
   };
 };
-const simLevels: SimLevel[] = chapters.flatMap((c) => c.levels.map((l) => toSim(l.id, c.id, roles.get(l.id)!)));
+const simLevels: SimLevel[] = firstChapters.flatMap((c) => c.levels.map((l) => toSim(l.id, c.id, roles.get(l.id)!)));
 const runAll = (economy: Economy) => PLAYER_CONFIG.profiles.map((p, k) => simulate(simLevels, p, economy, PLAYER_CONFIG.runs, 4242 + k));
 const shipped = runAll(PLAYER_CONFIG.economy);
 const pop = combine(shipped, PLAYER_CONFIG.profiles);
@@ -233,10 +281,8 @@ for (const [name, base] of [['shipped', PLAYER_CONFIG.economy], ['tight', TIGHT]
   }
 }
 // 5. Next-level policy: the same players with detours (warm-ups, breathers) from
-// the reserve of census levels outside the chapters, with no assumed effect on
-// quitting and with an assumed one.
-const inChapters = new Set(chapters.flatMap((c) => c.levels.map((l) => l.id)));
-const reserve = census.filter((c) => !inChapters.has(c.level.id)).map((c) => toSim(c.level.id, 'extra', 'climb'));
+// the reserve pack, with no assumed effect on quitting and with an assumed one.
+const reserve = reserveLevels.map((l) => toSim(l.id, 'extra', 'climb'));
 const ASSUMED_CHURN_FACTOR = 0.7;
 const policyRows = [];
 for (const [variant, label, run] of [
@@ -283,7 +329,44 @@ writeFileSync('reports/dash/ads.json', JSON.stringify([
 ]));
 writeFileSync('reports/dash/economy.json', JSON.stringify(economyRows));
 
+// 6. The whole launch pack: per-chapter summary, and how far simulated players get
+// through all of it (shipped economy, next-level policy on, no assumed effect).
+const chapterRows = chapters.map((c, k) => {
+  const ls = c.levels;
+  const plan = planById.get(c.id)!;
+  const has = (m: string) => ls.filter((l) => l.mechanics.includes(m)).length / Math.max(1, ls.length);
+  return {
+    index: k + 1, id: c.id, title: c.title, area: plan.area, debut: plan.debut ?? '', levels: ls.length, shortfall: c.shortfall,
+    meanScore: ls.reduce((a, l) => a + l.score, 0) / Math.max(1, ls.length), peakScore: Math.max(...ls.map((l) => l.score)),
+    minutes: ls.reduce((a, l) => a + l.estimatedSeconds, 0) / 60,
+    maxTier: Math.max(...ls.map((l) => l.tier)), maxArea: Math.max(...ls.map((l) => l.area)),
+    mushrooms: has('mushrooms'), moonlit: has('moonlit'), lanterns: has('lanterns'), shaped: has('shaped'),
+  };
+});
+writeFileSync('reports/dash/chapters.json', JSON.stringify(chapterRows));
+const journeyLevels: SimLevel[] = chapters.flatMap((c) => c.levels.map((l) => toSim(l.id, c.id, roles.get(l.id)!)));
+const JOURNEY_RUNS = 300;
+const journey = PLAYER_CONFIG.profiles.map((p, k) =>
+  simulateWithPolicy(journeyLevels, p, PLAYER_CONFIG.economy, JOURNEY_RUNS, 9090 + k, { reserve, churnFactorWithBreather: 1 }));
+const lastIndexOf = new Map(chapters.map((c) => [c.id, journeyLevels.map((l) => l.chapter).lastIndexOf(c.id)]));
+const journeyRows = chapters.flatMap((c, ci) => {
+  const i = lastIndexOf.get(c.id)!;
+  const rows = journey.map((r, k) => ({
+    key: `${c.id}|${r.profile}`, index: ci + 1, chapter: c.id, title: c.title, profile: r.profile,
+    label: PLAYER_CONFIG.profiles[k]!.label, cleared: r.levels[i]!.solved / r.runs,
+  }));
+  const all = rows.reduce((a, row, k) => a + PLAYER_CONFIG.profiles[k]!.share * row.cleared, 0);
+  return [...rows, { key: `${c.id}|all`, index: ci + 1, chapter: c.id, title: c.title, profile: 'all', label: 'Everyone', cleared: all }];
+});
+writeFileSync('reports/dash/journey.json', JSON.stringify(journeyRows));
+const journeySummary = PLAYER_CONFIG.profiles.map((p, k) => ({
+  profile: p.id, minutes: journey[k]!.minutesPerPlayer, adViews: journey[k]!.interstitialsPerPlayer + journey[k]!.rewardedPerPlayer,
+}));
+
 console.log(`census: ${census.length} levels (${censusFailures} specs failed)`);
-console.log(`chapters: ${chapters.map((c) => `${c.id}=${c.levels.length}${c.shortfall ? ` (short ${c.shortfall})` : ''}`).join(', ')}`);
+console.log(`launch: ${chapters.length} chapters, ${launchLevels.length} main levels, ${reserveLevels.length} reserve (${launchFailures} specs failed, ${duplicatesSkipped} duplicates skipped)`);
+const short = chapters.filter((c) => c.shortfall > 0);
+if (short.length) console.log(`short chapters: ${short.map((c) => `${c.id}-${c.shortfall}`).join(', ')}`);
+console.log(`journey: ${journeySummary.map((j) => `${j.profile} ${j.minutes.toFixed(0)}min`).join(', ')}`);
 console.log(`simulated: ${PLAYER_CONFIG.profiles.length} profiles x ${PLAYER_CONFIG.runs} players, ${economyRows.length} economies`);
 console.log(`done in ${((performance.now() - started) / 1000).toFixed(1)}s`);

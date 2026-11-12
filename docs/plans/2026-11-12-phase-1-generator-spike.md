@@ -79,7 +79,7 @@ The pipeline from the project plan, seeded and reproducible.
 - [x] Steps: place bushes/twists → place a hidden answer that lights everything →
       derive clues (8-neighbor) → uniqueness via `solve(limit 2)` → repair (reveal a clue
       or add a lantern) → clue removal toward the target tier → grade → file
-- [ ] **Technique-targeted generation**: "give me a 5x5 that needs T3 exactly once and
+- [x] **Technique-targeted generation**: "give me a 5x5 that needs T3 exactly once and
       nothing harder". This is how each new idea gets its own teaching level.
 - [x] Performance budget: a 10x10 uniqueness check fast enough to generate hundreds of
       levels in minutes; record solver `nodes` per level as a cost metric
@@ -109,7 +109,7 @@ This is where we design the pull of the game while it is still cheap to change.
 - [x] **Analytics event schema** (types only, in core): level start/solve/quit, time,
       undos, hints, restarts, session start/end. Phase 2 logs locally, Phase 3 sends
       to portal analytics. Same schema feeds the Phase 4 refit.
-- [ ] Meta hooks recorded as data, displayed later: levels per garden area (visible
+- [x] Meta hooks recorded as data, displayed later: levels per garden area (visible
       progress), daily puzzle pool a year ahead, collectible drop cadence.
 
 **Guardrails.** Make it compelling through flow, fairness and progress. Avoid
@@ -197,4 +197,10 @@ better game.
   duplicate guard: `canonicalKey` now rejects rotations and mirrors of existing levels.
 - Content limits seen so far (few T1 openers, few T3 practice levels) disappear with a
   larger, targeted pool: generate per-chapter specs instead of one census.
+- **Launch pack (2026-11-12):** 70 chapters / 760 main levels + 250 reserve, generated per
+  chapter in ~30 s; every chapter full, 1 disguised duplicate skipped. Simulated players
+  through the whole pack (policy on): 45% reach chapter 20, 30% chapter 40, 17% finish;
+  about 30 hours of play. Difficulty plateaus after ~chapter 20 and no new twist arrives
+  after chapter 25, so later chapters need their own identity (open question to Michael:
+  area identities, more twists/combinations, or launch with ~40 chapters and add areas).
 

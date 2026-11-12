@@ -12,11 +12,12 @@ import {
 } from '../packages/core/src/index.ts';
 
 const DIR = join(import.meta.dirname, '..', 'levels');
-const pack = JSON.parse(readFileSync(join(DIR, 'spike.json'), 'utf8')) as { levels: unknown[] };
+const pack = JSON.parse(readFileSync(join(DIR, 'launch.json'), 'utf8')) as { levels: unknown[] };
 const byId = new Map(pack.levels.map((l) => parseLevel(l)).map((l) => [l.id, l]));
 const manifest = JSON.parse(readFileSync(join(DIR, 'manifest.json'), 'utf8')) as { chapters: { id: string; levels: string[] }[] };
 
-const simLevels: SimLevel[] = manifest.chapters.flatMap((c) => {
+// The economy guardrails are about the opening: chapters 1 to 3.
+const simLevels: SimLevel[] = manifest.chapters.slice(0, 3).flatMap((c) => {
   const graded = c.levels.map((id) => {
     const level = byId.get(id)!;
     const board = buildBoard(level);

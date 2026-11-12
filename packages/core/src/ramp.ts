@@ -22,6 +22,8 @@ export interface RampLevel {
   readonly mechanics: readonly string[];
   /** Grader steps per tier, indexed by tier (index 0 unused). Enables teaching levels. */
   readonly tierSteps?: readonly number[];
+  /** Which generated pool the level came from (matches `ChapterSpec.pool`). */
+  readonly pool?: string;
 }
 
 export interface ChapterSpec {
@@ -38,6 +40,8 @@ export interface ChapterSpec {
   readonly requires?: readonly string[];
   /** Longest estimated solve time allowed in this chapter, in seconds. */
   readonly maxSeconds?: number;
+  /** Only levels from this pool (levels generated for this chapter). */
+  readonly pool?: string;
   /**
    * Where a new tier debuts, as a fraction of the chapter (default 0.3). After
    * the debut, practice levels of the new tier alternate with easier ones,
@@ -65,6 +69,7 @@ export function buildRamp(pool: readonly RampLevel[], specs: readonly ChapterSpe
     const [alo, ahi] = spec.areas ?? [0, Infinity];
     const candidates = pool
       .filter((l) => !used.has(l.id))
+      .filter((l) => spec.pool === undefined || l.pool === spec.pool)
       .filter((l) => l.tier >= tlo && l.tier <= thi && l.area >= alo && l.area <= ahi)
       .filter((l) => l.estimatedSeconds <= (spec.maxSeconds ?? Infinity))
       .filter((l) => l.mechanics.every((m) => allowed.has(m)))

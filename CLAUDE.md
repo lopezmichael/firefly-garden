@@ -16,7 +16,7 @@ about the code today.
 | `npm run check:bundle` | Fails if the build is over the 8 MB Poki budget |
 | `npm run check` | All of the above, in order. The pre-commit hook runs this |
 | `npm run dev` | Vite dev server for the game |
-| `npm run levels` | Regenerate `levels/` and `reports/` (deterministic). Never hand-edit packs |
+| `npm run levels` | Regenerate `levels/` (launch + reserve packs) and `reports/` (deterministic, ~30 s). Never hand-edit packs; change `scripts/launch-plan.ts` |
 
 ## Codebase facts
 

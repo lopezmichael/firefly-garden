@@ -71,6 +71,26 @@ describe('generate', () => {
     expect(capped.difficulty.features.hiddenBushes).toBeLessThan(free.difficulty.features.hiddenBushes);
   });
 
+  it('makes teaching levels: the hardest technique needed at most maxHardestSteps times', () => {
+    let made = 0;
+    for (let i = 0; i < 12; i++) {
+      const g = generate({ id: `teach${i}`, seed: 800 + i, w: 6, h: 6, bushDensity: 0.18, hide: 'max', targetTiers: [3, 3], maxHardestSteps: 1 });
+      if (!g) continue;
+      made++;
+      expect(g.difficulty.tier).toBe(3);
+      expect(g.grade.tierCounts[3]).toBeLessThanOrEqual(1);
+    }
+    expect(made).toBeGreaterThan(3);
+  });
+
+  it('places fixed lanterns from the answer', () => {
+    const g = generate({ id: 'lan', seed: 77, w: 7, h: 7, bushDensity: 0.16, fixedLanterns: 2, moonlit: 0.05 })!;
+    const lanterns = g.level.twists?.lanterns ?? [];
+    expect(lanterns.length).toBeGreaterThanOrEqual(2);
+    const sol = new Set(g.level.solution!.map(([r, c]) => `${r},${c}`));
+    for (const [r, c] of lanterns) expect(sol.has(`${r},${c}`)).toBe(true);
+  });
+
   it('respects maxSeconds', () => {
     for (let i = 0; i < 6; i++) {
       const gen = generate({ id: `ms${i}`, seed: 600 + i, w: 10, h: 10, bushDensity: 0.16, hide: 'max', maxSeconds: 150 });

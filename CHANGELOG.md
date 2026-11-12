@@ -43,6 +43,16 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 - A rewarded ad grants 3 hints (one now, two saved); at a tight economy this keeps more
   newcomers than one per ad, and five adds nothing over three.
 
+### Added (launch pack)
+- Per-chapter generation (`scripts/launch-plan.ts`): 70 chapters in 12 garden areas, 760
+  main-path levels plus a 250-level twist-free reserve for detours (1,010 total, ~440 KB).
+  Twists debut one per chapter in the plan's order (mushrooms ch 7, moonlit ch 13, lanterns
+  ch 19, shaped gardens ch 25), each on easy boards first; chapter 1 opens on T1 boards.
+- Generator: `maxHardestSteps` (teaching levels that need the new technique once) and
+  `fixedLanterns`; ramp builder: per-chapter `pool`.
+- Report data for the whole pack: per-chapter summary and how far simulated players get
+  (`reports/dash/chapters.json`, `journey.json`). The census is now report-only evidence.
+
 ### Added (analytics schema)
 - `AnalyticsEvent` and `validateEvent` (`events.ts`): session, level, hint, ad and coin events
   with no personal data, validated before storage. `docs/references/analytics.md` maps each
