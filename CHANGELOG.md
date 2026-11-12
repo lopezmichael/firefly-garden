@@ -5,12 +5,29 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Added
+- The level-complete card (milestone 3): replaces the status card and moves once a garden is
+  solved, with the garden, time and hints used, a +10 coin chip, Garden map, and Next garden with
+  a ring that counts down the auto-advance (no Next on the last garden); sparks burst from the
+  board (not in reduced motion). Screen readers hear the whole line and the coins.
+- The garden map (milestone 3): chapter beds glowing, in progress or still dark, the area's
+  progress, the next area as a teaser and Continue. Leaving a level for the map is a quit (the
+  policy can serve a breather); its board is parked in the save so the retry resumes it.
 - The firefly jar (milestone 3, first item): the status card shows a jar plus one slot per firefly
   the garden needs, replacing the progress bar; placements are capped by the jar (an empty-jar tap
   shakes it and places nothing); a firefly flies out of the jar to the tile and home again when
   called back, and hints send a gold one; saves holding more fireflies than the jar are dropped.
 
 ### Fixed
+- The board no longer jumps when a hint appears on a narrow phone (320–360 px): hint reasons were
+  the status card's title in the large font and wrapped to three lines. Hints now have a short
+  one-line heading ("A firefly goes here", "Crossed-out tiles stay empty", "Try a firefly here",
+  "That firefly can't stay") with the reason in the sub-line; the card reserves a third sub-line
+  when it is under 290 px wide; a test holds every status message to one title line and two
+  sub-lines at a 360 px phone. To fit: the conflict heading is "Fireflies can see each other",
+  the end-of-build heading "Every garden is glowing!", and the first-move line and two hint
+  reasons (T3 overlap, T3 count bound) are a few words shorter.
+- The auto-advance no longer opens the next garden behind an open settings sheet: it waits, and
+  restarts from full when the sheet closes (as it already did for a hidden tab).
 - The board no longer jumps on the first move: the status card keeps a steady height (its
   wording changed length and the board resized to fill the space).
 

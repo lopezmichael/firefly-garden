@@ -24,6 +24,8 @@ export const SAVE_VERSION = 1;
 export const SAVE_KEY = 'progress';
 /** A save larger than this is not ours (ours is a few KB): start fresh rather than parse it. */
 export const MAX_SAVE_CHARS = 256_000;
+/** Quit boards kept for their retry (oldest dropped first). */
+export const MAX_PARKED = 5;
 /** Sessions counter cap: below the event schema's count bound even after the next launch adds one. */
 const MAX_SESSIONS = 1e9 - 2;
 
@@ -63,6 +65,11 @@ export interface SaveData {
   readonly playedReserve: ReadonlySet<string>;
   readonly quitMain: ReadonlySet<string>;
   readonly current: CurrentPlay | null;
+  /**
+   * Boards of levels the player left unsolved (a quit), kept so the retry resumes them.
+   * Same validation as `current`; never the current level or a solved one.
+   */
+  readonly parked: readonly CurrentPlay[];
   readonly settings: Settings;
 }
 
@@ -256,8 +263,25 @@ export function parseSave(raw: string | null, catalog: Catalog, now: number, fre
     playedReserve: idSet(own(json, 'playedReserve'), catalog.reserveIds, catalog.reserveIds.size, 'playedReserve', problems),
     quitMain: idSet(own(json, 'quitMain'), catalog.mainIds, catalog.mainIds.size, 'quitMain', problems),
     current: parseCurrent(own(json, 'current'), catalog, problems),
+    parked: [],
     settings: parseSettings(own(json, 'settings'), problems),
   };
+  const rawParked = own(json, 'parked');
+  if (rawParked !== undefined) {
+    if (!Array.isArray(rawParked)) problems.push('parked is not a list');
+    else {
+      // Newest wins: walk from the end, keep the first copy of each level, then restore order.
+      const seen = new Set<string>(data.current ? [data.current.levelId] : []);
+      const parked: CurrentPlay[] = [];
+      for (const raw of rawParked.slice(-MAX_PARKED).reverse()) {
+        const p = parseCurrent(raw, catalog, problems);
+        if (!p || seen.has(p.levelId) || data.solved.has(p.levelId)) continue;
+        seen.add(p.levelId);
+        parked.push(p);
+      }
+      return { data: { ...data, parked: parked.reverse() }, problems };
+    }
+  }
   return { data, problems };
 }
 
@@ -268,6 +292,11 @@ export function serializeSave(d: SaveData, catalog: Catalog): string {
     const b = catalog.board(id);
     return cells.map((c) => cellCoord(b, c));
   };
+  const play = (p: CurrentPlay) => ({
+    levelId: p.levelId, key: p.key, reason: p.reason,
+    placed: coords(p.placed, p.levelId), locked: coords(p.locked, p.levelId),
+    seconds: p.seconds, placements: p.placements, undos: p.undos, restarts: p.restarts, hints: p.hints,
+  });
   return JSON.stringify({
     v: SAVE_VERSION,
     install: d.install,
@@ -280,11 +309,8 @@ export function serializeSave(d: SaveData, catalog: Catalog): string {
     })),
     playedReserve: [...d.playedReserve],
     quitMain: [...d.quitMain],
-    current: cur && {
-      levelId: cur.levelId, key: cur.key, reason: cur.reason,
-      placed: coords(cur.placed, cur.levelId), locked: coords(cur.locked, cur.levelId),
-      seconds: cur.seconds, placements: cur.placements, undos: cur.undos, restarts: cur.restarts, hints: cur.hints,
-    },
+    current: cur && play(cur),
+    parked: d.parked.slice(-MAX_PARKED).map(play),
     settings: { sound: d.settings.sound, motion: d.settings.motion },
   });
 }

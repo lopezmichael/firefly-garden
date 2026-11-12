@@ -38,6 +38,8 @@
   gap: 20px;
 }
 .ff-app[data-band='wide'] .ff-side { grid-area: side; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+/* A short landscape phone: the complete card may need the panel to scroll. */
+.ff-app[data-band='wide'][data-complete] .ff-side { overflow-y: auto; }
 .ff-app[data-band='wide'] .ff-status { margin-top: auto; }
 .ff-app[data-band='wide'] .ff-controls { flex-direction: column; justify-content: center; }
 .ff-app[data-band='wide'] .ff-controls button { flex: 0 0 64px; flex-direction: column; gap: 4px; font-size: 13px; }
@@ -123,12 +125,9 @@
 .ff-flier[data-gold='true'] .ff-flier-body { fill: var(--ff-hint-firefly); stroke: var(--ff-hint-firefly-edge); }
 .ff-flier-head { fill: var(--ff-firefly-head); }
 
-.ff-next { border: 0; background: var(--ff-gold); color: var(--ff-on-gold); font-weight: 800; cursor: pointer; }
 /* Hint is a secondary action: outlined, so the paid move is never the loudest thing on screen. */
 .ff-hint { border: 2px solid var(--ff-gold); background: var(--ff-panel); color: var(--ff-glow); font-weight: 800; cursor: pointer; }
 .ff-hint:disabled { opacity: 0.5; cursor: default; }
-.ff-next { flex-shrink: 0; height: 44px; padding: 0 16px; border-radius: 12px; font-size: 15px; }
-.ff-next[hidden] { display: none; }
 
 .ff-controls { grid-area: controls; position: relative; display: flex; gap: 10px; }
 .ff-controls button {
@@ -205,7 +204,159 @@
 .ff-gear .ff-icon { width: 20px; height: 20px; }
 
 /* The status card keeps its height from move to move (room for a one-line title and a two-line
-   sub-line), so the board above it never jumps when the wording changes. */
+   sub-line; three on the narrowest phones), so the board above it never jumps when the wording
+   changes. The wording is held to that budget by test/status.test.ts ("fits the card"). */
+.ff-status { container: ff-status / inline-size; }
 .ff-app[data-band='tall'] .ff-status-text, .ff-app[data-band='square'] .ff-status-text {
   min-height: calc(18px * 1.2 + 2px + 15px * 1.4 * 2);
 }
+@container ff-status (max-width: 289px) {
+  .ff-app:not([data-band='wide']) .ff-status-text { min-height: calc(18px * 1.2 + 2px + 15px * 1.4 * 3); }
+}
+
+/* Garden map (design baseline: Map artboard). A screen over the play screen. */
+.ff-map {
+  position: absolute; inset: 0; z-index: 5; box-sizing: border-box; overflow-y: auto;
+  background: linear-gradient(180deg, var(--ff-night-0) 0%, var(--ff-night-1) 45%, var(--ff-night-2) 100%);
+  padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  display: flex; flex-direction: column; gap: 16px;
+}
+.ff-map[hidden] { display: none; }
+.ff-map > * { width: 100%; max-width: 520px; align-self: center; box-sizing: border-box; }
+.ff-map-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ff-map-top-right { display: flex; align-items: center; gap: 8px; }
+.ff-map-title { margin: 0; font-family: var(--ff-font-display); font-weight: 700; font-size: 30px; color: var(--ff-glow); }
+.ff-map-card { background: color-mix(in srgb, var(--ff-panel) 90%, transparent); border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.ff-map-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.ff-map-area { margin: 0; font-family: var(--ff-font-display); font-weight: 600; font-size: 22px; color: var(--ff-ink); }
+.ff-map-count { font-size: 14px; font-weight: 800; color: var(--ff-glow); }
+.ff-map-bar { height: 8px; border-radius: 999px; background: var(--ff-track); overflow: hidden; }
+.ff-map-fill { height: 100%; width: 0; border-radius: 999px; background: var(--ff-gold); }
+.ff-map-note { margin: 0; font-size: 14px; color: var(--ff-ink-quiet); }
+.ff-map-beds { list-style: none; margin: 0; padding: 4px 8px; display: flex; flex-direction: column-reverse; gap: 14px; flex: 1; justify-content: flex-start; }
+.ff-map-bed { display: flex; align-items: center; gap: 12px; width: 76%; }
+.ff-map-bed:nth-child(even) { align-self: flex-end; flex-direction: row-reverse; text-align: right; }
+.ff-map-patch {
+  width: 96px; height: 66px; flex-shrink: 0; border-radius: 50% 48% 52% 46% / 58% 54% 46% 42%;
+  background: radial-gradient(circle at 40% 35%, var(--ff-tile-dark-hi) 0%, var(--ff-tile-dark) 60%, var(--ff-tile-dark-lo) 100%);
+  box-shadow: 0 7px 0 var(--ff-tile-dark-edge);
+}
+.ff-map-bed[data-state='done'] .ff-map-patch {
+  background:
+    radial-gradient(circle at 26% 34%, var(--ff-petal-pink) 0 6px, transparent 7px),
+    radial-gradient(circle at 58% 26%, var(--ff-petal-cream) 0 5px, transparent 6px),
+    radial-gradient(circle at 72% 60%, var(--ff-petal-pink) 0 6px, transparent 7px),
+    radial-gradient(circle at 40% 66%, var(--ff-petal-cream) 0 5px, transparent 6px),
+    radial-gradient(circle at 40% 35%, var(--ff-moss-hi) 0%, var(--ff-moss) 60%, var(--ff-moss-lo) 100%);
+  box-shadow: 0 7px 0 var(--ff-moss-edge), 0 0 26px color-mix(in srgb, var(--ff-gold) 30%, transparent);
+}
+.ff-map-bed[data-state='now'] .ff-map-patch {
+  background: radial-gradient(circle at 40% 35%, var(--ff-moss-hidden-hi) 0%, var(--ff-moss-hidden) 60%, var(--ff-moss-lo) 100%);
+  box-shadow: 0 7px 0 var(--ff-moss-edge), 0 0 0 3px var(--ff-gold);
+}
+.ff-map-bed-text { display: flex; flex-direction: column; gap: 2px; }
+.ff-map-bed-text strong { font-size: 15px; font-weight: 800; color: var(--ff-ink); }
+.ff-map-bed-text span { font-size: 13px; font-weight: 700; color: var(--ff-label); }
+.ff-map-bed[data-state='now'] .ff-map-bed-text span, .ff-map-bed[data-state='done'] .ff-map-bed-text span { color: var(--ff-glow); }
+.ff-map-teaser { border: 2px dashed var(--ff-panel-edge); border-radius: 14px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; color: var(--ff-ink-quiet); font-size: 14px; }
+.ff-map-teaser strong { color: var(--ff-ink); }
+.ff-map-continue {
+  min-height: 64px; border: 0; border-radius: 18px; background: var(--ff-gold); color: var(--ff-on-gold);
+  font-weight: 800; font-size: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer;
+}
+.ff-map-continue:disabled { opacity: 0.6; cursor: default; }
+.ff-map-continue-sub { font-size: 13px; font-weight: 700; }
+
+/* Level complete (design baseline: Complete artboard). The card takes the place of the status card
+   and the moves; those keep their space (visibility only), so the board never resizes on a solve. */
+.ff-complete { position: relative; z-index: 1; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-end; }
+.ff-complete-panel {
+  box-sizing: border-box; border-radius: 22px; padding: 18px; display: flex; flex-direction: column; gap: 14px;
+  background: color-mix(in srgb, var(--ff-solved-panel) 95%, transparent);
+}
+.ff-complete[hidden], .ff-complete-next[hidden] { display: none; }
+.ff-app[data-complete] .ff-status, .ff-app[data-complete] .ff-controls { visibility: hidden; }
+.ff-app[data-band='tall'] .ff-complete, .ff-app[data-band='square'] .ff-complete {
+  /* Size containment keeps the card out of the rows' sizing: it fills exactly the space the
+     hidden status card and moves keep, so the board can't resize under it. */
+  grid-row: 4 / span 2; grid-column: 1; align-self: stretch; contain: size;
+}
+/* Narrow phones: a smaller title, and the ring alone says the next garden is coming. */
+@media (max-width: 380px) {
+  .ff-app[data-band='tall'] .ff-complete-panel { padding: 14px; gap: 12px; }
+  .ff-app[data-band='tall'] .ff-complete-title { font-size: 20px; }
+  .ff-app[data-band='tall'] .ff-complete-chip { font-size: 15px; padding: 6px 10px 6px 8px; }
+  .ff-app[data-band='tall'] .ff-complete-note { display: none; }
+}
+.ff-app[data-band='tall'] .ff-complete { margin-inline: 8px; }
+.ff-app[data-band='square'] .ff-complete { width: 100%; max-width: 560px; justify-self: center; }
+.ff-app[data-band='wide'][data-complete] .ff-status { display: none; }
+.ff-complete-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ff-complete-title { margin: 0; min-width: 0; font-family: var(--ff-font-display); font-weight: 700; font-size: 26px; line-height: 1.15; color: var(--ff-glow); }
+.ff-app[data-band='tall'] .ff-complete-title { font-size: 22px; }
+.ff-complete-sub { margin: -8px 0 0; font-size: 14px; line-height: 1.4; color: var(--ff-ink-quiet); }
+.ff-complete-chip {
+  flex-shrink: 0; display: flex; align-items: center; gap: 6px; border-radius: 999px; padding: 8px 14px 8px 10px;
+  background: var(--ff-gold); color: var(--ff-on-gold); font-weight: 800; font-size: 17px;
+}
+.ff-complete-chip .ff-coin { width: 18px; height: 18px; background: var(--ff-on-gold); box-shadow: inset 0 0 0 3px var(--ff-on-gold), inset 0 0 0 4.5px var(--ff-gold); }
+.ff-complete-buttons { display: flex; gap: 10px; }
+.ff-complete-buttons button { height: 56px; border-radius: 16px; font-weight: 800; font-size: 15px; cursor: pointer; }
+.ff-complete-map {
+  flex: 1; border: 2px solid var(--ff-panel-edge); background: var(--ff-panel); color: var(--ff-ink);
+  display: flex; align-items: center; justify-content: center;
+}
+.ff-complete-map-icon { display: none; width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.ff-app[data-band='wide'] .ff-complete-map-icon { display: block; }
+.ff-complete-next {
+  flex: 1.6; border: 0; background: var(--ff-gold); color: var(--ff-on-gold); font-size: 16px;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.ff-complete-note { margin: 0; font-size: 13px; text-align: center; color: var(--ff-ink-quiet); }
+/* Wide band: the side panel is short on a landscape phone. The area title goes (the card's line
+   names the garden), the note goes (the ring says it), and the buttons share a row. */
+.ff-app[data-band='wide'][data-complete] .ff-title { display: none; }
+.ff-app[data-band='wide'] .ff-complete { margin-top: auto; }
+.ff-app[data-band='wide'] .ff-complete-panel {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'title title' 'sub chip' 'buttons buttons';
+  align-items: center; gap: 10px 10px; padding: 14px;
+}
+.ff-app[data-band='wide'] .ff-complete-head { display: contents; }
+.ff-app[data-band='wide'] .ff-complete-title { grid-area: title; }
+.ff-app[data-band='wide'] .ff-complete-chip { grid-area: chip; }
+.ff-app[data-band='wide'] .ff-complete-sub { grid-area: sub; margin: 0; font-size: 13px; }
+.ff-app[data-band='wide'] .ff-complete-buttons { grid-area: buttons; }
+.ff-app[data-band='wide'] .ff-complete-map { flex: 0 0 48px; padding: 0; }
+.ff-app[data-band='wide'] .ff-complete-map-label { display: none; }
+.ff-app[data-band='wide'] .ff-complete-title { font-size: 20px; }
+.ff-app[data-band='wide'] .ff-complete-chip { font-size: 15px; padding: 6px 10px 6px 8px; }
+.ff-app[data-band='wide'] .ff-complete-chip .ff-coin { width: 15px; height: 15px; }
+.ff-app[data-band='wide'] .ff-complete-buttons { gap: 8px; }
+.ff-app[data-band='wide'] .ff-complete-buttons button { height: 48px; font-size: 14px; padding: 0 8px; gap: 6px; }
+.ff-app[data-band='wide'] .ff-complete-ring { width: 20px; height: 20px; }
+.ff-app[data-band='wide'] .ff-complete-note { display: none; }
+.ff-complete-ring { width: 24px; height: 24px; transform: rotate(-90deg); flex-shrink: 0; }
+.ff-ring-track, .ff-ring-fill { fill: none; stroke-width: 5; }
+.ff-ring-track { stroke: color-mix(in srgb, var(--ff-on-gold) 18%, transparent); }
+.ff-ring-fill { stroke: var(--ff-on-gold); stroke-linecap: round; stroke-dashoffset: 0; }
+.ff-counting .ff-ring-fill { animation: ff-count var(--ff-countdown, 3000ms) linear both; }
+@keyframes ff-count { from { stroke-dashoffset: 0; } to { stroke-dashoffset: 126; } }
+.ff-enter .ff-complete-chip { animation: ff-coin-up 700ms ease-out 400ms both; }
+@keyframes ff-coin-up { 0% { transform: translateY(16px); opacity: 0; } 30% { transform: translateY(-4px); opacity: 1; } 100% { transform: none; opacity: 1; } }
+
+/* The solve burst: sparks from the board's centre. */
+.ff-burst { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; z-index: 1; }
+.ff-spark {
+  position: absolute; left: -4px; top: -4px; width: var(--size); height: var(--size); border-radius: 999px;
+  background: var(--ff-spark); box-shadow: 0 0 10px 3px var(--ff-spark);
+  animation: ff-burst 1.4s ease-out var(--delay) both;
+}
+.ff-spark-0 { --ff-spark: var(--ff-glow); }
+.ff-spark-1 { --ff-spark: var(--ff-gold); }
+.ff-spark-2 { --ff-spark: var(--ff-petal-pink); }
+.ff-spark-3 { --ff-spark: var(--ff-petal-cream); }
+@keyframes ff-burst { 0% { transform: translate(0, 0) scale(0.4); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) scale(1.1); opacity: 0; } }
+
+.ff-app[data-motion='reduced'] .ff-counting .ff-ring-fill,
+.ff-app[data-motion='reduced'] .ff-enter .ff-complete-chip { animation: none; }
+.ff-app[data-motion='reduced'] .ff-burst { display: none; }

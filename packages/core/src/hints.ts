@@ -45,11 +45,11 @@ export const HINT_REASONS: Readonly<Record<TechniqueId, string>> = {
   'T1-satisfied': 'This bush already has all its fireflies.',
   'T2-one-source': 'That dark tile can only be lit from here.',
   'T2-bush-room': 'Every way to fit this bush\'s fireflies uses this spot.',
-  'T3-overlap': 'These two bushes share neighbors, and together their numbers need this spot.',
+  'T3-overlap': 'These two bushes share neighbors; together their numbers need this spot.',
   'T4-lookahead': 'Leaving this spot empty runs into trouble one move later.',
   'T5-trial': 'Leaving this spot empty leads to a dead end a few moves later.',
   'T1-count-complete': 'Every firefly is already placed.',
-  'T3-count-bound': 'The dark tiles and bushes that still need fireflies use up every one left.',
+  'T3-count-bound': 'The dark tiles and bushes still needing fireflies use up every one left.',
 };
 
 export const REMOVE_REASONS = {
