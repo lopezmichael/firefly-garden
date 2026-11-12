@@ -93,8 +93,10 @@ The look follows the Phase 2 design baseline (`docs/design/phase-2/`).
 - **Colors live only in `src/theme.css`.** The board reads them through `readPalette`; a
   ratchet rejects color literals anywhere else in `apps/game/src`.
 - `src/platform/local.ts`: development adapter (no ads, localStorage saves).
-- **Hosting (playtest):** Vercel builds from the repo root (`vercel.json`: `npm ci`, `npm run build`,
-  output `apps/game/dist`), production from `develop`, a preview per pull request. Headers: a
+- **Hosting:** Vercel (team Lopez Studio, project `firefly-garden`) builds from the repo root
+  (`vercel.json`: `npm ci`, `npm run build`, output `apps/game/dist`). Production deploys from
+  `main` (each `develop` → `main` release); `develop` is the testing build at its branch link;
+  every pull request gets its own preview. Headers: a
   strict content security policy (no eval, no outside origins; Pixi runs through
   `pixi.js/unsafe-eval`, its eval-free path), no indexing, long cache for hashed assets.
 
