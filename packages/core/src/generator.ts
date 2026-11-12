@@ -222,8 +222,9 @@ function repair(
     if (evaluate(next, answer.filter((i) => !next.lantern[i])).solved) return { level, board: next };
     parts.bushes.pop();
   }
-  if (spec.lanterns && answerOnly.length > 0) {
-    parts.lanterns.push(coord(rng.pick(answerOnly)));
+  const lanternSpots = answerOnly.filter((c) => !moonlit.has(key(coord(c))));
+  if (spec.lanterns && lanternSpots.length > 0) {
+    parts.lanterns.push(coord(rng.pick(lanternSpots)));
     const level = toLevel(spec, parts, solution);
     return { level, board: buildBoard(level) };
   }

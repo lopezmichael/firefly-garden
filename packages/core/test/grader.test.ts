@@ -49,6 +49,12 @@ describe('grade', () => {
     expect(g.maxTier).toBe(6);
   });
 
+  it('does not call a board solved while a moonlit tile could still take a firefly', () => {
+    // Two answers: firefly on (0,0) alone, or on both (0,0) and the moonlit (0,2).
+    const level: Level = { id: 'moon', w: 3, h: 1, mask: ['#.#'], bushes: [], twists: { moonlit: [[0, 2]] } };
+    expect(grade(buildBoard(level)).solved).toBe(false);
+  });
+
   it('grades a pure bookkeeping board as T1', () => {
     // The bush wants 2 and has exactly 2 open neighbors, which light everything.
     const level: Level = { id: 't1', w: 3, h: 1, mask: ['###'], bushes: [[0, 1, 2]] };

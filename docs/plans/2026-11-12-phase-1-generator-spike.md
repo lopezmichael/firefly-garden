@@ -150,4 +150,7 @@ better game.
   sporecap. Pending decision.
 - **Score resolution:** chapter 1 is flat (all T2, scores 51 to 56). The score needs finer
   weight inside a tier before the early ramp shows a climb.
-
+- **Review (2026-11-12):** grader fuzzed on ~29,000 boards in both technique orders with zero
+  unsound steps. Fixed: a repair lantern could land on a moonlit tile (latent; no current spec
+  combines them), and the grader now needs every tile decided before calling a board solved.
+  Hardening to do if levels ever come from players: node/step budgets on `isUnique` and `grade`.

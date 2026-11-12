@@ -161,7 +161,13 @@ function bushCounts(board: Board, s: State, b: number): { have: number; open: nu
   return { have, open };
 }
 
+/**
+ * Solved means every tile is decided, not just lit: an unlit moonlit tile may
+ * still optionally hold a firefly, so leaving it undecided would accept a
+ * board with more than one answer.
+ */
 function isSolved(board: Board, s: State): boolean {
+  for (const p of board.paths) if (s.st[p] === UNK) return false;
   for (const p of board.needsLight) if (!s.lit[p]) return false;
   for (const b of board.numbered) if (bushCounts(board, s, b).have !== board.clue[b]) return false;
   return true;

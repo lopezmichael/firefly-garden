@@ -38,6 +38,17 @@ describe('generate', () => {
     }
   });
 
+  it('never puts a repair lantern on a moonlit tile (regression)', () => {
+    const spec = {
+      id: 'f925', seed: 152132, w: 5, h: 4, shape: 'rect' as const, bushDensity: 0.1, hide: 'max' as const,
+      mushrooms: 0.06, sporecaps: 0.08, moonlit: 0.1, lanterns: true, attempts: 10,
+    };
+    expect(() => generate(spec)).not.toThrow();
+    for (let i = 0; i < 40; i++) {
+      expect(() => generate({ ...spec, id: `lm${i}`, seed: 5000 + i })).not.toThrow();
+    }
+  });
+
   it('places the twists it is asked for, and never a firefly on a toadstool', () => {
     const gen = generate({ id: 'tw', seed: 11, w: 7, h: 7, bushDensity: 0.15, toadstools: 0.06, sporecaps: 0.06, moonlit: 0.06 })!;
     const t = gen.level.twists!;
