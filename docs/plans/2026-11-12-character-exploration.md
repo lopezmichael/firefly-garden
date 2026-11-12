@@ -101,6 +101,12 @@ plus mark), the jar with its slots, one button, one sheet, and one full tall-pho
       light), B on the board. Roses moved inside the bush. Light: back to filling the whole tile,
       improved (paper card with a 2.5D edge, brush grain along the light, a bright lane, bloom
       under each firefly); the round 2 flow is kept only as the spreading animation. Board R3Ink.
+- [x] Round 4 (2026-11-12). **Decided (Michael):** firefly C (mostly light) is the one; refined
+      with lantern-rib lines on the tail, wing veins and curled antennae, and animated (wing flap
+      about twice a second, a 3 px bob over 2.4 s with a breathing shadow and glow; still under
+      reduced motion). Hills lose the pines and gain small roses plus drifting firefly lights.
+      Directional strokes in lit tiles are out; four calmer lit-tile options (A pooled wash, B
+      dimmer with distance, C each tile glows, D rim light), A on the board. Board R4Ink.
 - [ ] **Checkpoint B:** Michael picks a direction or a blend.
 
 ### 4. Full screen set, chosen direction (canvas row 3)
