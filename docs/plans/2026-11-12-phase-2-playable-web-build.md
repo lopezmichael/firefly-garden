@@ -200,16 +200,16 @@ the same transitions are tested in Node and in Playwright.
 
 ### C. Saves (`state/save.ts`)
 
-- [ ] One versioned save document under one key: install id, session counter, coins, hint
+- [x] One versioned save document under one key: install id, session counter, coins, hint
       bank, solved set, capped history (last 50), played-reserve and quit-main sets,
       current level with its player and locked cells, settings.
-- [ ] `parseSave(json, catalog, now)` validates everything per rules.md: known level ids,
+- [x] `parseSave(json, catalog, now)` validates everything per rules.md: known level ids,
       known reasons, finite non-negative numbers, timestamps not in the future, locked cells
       must be cells of that level's unique solution, player cells must be path cells, coins
       and bank are small non-negative integers (bank capped). Invalid fields fall back to
       safe defaults field by field; a wholly invalid save starts fresh at the next unsolved
       main-path level. Never throws.
-- [ ] Fuzz test: random and hostile saves (prototype keys, huge numbers, wrong cells,
+- [x] Fuzz test: random and hostile saves (prototype keys, huge numbers, wrong cells,
       unknown levels) never lock a wrong cell, never grant more than the cap, never crash.
 - [ ] `/security-review` on the save and storage code before it lands.
 
@@ -246,7 +246,7 @@ the same transitions are tested in Node and in Playwright.
       viewport. **Known squeeze:** 8x8 on a 360 px-wide phone gives about 42 px cells, so
       the board gets no outer gutter in portrait; checked in a 360x740 screenshot.
 - [ ] Garden map: the Rose Bed with chapter progress toward the next area, "Continue".
-- [ ] Hint dialog: bank count, "Use 30 coins", "Watch an ad for 3 hints" (video icon),
+- [x] Hint dialog: bank count, "Use 30 coins", "Watch an ad for 3 hints" (video icon),
       equal-size "No thanks".
 - [ ] Level complete: celebration, +10 coins, auto-advance with the next board preloaded.
 - [ ] Settings: sound, reduced motion (defaults to `prefers-reduced-motion`, overridable),
@@ -266,18 +266,18 @@ the same transitions are tested in Node and in Playwright.
 
 ### G. Analytics, logged locally (`state/events.ts`)
 
-- [ ] Every event in `docs/references/analytics.md` emitted at its moment, built from
+- [x] Every event in `docs/references/analytics.md` emitted at its moment, built from
       schema fields only, validated with `validateEvent` (with the known level set) before
       it is stored; invalid events are dropped and counted, never stored.
-- [ ] Ring buffer (last 2,000 events) saved through `Platform.save`; random install id
+- [x] Ring buffer (last 2,000 events) saved through `Platform.save`; random install id
       from `crypto.getRandomValues` on first launch.
-- [ ] Play log panel: levels played and solved, hints, copy-as-JSON.
+- [x] Play log panel: levels played and solved, hints, copy-as-JSON.
 - [ ] Test: a scripted play-through emits a valid event stream whose `level_end` rows
       match the play (counts, outcome, reason, attempt).
 
 ### H. Platform adapter
 
-- [ ] Local adapter: rewarded ads per decision 3, `gameplayStart/Stop` around active play,
+- [x] Local adapter: rewarded ads per decision 3, `gameplayStart/Stop` around active play,
       everything else unchanged. A scriptable test adapter (ad completes, ad cancelled)
       for unit and Playwright tests. Interface unchanged unless a need shows up.
 
@@ -318,6 +318,10 @@ Each milestone ends with typecheck, tests, build, screenshots and a commit (when
    target sizes, including a fold from 470x670 to 626x890 mid-level.
 2. **Economy and memory:** wallet, hint bank, hint dialog, rewarded-ad flow (decision 3), saves with
    validation, the policy (A's compact facts and `seconds`), analytics log.
+   *Done 2026-11-12:* saves resume the exact board across reloads; corrupt saves (huge balances,
+   locked cells outside the answer, unknown levels, garbage) were planted in the browser and each
+   fell back safely. Settings sheet holds reduce motion and the play log. Quits arrive with the
+   garden map (milestone 3): until then a play only ends by solving.
 3. **Look and juice:** the mockup look, every juice item, audio, reduced motion, both
    layouts, keyboard.
 4. **Polish and playtest:** Playwright in CI, performance pass, docs, deploy, friends.

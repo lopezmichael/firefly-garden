@@ -9,6 +9,9 @@ const PREFIX = 'firefly-garden:';
  */
 export function createLocalPlatform(): Platform {
   return {
+    name: 'local',
+    // The friends playtest hides rewarded ads (Phase 2 plan, decision 3): hints are coins only.
+    rewardedAds: false,
     async init() {},
     gameplayStart() {},
     gameplayStop() {},

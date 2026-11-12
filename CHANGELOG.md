@@ -5,6 +5,11 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Added
+- Phase 2 milestone 2: saved progress (`state/save.ts`: versioned, validated field by field per
+  rules.md, fuzz-tested with 3,000 hostile saves; the board resumes exactly after a reload), the
+  local analytics log (`state/events.ts`, schema-validated ring buffer), the hint sheet (coins or a
+  saved hint; rewarded ads hidden in the friends build) and a settings sheet with reduce motion and
+  the play log (copy as JSON).
 - Phase 2 milestone 1, the playable board: chapters 1 to 3 of the launch pack in PixiJS, in the
   approved design's look; tap to place, undo, reset, hints that lift a wrong firefly or place a
   locked one (with reason outlines and ruled-out marks), coins from `PLAYER_CONFIG`, auto-advance

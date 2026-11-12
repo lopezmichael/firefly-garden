@@ -137,6 +137,14 @@ describe('play', () => {
     expect(() => new Play(b, catalog.solution(id), fakeClock(), { placed: [bush] })).toThrow(RangeError);
   });
 
+  it('caps active time inside the analytics schema', () => {
+    const clock = fakeClock();
+    const p = new Play(catalog.board(id), catalog.solution(id), clock, { seconds: 7 * 86_400 - 2 });
+    p.resume();
+    clock.advance(3_600_000);
+    expect(p.seconds).toBe(7 * 86_400 - 1);
+  });
+
   it('counts only active time', () => {
     const clock = fakeClock();
     const p = playOf(id, clock);
@@ -178,6 +186,12 @@ describe('wallet', () => {
     const full = new Wallet({ coins: 0, bank: MAX_BANKED_HINTS });
     full.creditAd();
     expect(full.bank).toBe(MAX_BANKED_HINTS);
+  });
+
+  it('caps the balance on every change, not only on load', () => {
+    const w = new Wallet({ coins: 999_995, bank: 0 });
+    w.creditSolve();
+    expect(w.coins).toBe(1_000_000);
   });
 
   it('credits a solve', () => {
@@ -250,5 +264,20 @@ describe('play: undo after a hint', () => {
     expect(p.shown).not.toBeNull();
     expect(p.tap(h.cell)).toBe('locked');
     expect(p.shown).toBeNull();
+  });
+});
+
+describe('play: resume', () => {
+  it('restores fireflies, locked cells, counters and time already spent', () => {
+    const id = catalog.mainPath[2]!;
+    const [a, b] = [...catalog.solution(id)];
+    const clock = fakeClock();
+    const p = new Play(catalog.board(id), catalog.solution(id), clock, { placed: [a!], locked: [b!], seconds: 40, placements: 5, undos: 2, restarts: 1, hints: 1 });
+    expect(p.placed.has(a!)).toBe(true);
+    expect(p.locked.has(b!)).toBe(true);
+    expect({ placements: p.placements, undos: p.undos, restarts: p.restarts, hints: p.hints, seconds: p.seconds }).toEqual({ placements: 5, undos: 2, restarts: 1, hints: 1, seconds: 40 });
+    p.resume();
+    clock.advance(5000);
+    expect(p.seconds).toBe(45);
   });
 });

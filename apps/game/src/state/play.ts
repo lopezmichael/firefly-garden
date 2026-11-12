@@ -16,15 +16,25 @@ export interface Clock {
   now(): number;
 }
 
+/** Active time is capped just under the analytics schema's one-week bound. */
+export const MAX_PLAY_SECONDS = 7 * 86_400 - 1;
+
 export type TapResult = 'placed' | 'removed' | 'locked' | 'blocked';
 
 type Op =
   | { readonly kind: 'toggle'; readonly cell: number; readonly placed: boolean }
   | { readonly kind: 'reset'; readonly cells: readonly number[] };
 
+/** A saved play to resume (validated by `parseSave` first). */
 export interface PlayStart {
   readonly placed?: Iterable<number>;
   readonly locked?: Iterable<number>;
+  /** Active seconds already spent. */
+  readonly seconds?: number;
+  readonly placements?: number;
+  readonly undos?: number;
+  readonly restarts?: number;
+  readonly hints?: number;
 }
 
 /** The last hint shown, for the board to draw (reason outlines, ruled-out marks). */
@@ -60,6 +70,11 @@ export class Play {
       if (!canPlace(board, c, this.lockedSet)) throw new RangeError(`cell ${c} cannot hold a player firefly`);
       this.placedSet.add(c);
     }
+    this.activeMs = Math.max(0, start.seconds ?? 0) * 1000;
+    this.placements = start.placements ?? 0;
+    this.undos = start.undos ?? 0;
+    this.restarts = start.restarts ?? 0;
+    this.hints = start.hints ?? 0;
   }
 
   get placed(): ReadonlySet<number> {
@@ -196,6 +211,6 @@ export class Play {
   /** Active seconds so far, whole and never negative. */
   get seconds(): number {
     const live = this.runningSince === null ? 0 : Math.max(0, this.clock.now() - this.runningSince);
-    return Math.floor((this.activeMs + live) / 1000);
+    return Math.min(MAX_PLAY_SECONDS, Math.floor((this.activeMs + live) / 1000));
   }
 }

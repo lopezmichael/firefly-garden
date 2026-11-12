@@ -16,6 +16,8 @@ export interface WalletListener {
 
 /** Upper bound on banked hints, so a corrupt save can never grant unlimited hints. */
 export const MAX_BANKED_HINTS = 99;
+/** Coin balance cap: far above anything earnable, far below anything that breaks the UI. */
+export const MAX_COINS = 1_000_000;
 
 export class Wallet {
   readonly economy: Economy;
@@ -68,7 +70,7 @@ export class Wallet {
   }
 
   private change(delta: number, why: CoinReason): void {
-    this.coinsValue = Math.max(0, this.coinsValue + delta);
+    this.coinsValue = Math.min(MAX_COINS, Math.max(0, this.coinsValue + delta));
     this.listener.coins?.(delta, this.coinsValue, why);
   }
 }

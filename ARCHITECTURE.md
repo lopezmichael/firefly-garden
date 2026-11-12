@@ -79,9 +79,9 @@ The look follows the Phase 2 design baseline (`docs/design/phase-2/`).
 
 | Folder | Holds | May import |
 | --- | --- | --- |
-| `src/state/` | Level catalog (`catalog.ts`), one play with undo, reset, hints and active time (`play.ts`), coins and hint bank (`wallet.ts`), progress and the next-level policy (`session.ts`), status-card wording (`status.ts`) | `@firefly/core` only, no browser globals (ratchet) |
+| `src/state/` | Level catalog (`catalog.ts`), one play with undo, reset, hints and active time (`play.ts`), coins and hint bank (`wallet.ts`), progress and the next-level policy (`session.ts`), status-card wording (`status.ts`), saved progress and its validation (`save.ts`), the local analytics log (`events.ts`) | `@firefly/core` only, no browser globals (ratchet) |
 | `src/view/` | Pure layout math: bands, board fit, orientation (`layout.ts`); the PixiJS board (`board.ts`); CSS tokens read into a Pixi palette (`theme.ts`) | `state/`, `pixi.js` |
-| `src/ui/` | The play screen's DOM (`screen.ts`, `game.css`) and the controller (`app.ts`) | `state/`, `view/`, `platform/` |
+| `src/ui/` | The play screen's DOM (`screen.ts`, `game.css`), the hint and settings sheets (`sheets.ts`) and the controller (`app.ts`) | `state/`, `view/`, `platform/` |
 | `src/platform/` | The `Platform` interface and adapters; the only door to SDKs (ratchet) | |
 
 - **Layout follows the screen's shape** (`bandFor`): tall (phones in portrait), square
@@ -90,6 +90,9 @@ The look follows the Phase 2 design baseline (`docs/design/phase-2/`).
 - **The board draws, the state decides.** `BoardView.render` takes a `BoardState` (evaluation,
   locked cells, hint outlines) and reports taps as canonical cell indices, so rotation never
   reaches game state, saves or events.
+- **Saved progress is untrusted.** One versioned document (`state/save.ts`) under one key, read
+  through `parseSave`, which validates field by field and never throws; the game writes the
+  validated copy straight back. Cells are stored as canonical `[row, col]`.
 - **Colors live only in `src/theme.css`.** The board reads them through `readPalette`; a
   ratchet rejects color literals anywhere else in `apps/game/src`.
 - `src/platform/local.ts`: development adapter (no ads, localStorage saves).

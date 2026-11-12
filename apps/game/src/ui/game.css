@@ -142,3 +142,45 @@
 .ff-fail { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; text-align: center; }
 .ff-fail h1 { margin: 0; font-family: var(--ff-font-display); color: var(--ff-glow); }
 .ff-fail p { margin: 0; color: var(--ff-ink-quiet); max-width: 32em; }
+
+/* Sheets (hint, settings): design baseline HintDialog and Settings artboards. */
+.ff-backdrop {
+  position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+  background: color-mix(in srgb, var(--ff-night-0) 62%, transparent);
+}
+.ff-backdrop[hidden] { display: none; }
+.ff-sheet {
+  box-sizing: border-box; width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto;
+  background: var(--ff-panel); border-radius: 28px 28px 0 0; box-shadow: inset 0 2px 0 var(--ff-panel-edge);
+  padding: 12px 20px max(28px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 14px;
+}
+.ff-app[data-band='wide'] .ff-sheet { border-radius: 28px; margin-bottom: 16px; }
+.ff-sheet-handle { align-self: center; width: 44px; height: 5px; border-radius: 999px; background: var(--ff-panel-edge); }
+.ff-sheet-head { display: flex; gap: 14px; align-items: center; }
+.ff-sheet-text { display: flex; flex-direction: column; gap: 4px; }
+.ff-sheet-title { margin: 0; font-family: var(--ff-font-display); font-weight: 600; font-size: 24px; color: var(--ff-glow); }
+.ff-sheet-sub, .ff-sheet-note { margin: 0; font-size: 14px; line-height: 1.4; color: var(--ff-ink-quiet); }
+.ff-sheet-note[hidden] { display: none; }
+.ff-stats { display: flex; gap: 10px; }
+.ff-stats-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ff-stat { flex: 1; background: var(--ff-panel-deep); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+.ff-stat-label { font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ff-label); }
+.ff-stats-3 .ff-stat-label { text-transform: none; letter-spacing: 0; font-weight: 700; color: var(--ff-ink-quiet); }
+.ff-stat-value { font-family: var(--ff-font-display); font-weight: 600; font-size: 22px; color: var(--ff-glow); }
+.ff-sheet button { min-height: 52px; border-radius: 16px; font-weight: 800; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.ff-sheet-primary { border: 0; background: var(--ff-gold); color: var(--ff-on-gold); box-shadow: 0 0 16px color-mix(in srgb, var(--ff-gold) 50%, transparent); }
+.ff-sheet-primary:disabled { opacity: 0.45; cursor: default; box-shadow: none; }
+.ff-sheet-ad { border: 2px solid var(--ff-gold); background: transparent; color: var(--ff-glow); }
+.ff-sheet-ad[hidden] { display: none; }
+.ff-sheet-quiet { border: 2px solid var(--ff-panel-edge); background: var(--ff-panel-deep); color: var(--ff-ink); }
+.ff-section { display: flex; flex-direction: column; gap: 10px; }
+.ff-section-title { margin: 0; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ff-label); }
+.ff-segments { display: flex; background: var(--ff-panel-deep); border-radius: 14px; padding: 4px; gap: 4px; }
+.ff-sheet .ff-segment { flex: 1; min-height: 44px; border-radius: 11px; border: 0; background: transparent; color: var(--ff-ink); font-size: 14px; }
+.ff-sheet .ff-segment[aria-checked='true'] { background: var(--ff-gold); color: var(--ff-on-gold); }
+
+.ff-gear {
+  width: 44px; height: 44px; flex-shrink: 0; border-radius: 14px; border: 2px solid var(--ff-panel-edge);
+  background: var(--ff-panel); color: var(--ff-ink); display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer;
+}
+.ff-gear .ff-icon { width: 20px; height: 20px; }

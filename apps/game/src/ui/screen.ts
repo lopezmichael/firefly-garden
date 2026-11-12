@@ -9,6 +9,7 @@ import type { Band } from '../view/layout.ts';
 const ICONS = {
   undo: '<path d="M9 14L4 9l5-5"></path><path d="M4 9h10a6 6 0 0 1 0 12h-3"></path>',
   reset: '<path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path>',
+  gear: '<circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path>',
   hint: '<path d="M12 2l2.4 7.2H22l-6 4.6 2.3 7.2L12 16.6 5.7 21l2.3-7.2-6-4.6h7.6z" fill="currentColor" stroke="none"></path>',
 } as const;
 
@@ -47,6 +48,7 @@ export interface ScreenHandlers {
   reset(): void;
   hint(): void;
   next(): void;
+  settings(): void;
 }
 
 export class PlayScreen {
@@ -85,7 +87,12 @@ export class PlayScreen {
     chapter.append(this.chapterLabel, this.dots);
     const coinBox = el('div', 'ff-coins');
     coinBox.append(el('span', 'ff-coin'), this.coins);
-    top.append(chapter, coinBox);
+    const gear = el('button', 'ff-gear');
+    gear.type = 'button';
+    gear.setAttribute('aria-label', 'Settings');
+    gear.append(icon('gear'));
+    gear.addEventListener('click', () => handlers.settings());
+    top.append(chapter, coinBox, gear);
 
     this.status.setAttribute('role', 'status');
     this.status.setAttribute('aria-live', 'polite');
