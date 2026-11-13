@@ -194,6 +194,11 @@ for (const size of [{ width: 320, height: 640 }, { width: 360, height: 740 }]) {
       return { card: card.getBoundingClientRect().height, board: board.getBoundingClientRect().height, overflow };
     });
     const base = await measure();
+    // The control row fits the screen too (Hint with its cost is the widest button).
+    const offscreen = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>('.ff-controls button')]
+      .filter((el) => { const r = el.getBoundingClientRect(); return r.left < 0 || r.right > window.innerWidth || el.scrollWidth > el.clientWidth + 1; })
+      .map((el) => el.textContent));
+    expect(offscreen, 'control buttons running off screen or clipping their label').toEqual([]);
     const samples = everyStatus();
     expect(samples.length).toBeGreaterThan(30);
     for (const s of samples) {

@@ -7,7 +7,7 @@
   inset: 0;
   box-sizing: border-box;
   overflow: hidden;
-  background: linear-gradient(180deg, var(--ff-night-0) 0%, var(--ff-night-1) 45%, var(--ff-night-2) 100%);
+  background: linear-gradient(180deg, var(--ff-night) 0%, var(--ff-night) 45%, var(--ff-night) 100%);
   padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
     max(20px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
   display: grid;
@@ -45,37 +45,42 @@
 .ff-app[data-band='wide'] .ff-controls button { flex: 0 0 64px; flex-direction: column; gap: 4px; font-size: 13px; }
 .ff-app[data-band='wide'] .ff-controls .ff-hint { flex-basis: 84px; }
 
-.ff-sky { position: absolute; inset: 0; pointer-events: none; }
-.ff-star {
-  position: absolute; border-radius: 999px; background: var(--ff-star); opacity: 0.7;
-  animation: ff-star var(--dur) ease-in-out var(--delay) infinite;
+.ff-sky { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+/* Night, grain and hills, baked by screen.ts (view/art/scenery.ts) whenever the layout changes. */
+.ff-scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.ff-moon { position: absolute; right: 28px; top: 64px; width: 50px; height: 48px; }
+.ff-moon-face { fill: var(--ff-paper); opacity: 0.92; }
+.ff-app[data-band='square'] .ff-moon { top: 64px; right: 48px; }
+.ff-app[data-band='wide'] .ff-moon { right: auto; left: 200px; top: 84px; width: 42px; height: 40px; }
+/* Firefly lights drifting over the hills; still under reduced motion. */
+/* Hidden until the first scene draw has placed them (screen.ts sets data-placed). */
+.ff-motes { position: absolute; inset: 0; visibility: hidden; }
+.ff-motes[data-placed] { visibility: visible; }
+.ff-mote { position: absolute; left: -6px; top: -6px; width: 12px; height: 12px; }
+/* The light is on ::after, so the drift (transform) never fights the placement on the span. */
+.ff-mote::after {
+  content: ''; position: absolute; inset: 0; border-radius: 50%;
+  background: radial-gradient(circle, var(--ff-glow) 0, color-mix(in srgb, var(--ff-glow-soft) 60%, transparent) 40%, transparent 70%);
+  animation: ff-mote 5s ease-in-out var(--ff-mote-delay, 0s) infinite;
 }
-.ff-moon {
-  /* A crescent: the lit edge is an inset shadow on a transparent disc. */
-  position: absolute; right: 28px; top: 70px; width: 40px; height: 40px; border-radius: 999px;
-  background: transparent;
-  box-shadow: inset -11px 5px 0 0 var(--ff-moon), 6px -2px 26px -6px color-mix(in srgb, var(--ff-moon) 35%, transparent);
-  transform: rotate(-18deg);
-}
-.ff-app[data-band='square'] .ff-moon { top: 18px; right: 50%; margin-right: -20px; }
-@keyframes ff-star { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+@keyframes ff-mote { 0%, 100% { transform: translate(0, 0); opacity: 0.9; } 50% { transform: translate(3px, -6px); opacity: 0.5; } }
 
 .ff-top { grid-area: top; position: relative; display: flex; align-items: center; gap: 10px; }
 .ff-chapter { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-.ff-chapter-label { font-size: 14px; font-weight: 700; color: var(--ff-label); }
-.ff-dots { display: flex; gap: 5px; }
-.ff-dot { width: 18px; height: 6px; border-radius: 999px; background: var(--ff-panel-edge); }
+.ff-chapter-label { font-size: 13px; font-weight: 600; color: var(--ff-paper-quiet); }
+.ff-dots { display: flex; gap: 4px; }
+.ff-dot { width: 16px; height: 4px; border-radius: 2px; background: var(--ff-dusk-quiet); }
 .ff-dot[data-state='done'] { background: var(--ff-gold); }
-.ff-dot[data-state='now'] { background: var(--ff-ink); }
+.ff-dot[data-state='now'] { background: var(--ff-paper); }
 .ff-coins {
-  display: flex; align-items: center; gap: 6px; padding: 6px 12px 6px 8px; border-radius: 999px;
-  background: color-mix(in srgb, var(--ff-panel) 85%, transparent); font-weight: 800; font-size: 15px;
+  height: 36px; box-sizing: border-box; display: flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 18px;
+  border: 2px solid var(--ff-sumi); color: var(--ff-sumi); font-weight: 700; font-size: 15px;
 }
-.ff-coin { width: 18px; height: 18px; flex-shrink: 0; border-radius: 999px; background: var(--ff-gold); box-shadow: inset 0 0 0 4px var(--ff-gold), inset 0 0 0 5.5px var(--ff-gold-deep); }
+.ff-coins .ff-coin { width: 16px; height: 16px; }
 
 .ff-title {
-  grid-area: title; position: relative; margin: 0; font-family: var(--ff-font-display); font-weight: 700;
-  font-size: 30px; line-height: 1.05; color: var(--ff-glow);
+  grid-area: title; position: relative; margin: 0; font-family: var(--ff-font-display); font-weight: 400;
+  font-size: 32px; line-height: 1.05; color: var(--ff-paper);
 }
 .ff-app[data-band='wide'] .ff-title { font-size: 28px; }
 
@@ -83,76 +88,108 @@
 .ff-board canvas { position: absolute; inset: 0; display: block; }
 
 .ff-status {
-  grid-area: status; position: relative; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;
-  background: color-mix(in srgb, var(--ff-panel) 90%, transparent);
+  grid-area: status; position: relative; border: 2px solid var(--ff-sumi); border-radius: 12px; padding: 8px 16px;
+  display: flex; gap: 14px; align-items: center; color: var(--ff-sumi);
 }
-.ff-status[data-tone='solved'] { background: color-mix(in srgb, var(--ff-solved-panel) 95%, transparent); }
-.ff-status-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.ff-status-column { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .ff-status-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.ff-status-title { font-family: var(--ff-font-display); font-weight: 600; font-size: 18px; line-height: 1.2; color: var(--ff-ink); }
-.ff-status[data-tone='warn'] .ff-status-title { color: var(--ff-warn); }
-.ff-status[data-tone='glow'] .ff-status-title, .ff-status[data-tone='solved'] .ff-status-title { color: var(--ff-glow); }
-.ff-status-sub { font-size: 15px; line-height: 1.4; color: var(--ff-ink-quiet); }
+.ff-status-title { font-family: var(--ff-font-display); font-weight: 400; font-size: 18px; line-height: 1.3; color: var(--ff-sumi); }
+.ff-status[data-tone='warn'] .ff-status-title { color: var(--ff-rose-spiral); }
+.ff-status[data-tone='glow'] .ff-status-title { color: var(--ff-seal-ink); }
+.ff-status-sub { font-size: 14px; line-height: 1.4; color: var(--ff-sumi-soft); }
 .ff-app[data-band='wide'] .ff-status { padding: 12px 14px; }
 .ff-app[data-band='wide'] .ff-status-title { font-size: 16px; }
-.ff-app[data-band='wide'] .ff-status-sub { font-size: 14px; }
-/* Firefly jar and slots (design: jar plus slot row, chosen 2026-11-12). */
-.ff-jar { width: 44px; height: 56px; flex-shrink: 0; }
-.ff-jar svg { width: 100%; height: 100%; overflow: visible; }
-.ff-jar-glow { fill: var(--ff-glow); opacity: calc(0.12 + var(--ff-jar-fill, 1) * 0.45); filter: blur(10px); transition: opacity 400ms ease; }
-.ff-jar-glass { fill: color-mix(in srgb, var(--ff-jar-glass) 16%, transparent); stroke: color-mix(in srgb, var(--ff-jar-glass) 75%, transparent); stroke-width: 2.5; }
-.ff-jar-shine { fill: none; stroke: color-mix(in srgb, var(--ff-wing) 45%, transparent); stroke-width: 2.5; stroke-linecap: round; }
-.ff-jar-cork { fill: var(--ff-cork); }
-.ff-jar-cork-hi { fill: var(--ff-cork-hi); }
-.ff-jar-lid { transform-box: view-box; transform-origin: 18px 16px; }
+.ff-app[data-band='wide'] .ff-status-sub { font-size: 13px; }
+
+/* The firefly jar: a paper lantern with a light inside for each firefly left, plus the
+   slot row (design: Round 4, chosen 2026-11-12). */
+.ff-jar { width: 48px; height: 66px; flex-shrink: 0; }
+.ff-lantern { width: 100%; height: 100%; overflow: visible; }
+.ff-lantern-halo { fill: var(--ff-gold); opacity: calc(0.06 + var(--ff-jar-fill, 1) * 0.14); transition: opacity 400ms ease; }
+.ff-lantern-paper { fill: var(--ff-gold); stroke: var(--ff-sumi); stroke-width: 2; }
+.ff-lantern-inner { fill: var(--ff-jar-paper); transition: fill 400ms ease; }
+.ff-lantern-ribs { fill: none; stroke: var(--ff-jar-rib); stroke-width: 1.6; }
+.ff-lantern-cap { fill: var(--ff-sumi); }
+.ff-lantern-hook { stroke: var(--ff-sumi); stroke-width: 1.6; }
+.ff-lantern-tassel { stroke: var(--ff-seal); stroke-width: 2.6; stroke-linecap: round; }
+.ff-lantern-light { fill: var(--ff-glow); stroke: var(--ff-gold-edge); stroke-width: 1; opacity: 0; transition: opacity 250ms ease; }
+.ff-lantern-light.ff-on { opacity: 1; }
+/* Empty: the paper dims (and shakes when a move needs a firefly that isn't there). */
+.ff-jar[data-empty='true'] .ff-lantern-inner, .ff-jar[data-empty='true'] .ff-lantern-paper { fill: var(--ff-paper-dim); }
+.ff-jar-lid { transform-box: view-box; transform-origin: 14px 10px; }
 .ff-jar-open .ff-jar-lid { animation: ff-lid 620ms ease-in-out; }
 .ff-jar-shake { animation: ff-shake 420ms ease-in-out; }
-@keyframes ff-lid { 0%, 100% { transform: none; } 25%, 70% { transform: translate(-3px, -9px) rotate(-22deg); } }
+@keyframes ff-lid { 0%, 100% { transform: none; } 25%, 70% { transform: translate(-2px, -6px) rotate(-16deg); } }
 @keyframes ff-shake { 0%, 100% { transform: none; } 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
-.ff-jar-count { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-.ff-jar-line { font-size: 14px; font-weight: 700; color: var(--ff-label); }
-.ff-slots { display: flex; flex-wrap: wrap; gap: 5px; }
-.ff-slot { width: 16px; height: 16px; box-sizing: border-box; border-radius: 999px; border: 2px solid var(--ff-panel-edge); transition: background 200ms ease, border-color 200ms ease; }
-.ff-slot[data-on='true'] { border-color: var(--ff-gold); background: var(--ff-firefly); box-shadow: 0 0 8px 2px color-mix(in srgb, var(--ff-glow) 55%, transparent); }
-.ff-status-row { align-items: center; }
+/* The count line and the slots on their own rows, always: side by side, a longer line ("All 5
+   fireflies are out") could push the slots onto a second row mid-play, and any change in the
+   card's height resizes the board, which cancels a firefly in flight. */
+.ff-jar-count { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ff-jar-line { font-size: 13px; color: var(--ff-sumi-quiet); }
+.ff-slots { display: flex; flex-wrap: wrap; gap: 4px; }
+.ff-slot { width: 14px; height: 14px; box-sizing: border-box; border-radius: 999px; border: 1.5px solid var(--ff-sumi); transition: background 200ms ease; }
+.ff-slot[data-on='true'] { background: var(--ff-gold); }
 
 /* A firefly in flight between the jar and the board. */
-.ff-flier { position: fixed; left: 0; top: 0; width: 30px; height: 30px; margin: -15px 0 0 -15px; pointer-events: none; z-index: 20; }
+.ff-flier {
+  position: fixed; left: 0; top: 0; width: 34px; height: 34px; margin: -17px 0 0 -17px; pointer-events: none; z-index: 20;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--ff-glow) 0, color-mix(in srgb, var(--ff-glow-soft) 70%, transparent) 30%, transparent 70%);
+}
 .ff-flier svg { width: 100%; height: 100%; overflow: visible; }
-.ff-flier-halo { fill: var(--ff-glow); opacity: 0.35; }
-.ff-flier-wing { fill: var(--ff-wing); opacity: 0.85; }
-.ff-flier-body { fill: var(--ff-firefly); stroke: var(--ff-firefly-edge); stroke-width: 1.5; }
-.ff-flier[data-gold='true'] .ff-flier-body { fill: var(--ff-hint-firefly); stroke: var(--ff-hint-firefly-edge); }
-.ff-flier-head { fill: var(--ff-firefly-head); }
+.ff-flier-wing { fill: color-mix(in srgb, var(--ff-wing) 70%, transparent); stroke: var(--ff-sumi); stroke-width: 0.8; }
+/* Fliers exist only with motion on, so their flap needs no reduced-motion guard of its own. */
+.ff-flier-wing-l { transform-box: fill-box; transform-origin: 100% 100%; animation: ff-flap-l 0.42s ease-in-out infinite; }
+.ff-flier-wing-r { transform-box: fill-box; transform-origin: 0% 100%; animation: ff-flap-r 0.42s ease-in-out infinite; }
+.ff-flier-tail { fill: var(--ff-glow); stroke: var(--ff-sumi); stroke-width: 1; }
+.ff-flier-ribs { fill: none; stroke: var(--ff-firefly-rib); stroke-width: 0.8; }
+.ff-flier[data-gold='true'] .ff-flier-tail { fill: var(--ff-gold); }
+.ff-flier[data-gold='true'] .ff-flier-ribs { stroke: var(--ff-gold-edge); }
+.ff-flier-head { fill: var(--ff-sumi); }
+.ff-flier-feelers { fill: none; stroke: var(--ff-sumi); stroke-width: 0.8; stroke-linecap: round; }
+@keyframes ff-flap-l { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-28deg); } }
+@keyframes ff-flap-r { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(28deg); } }
 
-/* Hint is a secondary action: outlined, so the paid move is never the loudest thing on screen. */
-.ff-hint { border: 2px solid var(--ff-gold); background: var(--ff-panel); color: var(--ff-glow); font-weight: 800; cursor: pointer; }
-.ff-hint:disabled { opacity: 0.5; cursor: default; }
-
-.ff-controls { grid-area: controls; position: relative; display: flex; gap: 10px; }
+/* Paper buttons; Hint is the one seal-red filled action (design: Round 4 and the play bands). */
+.ff-controls { grid-area: controls; position: relative; display: flex; gap: 12px; }
 .ff-controls button {
-  flex: 1; height: 56px; min-height: 44px; border-radius: 16px; font-weight: 800; font-size: 15px;
-  display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;
+  flex: 1; height: 52px; min-height: 44px; border-radius: 10px; border: 2px solid var(--ff-sumi); font-weight: 700; font-size: 16px;
+  display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; color: var(--ff-sumi);
 }
 .ff-app[data-band='wide'] .ff-controls button { height: auto; }
-.ff-quiet { border: 2px solid var(--ff-panel-edge); background: var(--ff-panel); color: var(--ff-ink); }
-.ff-quiet:disabled { opacity: 0.5; cursor: default; }
-.ff-controls .ff-hint { flex: 1.3; }
-.ff-cost {
-  display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px 2px 4px; border-radius: 999px; font-size: 13px;
-  background: color-mix(in srgb, var(--ff-gold) 16%, transparent);
+/* 320 px phones: the row is about 300 px, short of Hint with its cost beside Undo and Reset at
+   full size, so everything tightens a little (the e2e test checks the row fits). */
+@media (max-width: 340px) {
+  .ff-controls { gap: 8px; }
+  .ff-controls button { min-width: 0; padding-inline: 6px; gap: 6px; font-size: 15px; }
+  .ff-controls .ff-hint { flex: 1.2; }
 }
-.ff-cost .ff-coin { width: 13px; height: 13px; }
-.ff-sheet-primary .ff-cost { background: color-mix(in srgb, var(--ff-on-gold) 14%, transparent); }
-.ff-sheet-primary .ff-cost .ff-coin { background: var(--ff-on-gold); box-shadow: inset 0 0 0 3px var(--ff-on-gold), inset 0 0 0 4.5px var(--ff-gold); }
-.ff-icon { width: 18px; height: 18px; flex-shrink: 0; }
+/* Disabled stays opaque paper (the hills show through a see-through button); the ink fades instead. */
+.ff-controls button:disabled { cursor: default; color: color-mix(in srgb, var(--ff-sumi) 40%, var(--ff-paper)); border-color: color-mix(in srgb, var(--ff-sumi) 40%, var(--ff-paper)); }
+.ff-controls button:disabled .ff-icon * { opacity: 0.45; }
+.ff-controls .ff-hint:disabled { color: var(--ff-on-seal); border-color: var(--ff-sumi); opacity: 0.5; }
+.ff-controls .ff-hint { background: var(--ff-seal); color: var(--ff-on-seal); }
+.ff-cost { display: inline-flex; align-items: center; gap: 4px; }
+.ff-app[data-band='wide'] .ff-cost-sep { display: none; }
+.ff-icon {
+  width: 20px; height: 20px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round;
+}
+.ff-i-gold { fill: var(--ff-gold); stroke: var(--ff-sumi); }
+.ff-i-seal { fill: var(--ff-seal); stroke: none; }
+.ff-i-ink { fill: currentColor; stroke: none; }
+.ff-i-slash { stroke: var(--ff-seal); }
+.ff-coin { width: 18px; height: 18px; flex-shrink: 0; }
+.ff-coin-disc { fill: var(--ff-gold); stroke: var(--ff-sumi); stroke-width: 1.6; }
+.ff-coin-rim { fill: none; stroke: var(--ff-gold-edge); stroke-width: 1; }
+.ff-coin-spiral { fill: none; stroke: var(--ff-sumi); stroke-width: 1.3; stroke-linecap: round; }
 
 .ff-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* Reduced motion follows the in-game setting, which itself defaults to the device's
    (data-motion is set by the controller), so "Off" can override a device preference too. */
-.ff-app[data-motion='reduced'] .ff-star { animation: none; }
-.ff-app[data-motion='reduced'] .ff-slot, .ff-app[data-motion='reduced'] .ff-jar-glow { transition: none; }
+.ff-app[data-motion='reduced'] .ff-mote::after { animation: none; }
+.ff-app[data-motion='reduced'] .ff-slot, .ff-app[data-motion='reduced'] .ff-lantern-halo,
+.ff-app[data-motion='reduced'] .ff-lantern-inner, .ff-app[data-motion='reduced'] .ff-lantern-light { transition: none; }
 .ff-app[data-motion='reduced'] .ff-jar-open .ff-jar-lid, .ff-app[data-motion='reduced'] .ff-jar-shake { animation: none; }
 
 /* Wide band: the narrow info panel puts coins above the chapter label, and the
@@ -160,119 +197,186 @@
 .ff-app[data-band='wide'] .ff-top { flex-wrap: wrap; }
 .ff-app[data-band='wide'] .ff-coins { order: -1; }
 .ff-app[data-band='wide'] .ff-chapter { flex-basis: 100%; }
-.ff-app[data-band='wide'] .ff-moon { right: 140px; top: 16px; }
 
 .ff-fail { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; text-align: center; }
-.ff-fail h1 { margin: 0; font-family: var(--ff-font-display); color: var(--ff-glow); }
-.ff-fail p { margin: 0; color: var(--ff-ink-quiet); max-width: 32em; }
+.ff-fail h1 { margin: 0; font-family: var(--ff-font-display); font-weight: 400; color: var(--ff-glow); }
+.ff-fail p { margin: 0; color: var(--ff-paper-quiet); max-width: 32em; }
 
-/* Sheets (hint, settings): design baseline HintDialog and Settings artboards. */
+/* Sheets (hint, settings) on paper: design canvas "Hint sheet" and "Settings and play log". */
 .ff-backdrop {
   position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
-  background: color-mix(in srgb, var(--ff-night-0) 62%, transparent);
+  background: color-mix(in srgb, var(--ff-night-deep) 55%, transparent);
 }
 .ff-backdrop[hidden] { display: none; }
 .ff-sheet {
-  box-sizing: border-box; width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto;
-  background: var(--ff-panel); border-radius: 28px 28px 0 0; box-shadow: inset 0 2px 0 var(--ff-panel-edge);
-  padding: 12px 20px max(28px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 14px;
+  box-sizing: border-box; width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto; color: var(--ff-sumi);
+  border: 2px solid var(--ff-sumi); border-bottom: 0; border-radius: 20px 20px 0 0;
+  padding: 12px 20px max(26px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 12px;
 }
-.ff-app[data-band='wide'] .ff-sheet { border-radius: 28px; margin-bottom: 16px; }
-.ff-sheet-handle { align-self: center; width: 44px; height: 5px; border-radius: 999px; background: var(--ff-panel-edge); }
-.ff-sheet-head { display: flex; gap: 14px; align-items: center; }
-.ff-sheet-text { display: flex; flex-direction: column; gap: 4px; }
-.ff-sheet-title { margin: 0; font-family: var(--ff-font-display); font-weight: 600; font-size: 24px; color: var(--ff-glow); }
-.ff-sheet-sub, .ff-sheet-note { margin: 0; font-size: 15px; line-height: 1.45; color: var(--ff-ink-quiet); }
-.ff-sheet-line { margin: 0; font-size: 16px; font-weight: 700; color: var(--ff-ink); }
+.ff-app[data-band='wide'] .ff-sheet { border-bottom: 2px solid var(--ff-sumi); border-radius: 20px; margin-bottom: 16px; }
+.ff-sheet-handle { align-self: center; width: 44px; height: 5px; border-radius: 3px; background: var(--ff-paper-handle); }
+.ff-sheet-head { display: flex; gap: 10px; align-items: center; }
+.ff-sheet-badge {
+  width: 34px; height: 34px; flex-shrink: 0; box-sizing: border-box; border-radius: 50%; border: 1.5px dashed var(--ff-seal);
+  display: flex; align-items: center; justify-content: center; color: var(--ff-sumi);
+}
+.ff-sheet-badge .ff-icon { width: 26px; height: 26px; }
+.ff-sheet-title { margin: 0; font-family: var(--ff-font-display); font-weight: 400; font-size: 26px; color: var(--ff-sumi); }
+.ff-sheet-sub, .ff-sheet-note { margin: 0; font-size: 15px; line-height: 1.5; color: var(--ff-sumi-soft); }
+.ff-sheet-line { margin: 0; font-size: 15px; font-weight: 600; color: var(--ff-sumi); }
 .ff-sheet-note[hidden] { display: none; }
-.ff-sheet button { min-height: 52px; border-radius: 16px; font-weight: 800; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
-.ff-sheet-primary { border: 0; background: var(--ff-gold); color: var(--ff-on-gold); }
+.ff-sheet button {
+  min-height: 52px; border-radius: 10px; font-weight: 700; font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.ff-sheet-primary { border: 2px solid var(--ff-sumi); background: var(--ff-seal); color: var(--ff-on-seal); }
 .ff-sheet-primary:disabled { opacity: 0.45; cursor: default; }
-.ff-sheet-ad { border: 2px solid var(--ff-gold); background: transparent; color: var(--ff-glow); }
+.ff-sheet-primary .ff-cost { gap: 4px; padding: 2px 8px; border-radius: 12px; background: var(--ff-paper); color: var(--ff-sumi); font-size: 14px; }
+.ff-sheet-primary .ff-cost .ff-coin { width: 14px; height: 14px; }
+.ff-sheet-ad, .ff-sheet-quiet { border: 2px solid var(--ff-sumi); color: var(--ff-sumi); }
 .ff-sheet-ad[hidden] { display: none; }
-.ff-sheet-quiet { border: 2px solid var(--ff-panel-edge); background: var(--ff-panel-deep); color: var(--ff-ink); }
-.ff-section { display: flex; flex-direction: column; gap: 10px; }
-.ff-section-title { margin: 0; font-size: 16px; font-weight: 800; color: var(--ff-ink); }
-.ff-segments { display: flex; background: var(--ff-panel-deep); border-radius: 14px; padding: 4px; gap: 4px; }
-.ff-sheet .ff-segment { flex: 1; min-height: 44px; border-radius: 11px; border: 0; background: transparent; color: var(--ff-ink); font-size: 14px; }
-.ff-sheet .ff-segment[aria-checked='true'] { background: var(--ff-gold); color: var(--ff-on-gold); }
+.ff-sheet .ff-sheet-link {
+  min-height: 46px; border: 0; background: transparent; color: var(--ff-sumi-soft);
+  text-decoration: underline; text-underline-offset: 4px;
+}
+.ff-section { display: flex; flex-direction: column; gap: 8px; }
+.ff-section-title { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 700; color: var(--ff-sumi); }
+.ff-rule { width: 100%; margin: 0; border: 0; border-top: 1.5px dashed var(--ff-paper-rule); }
+.ff-segments { display: flex; border: 2px solid var(--ff-sumi); border-radius: 10px; overflow: hidden; }
+.ff-sheet .ff-segment {
+  flex: 1; min-height: 46px; border-radius: 0; border: 0; background: transparent; color: var(--ff-sumi); font-size: 16px;
+}
+.ff-sheet .ff-segment[aria-checked='true'] { background: var(--ff-sumi); color: var(--ff-paper); }
 
 .ff-gear {
-  width: 44px; height: 44px; flex-shrink: 0; border-radius: 14px; border: 2px solid var(--ff-panel-edge);
-  background: var(--ff-panel); color: var(--ff-ink); display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer;
+  width: 44px; height: 44px; flex-shrink: 0; box-sizing: border-box; border-radius: 10px; border: 2px solid var(--ff-sumi);
+  color: var(--ff-sumi); display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer;
 }
-.ff-gear .ff-icon { width: 20px; height: 20px; }
+.ff-gear .ff-icon { width: 22px; height: 22px; }
+
+/* Paper surfaces: the paper token with the grain baked at startup (main.ts) laid over it. */
+.ff-status, .ff-sheet, .ff-coins, .ff-gear, .ff-controls button:not(.ff-hint), .ff-sheet-ad, .ff-sheet-quiet {
+  background: var(--ff-paper-texture, none) 0 0 / 128px 128px, var(--ff-paper);
+}
 
 /* The status card keeps its height from move to move (room for a one-line title and a two-line
-   sub-line; three on the narrowest phones), so the board above it never jumps when the wording
-   changes. The wording is held to that budget by test/status.test.ts ("fits the card"). */
+   sub-line), so the board above it never resizes when the wording changes: a resize cancels a
+   firefly in flight. Measured in Chromium with the shipped fonts over every status the game can
+   show (test/status.test.ts holds the wording to the budget): every title fits one line from 264 px
+   of text width at 18 px, from 236 px at 16 px, or from 206 px at 14 px; every sub-line fits two
+   lines from 244 px. So narrow cards shrink the lantern a little and then the title; below 244 px
+   of text (phones narrower than 360 px) the card reserves a third sub-line instead. The title's
+   1.3 line height holds Young Serif's glyphs (at 1.2 they ran 2 px past the line box). */
 .ff-status { container: ff-status / inline-size; }
+.ff-status-column { container: ff-text / inline-size; }
 .ff-app[data-band='tall'] .ff-status-text, .ff-app[data-band='square'] .ff-status-text {
-  min-height: calc(18px * 1.2 + 2px + 15px * 1.4 * 2);
+  min-height: calc(18px * 1.3 + 2px + 14px * 1.4 * 2);
 }
-@container ff-status (max-width: 289px) {
-  .ff-app:not([data-band='wide']) .ff-status-text { min-height: calc(18px * 1.2 + 2px + 15px * 1.4 * 3); }
+@container ff-status (max-width: 340px) {
+  .ff-jar { width: 40px; height: 55px; margin-right: -4px; }
+}
+/* 320 px phones: the jar and the text take 4 px each from the card's padding and the gap between
+   them (a container query cannot restyle the card itself), and the lantern shrinks again. */
+@container ff-status (max-width: 310px) {
+  .ff-app:not([data-band='wide']) .ff-jar { width: 34px; height: 47px; margin: 0 -4px 0 -4px; }
+  .ff-app:not([data-band='wide']) .ff-status-column { margin-right: -4px; }
+}
+@container ff-text (max-width: 263px) {
+  .ff-app:not([data-band='wide']) .ff-status-title { font-size: 16px; }
+}
+@container ff-text (max-width: 235px) {
+  .ff-app:not([data-band='wide']) .ff-status-title { font-size: 14px; }
+}
+@container ff-text (max-width: 243px) {
+  .ff-app:not([data-band='wide']) .ff-status-text { min-height: calc(18px * 1.3 + 2px + 14px * 1.4 * 3); }
 }
 
-/* Garden map (design baseline: Map artboard). A screen over the play screen. */
+/* Garden map (design canvas: "Garden map"). A screen over the play screen. */
 .ff-map {
-  position: absolute; inset: 0; z-index: 5; box-sizing: border-box; overflow-y: auto;
-  background: linear-gradient(180deg, var(--ff-night-0) 0%, var(--ff-night-1) 45%, var(--ff-night-2) 100%);
-  padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
-  display: flex; flex-direction: column; gap: 16px;
+  position: absolute; inset: 0; z-index: 5; box-sizing: border-box; overflow-y: auto; background: var(--ff-night);
+  padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+  display: flex; flex-direction: column; gap: 14px;
 }
 .ff-map[hidden] { display: none; }
-.ff-map > * { width: 100%; max-width: 520px; align-self: center; box-sizing: border-box; }
+.ff-map > :not(.ff-map-sky) { position: relative; width: 100%; max-width: 520px; align-self: center; box-sizing: border-box; }
+/* Fixed to the viewport, so the hills stay put when the map scrolls on a short screen. */
+.ff-map-sky { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+.ff-map-scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* The map's own moon, at its column's top right (outranks the play screen's per-band moon rules). */
+.ff-app .ff-map .ff-moon { left: auto; right: max(26px, calc(50% - 234px)); top: 70px; width: 50px; height: 48px; }
 .ff-map-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.ff-map-top-right { display: flex; align-items: center; gap: 8px; }
-.ff-map-title { margin: 0; font-family: var(--ff-font-display); font-weight: 700; font-size: 30px; color: var(--ff-glow); }
-.ff-map-card { background: color-mix(in srgb, var(--ff-panel) 90%, transparent); border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.ff-map-top-right { display: flex; align-items: center; gap: 10px; }
+.ff-map-title { margin: 0; font-family: var(--ff-font-display); font-weight: 400; font-size: 24px; color: var(--ff-paper); }
+.ff-map-card {
+  border: 2px solid var(--ff-sumi); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px;
+  color: var(--ff-sumi); background: var(--ff-paper-texture, none) 0 0 / 128px 128px, var(--ff-paper);
+}
 .ff-map-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-.ff-map-area { margin: 0; font-family: var(--ff-font-display); font-weight: 600; font-size: 22px; color: var(--ff-ink); }
-.ff-map-count { font-size: 14px; font-weight: 800; color: var(--ff-glow); }
-.ff-map-bar { height: 8px; border-radius: 999px; background: var(--ff-track); overflow: hidden; }
-.ff-map-fill { height: 100%; width: 0; border-radius: 999px; background: var(--ff-gold); }
-.ff-map-note { margin: 0; font-size: 14px; color: var(--ff-ink-quiet); }
-.ff-map-beds { list-style: none; margin: 0; padding: 4px 8px; display: flex; flex-direction: column-reverse; gap: 14px; flex: 1; justify-content: flex-start; }
-.ff-map-bed { display: flex; align-items: center; gap: 12px; width: 76%; }
-.ff-map-bed:nth-child(even) { align-self: flex-end; flex-direction: row-reverse; text-align: right; }
-.ff-map-patch {
-  width: 96px; height: 66px; flex-shrink: 0; border-radius: 50% 48% 52% 46% / 58% 54% 46% 42%;
-  background: radial-gradient(circle at 40% 35%, var(--ff-tile-dark-hi) 0%, var(--ff-tile-dark) 60%, var(--ff-tile-dark-lo) 100%);
-  box-shadow: 0 7px 0 var(--ff-tile-dark-edge);
+.ff-map-area { margin: 0; font-family: var(--ff-font-display); font-weight: 400; font-size: 22px; color: var(--ff-sumi); }
+.ff-map-count { font-size: 14px; font-weight: 700; color: var(--ff-sumi-soft); }
+.ff-map-bar { height: 8px; box-sizing: border-box; border-radius: 4px; background: var(--ff-paper-track); border: 1px solid var(--ff-sumi); overflow: hidden; }
+.ff-map-fill { height: 100%; width: 0; background: var(--ff-rose); }
+.ff-map-note { margin: 0; font-size: 14px; line-height: 1.4; color: var(--ff-sumi-soft); }
+/* The path and its stops, drawn by map.ts for the field's size; labels sit beside each stop. */
+.ff-map-field { flex: 1; min-height: 360px; }
+.ff-map-drawing { position: absolute; inset: 0; overflow: visible; }
+.ff-map-path { fill: none; stroke: var(--ff-paper-quiet); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 0.1 9; opacity: 0.8; }
+.ff-mstop-ring { fill: var(--ff-paper); stroke: var(--ff-sumi); stroke-width: 2; }
+.ff-mstop-inner { fill: var(--ff-dusk); }
+.ff-mstop-done .ff-mstop-inner { fill: var(--ff-gold); }
+.ff-mstop-glow { fill: var(--ff-glow-soft); opacity: 0.3; }
+.ff-mstop-half { fill: var(--ff-gold); opacity: 0.9; }
+.ff-mstop-dash, .ff-mstop-land { fill: none; stroke: var(--ff-gold); stroke-width: 2.4; }
+.ff-mstop-dash { stroke-dasharray: 6 5; }
+.ff-mstop-dark .ff-mstop-ring { fill: var(--ff-paper-dim); }
+.ff-mstop-dark .ff-mstop-inner { fill: var(--ff-dusk-locked); }
+.ff-mstop-lock { color: var(--ff-ruled); }
+.ff-mstop-teaser { fill: none; stroke: var(--ff-paper-quiet); stroke-width: 2; stroke-dasharray: 4 4; opacity: 0.55; }
+.ff-mbush { fill: var(--ff-moss); }
+.ff-mbush-lo { fill: var(--ff-moss-lo); }
+.ff-mbush-line { fill: none; stroke: var(--ff-sumi); stroke-width: 1.4; stroke-linecap: round; }
+.ff-mrose { fill: var(--ff-rose); stroke: var(--ff-sumi); stroke-width: 1; }
+.ff-mfly-glow { fill: var(--ff-glow-soft); opacity: 0.45; }
+.ff-mfly-wing { fill: color-mix(in srgb, var(--ff-wing) 70%, transparent); stroke: var(--ff-sumi); stroke-width: 0.7; }
+.ff-mfly-tail { fill: var(--ff-glow); stroke: var(--ff-sumi); stroke-width: 0.8; }
+.ff-mfly-head { fill: var(--ff-sumi); }
+/* Fireflies circling a finished chapter: two rings at different speeds (canvas: 14 s and 19 s). */
+.ff-morbit { transform-box: view-box; animation: ff-orbit 14s linear infinite; }
+.ff-morbit-2 { animation: ff-orbit 19s linear -6s infinite reverse; }
+@keyframes ff-orbit { to { transform: rotate(360deg); } }
+.ff-mhover { animation: ff-hover 2.4s ease-in-out infinite; }
+@keyframes ff-hover { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+/* The unlock flight's landing: the new stop rings gold, then the ring fades out. */
+.ff-mstop-land { stroke-width: 3; transform-box: fill-box; transform-origin: center; animation: ff-land 900ms ease-out both; }
+@keyframes ff-land { 0% { opacity: 0; transform: scale(0.6); } 25% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.25); } }
+.ff-map-flier { position: absolute; }
+.ff-map[data-motion='reduced'] .ff-morbit, .ff-map[data-motion='reduced'] .ff-morbit-2, .ff-map[data-motion='reduced'] .ff-mhover,
+.ff-map[data-motion='reduced'] .ff-mstop-land { animation: none; }
+.ff-map-beds { list-style: none; margin: 0; padding: 0; }
+.ff-map-bed, .ff-map-teaser {
+  position: absolute; box-sizing: border-box; display: flex; flex-direction: column; padding: 6px 10px; max-width: 46%;
+  border: 2px solid var(--ff-sumi); border-radius: 8px; color: var(--ff-sumi); background: var(--ff-paper);
 }
-.ff-map-bed[data-state='done'] .ff-map-patch {
-  background:
-    radial-gradient(circle at 26% 34%, var(--ff-petal-pink) 0 6px, transparent 7px),
-    radial-gradient(circle at 58% 26%, var(--ff-petal-cream) 0 5px, transparent 6px),
-    radial-gradient(circle at 72% 60%, var(--ff-petal-pink) 0 6px, transparent 7px),
-    radial-gradient(circle at 40% 66%, var(--ff-petal-cream) 0 5px, transparent 6px),
-    radial-gradient(circle at 40% 35%, var(--ff-moss-hi) 0%, var(--ff-moss) 60%, var(--ff-moss-lo) 100%);
-  box-shadow: 0 7px 0 var(--ff-moss-edge), 0 0 26px color-mix(in srgb, var(--ff-gold) 30%, transparent);
-}
-.ff-map-bed[data-state='now'] .ff-map-patch {
-  background: radial-gradient(circle at 40% 35%, var(--ff-moss-hidden-hi) 0%, var(--ff-moss-hidden) 60%, var(--ff-moss-lo) 100%);
-  box-shadow: 0 7px 0 var(--ff-moss-edge), 0 0 0 3px var(--ff-gold);
-}
-.ff-map-bed-text { display: flex; flex-direction: column; gap: 2px; }
-.ff-map-bed-text strong { font-size: 15px; font-weight: 800; color: var(--ff-ink); }
-.ff-map-bed-text span { font-size: 13px; font-weight: 700; color: var(--ff-label); }
-.ff-map-bed[data-state='now'] .ff-map-bed-text span, .ff-map-bed[data-state='done'] .ff-map-bed-text span { color: var(--ff-glow); }
-.ff-map-teaser { border: 2px dashed var(--ff-panel-edge); border-radius: 14px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; color: var(--ff-ink-quiet); font-size: 14px; }
-.ff-map-teaser strong { color: var(--ff-ink); }
+.ff-map-bed strong { font-size: 12px; font-weight: 700; color: var(--ff-sumi-quiet); }
+.ff-map-bed span { font-size: 14px; font-weight: 600; }
+.ff-map-bed[data-state='dark'] { background: var(--ff-paper-dim); }
+.ff-map-teaser { border: 0; background: none; padding: 0; color: var(--ff-paper-quiet); }
+.ff-map-teaser strong { font-size: 12px; font-weight: 700; color: var(--ff-paper); }
+.ff-map-teaser span { font-size: 13px; font-weight: 600; }
 .ff-map-continue {
-  min-height: 64px; border: 0; border-radius: 18px; background: var(--ff-gold); color: var(--ff-on-gold);
-  font-weight: 800; font-size: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer;
+  min-height: 60px; border: 2px solid var(--ff-sumi); border-radius: 12px; background: var(--ff-seal); color: var(--ff-on-seal);
+  font-weight: 700; font-size: 17px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer;
 }
 .ff-map-continue:disabled { opacity: 0.6; cursor: default; }
-.ff-map-continue-sub { font-size: 13px; font-weight: 700; }
+.ff-map-continue-sub { font-size: 13px; font-weight: 400; }
 
-/* Level complete (design baseline: Complete artboard). The card takes the place of the status card
+/* Level complete (design canvas: "Level complete"). The card takes the place of the status card
    and the moves; those keep their space (visibility only), so the board never resizes on a solve. */
 .ff-complete { position: relative; z-index: 1; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-end; }
 .ff-complete-panel {
-  box-sizing: border-box; border-radius: 22px; padding: 18px; display: flex; flex-direction: column; gap: 14px;
-  background: color-mix(in srgb, var(--ff-solved-panel) 95%, transparent);
+  box-sizing: border-box; border: 2px solid var(--ff-sumi); border-radius: 14px; padding: 18px 18px 16px;
+  display: flex; flex-direction: column; gap: 12px; color: var(--ff-sumi);
+  background: var(--ff-paper-texture, none) 0 0 / 128px 128px, var(--ff-paper);
 }
 .ff-complete[hidden], .ff-complete-next[hidden] { display: none; }
 .ff-app[data-complete] .ff-status, .ff-app[data-complete] .ff-controls { visibility: hidden; }
@@ -281,84 +385,76 @@
      hidden status card and moves keep, so the board can't resize under it. */
   grid-row: 4 / span 2; grid-column: 1; align-self: stretch; contain: size;
 }
-/* Narrow phones: a smaller title, and the ring alone says the next garden is coming. */
-@media (max-width: 380px) {
-  .ff-app[data-band='tall'] .ff-complete-panel { padding: 14px; gap: 12px; }
-  .ff-app[data-band='tall'] .ff-complete-title { font-size: 20px; }
-  .ff-app[data-band='tall'] .ff-complete-chip { font-size: 15px; padding: 6px 10px 6px 8px; }
-  .ff-app[data-band='tall'] .ff-complete-note { display: none; }
+/* The card has exactly the height the status card and moves leave (188 to 211 px on phones,
+   measured). Where the canvas layout (title wrapping beside the badge, plus the note) would
+   overflow it, the title takes one line, the sub-line and badge share the next, and the bar alone
+   says the next garden is coming. Each rule is scoped under .ff-complete so it outranks the base
+   rule whatever the order in this file. */
+.ff-app[data-band='tall'] .ff-complete, .ff-app[data-band='square'] .ff-complete { container: ff-complete / size; }
+@container ff-complete (max-height: 240px) {
+  .ff-complete .ff-complete-panel { padding: 12px 16px; gap: 10px; }
+  .ff-complete .ff-complete-head {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'title title' 'sub chip';
+    align-items: center; gap: 4px 12px;
+  }
+  .ff-complete .ff-complete-words { display: contents; }
+  .ff-complete .ff-complete-title { grid-area: title; font-size: 22px; white-space: nowrap; }
+  .ff-complete .ff-complete-sub { grid-area: sub; font-size: 14px; }
+  .ff-complete .ff-complete-chip { grid-area: chip; font-size: 15px; padding: 4px 8px; }
+  .ff-complete .ff-complete-chip .ff-coin { width: 18px; height: 18px; }
+  .ff-complete[data-more='true'] .ff-complete-note { display: none; }
 }
 .ff-app[data-band='tall'] .ff-complete { margin-inline: 8px; }
 .ff-app[data-band='square'] .ff-complete { width: 100%; max-width: 560px; justify-self: center; }
-.ff-app[data-band='wide'][data-complete] .ff-status { display: none; }
-.ff-complete-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.ff-complete-title { margin: 0; min-width: 0; font-family: var(--ff-font-display); font-weight: 700; font-size: 26px; line-height: 1.15; color: var(--ff-glow); }
-.ff-app[data-band='tall'] .ff-complete-title { font-size: 22px; }
-.ff-complete-sub { margin: -8px 0 0; font-size: 14px; line-height: 1.4; color: var(--ff-ink-quiet); }
+.ff-complete-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.ff-complete-words { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ff-complete-title { margin: 0; font-family: var(--ff-font-display); font-weight: 400; font-size: 26px; line-height: 1.15; color: var(--ff-sumi); }
+.ff-app[data-band='tall'] .ff-complete-title { font-size: 24px; }
+.ff-complete-sub { margin: 0; font-size: 15px; line-height: 1.4; color: var(--ff-sumi-soft); }
 .ff-complete-chip {
-  flex-shrink: 0; display: flex; align-items: center; gap: 6px; border-radius: 999px; padding: 8px 14px 8px 10px;
-  background: var(--ff-gold); color: var(--ff-on-gold); font-weight: 800; font-size: 17px;
+  flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 6px 10px; border: 2px solid var(--ff-sumi);
+  border-radius: 18px; background: var(--ff-paper-warm); color: var(--ff-sumi); font-weight: 700; font-size: 17px;
 }
-.ff-complete-chip .ff-coin { width: 18px; height: 18px; background: var(--ff-on-gold); box-shadow: inset 0 0 0 3px var(--ff-on-gold), inset 0 0 0 4.5px var(--ff-gold); }
-.ff-complete-buttons { display: flex; gap: 10px; }
-.ff-complete-buttons button { height: 56px; border-radius: 16px; font-weight: 800; font-size: 15px; cursor: pointer; }
-.ff-complete-map {
-  flex: 1; border: 2px solid var(--ff-panel-edge); background: var(--ff-panel); color: var(--ff-ink);
-  display: flex; align-items: center; justify-content: center;
+.ff-complete-chip .ff-coin { width: 22px; height: 22px; }
+.ff-complete-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.ff-complete[data-more='false'] .ff-complete-buttons { grid-template-columns: minmax(0, 1fr); }
+.ff-complete-buttons button {
+  height: 52px; border-radius: 10px; border: 2px solid var(--ff-sumi); font-weight: 700; font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
 }
-.ff-complete-map-icon { display: none; width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-.ff-app[data-band='wide'] .ff-complete-map-icon { display: block; }
-.ff-complete-next {
-  flex: 1.6; border: 0; background: var(--ff-gold); color: var(--ff-on-gold); font-size: 16px;
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-}
-.ff-complete-note { margin: 0; font-size: 13px; text-align: center; color: var(--ff-ink-quiet); }
+.ff-complete-map { color: var(--ff-sumi); background: var(--ff-paper-texture, none) 0 0 / 128px 128px, var(--ff-paper); }
+.ff-complete-next { background: var(--ff-seal); color: var(--ff-on-seal); }
+.ff-complete-foot { display: flex; flex-direction: column; gap: 6px; }
+.ff-complete-track { height: 4px; border-radius: 2px; background: var(--ff-paper-track); overflow: hidden; }
+.ff-complete[data-more='false'] .ff-complete-track { display: none; }
+.ff-complete-bar { width: 100%; height: 100%; background: var(--ff-seal); transform-origin: left center; transform: scaleX(0); }
+.ff-counting.ff-complete-bar { animation: ff-count var(--ff-countdown, 3000ms) linear both; }
+@keyframes ff-count { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.ff-complete-note { margin: 0; font-size: 13px; color: var(--ff-sumi-quiet); }
 /* Wide band: the side panel is short on a landscape phone. The area title goes (the card's line
-   names the garden), the note goes (the ring says it), and the buttons share a row. */
+   names the garden), the note goes (the bar says it), and Garden map shows its icon alone. */
 .ff-app[data-band='wide'][data-complete] .ff-title { display: none; }
+.ff-app[data-band='wide'][data-complete] .ff-status { display: none; }
 .ff-app[data-band='wide'] .ff-complete { margin-top: auto; }
-.ff-app[data-band='wide'] .ff-complete-panel {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'title title' 'sub chip' 'buttons buttons';
-  align-items: center; gap: 10px 10px; padding: 14px;
-}
-.ff-app[data-band='wide'] .ff-complete-head { display: contents; }
-.ff-app[data-band='wide'] .ff-complete-title { grid-area: title; }
-.ff-app[data-band='wide'] .ff-complete-chip { grid-area: chip; }
-.ff-app[data-band='wide'] .ff-complete-sub { grid-area: sub; margin: 0; font-size: 13px; }
-.ff-app[data-band='wide'] .ff-complete-buttons { grid-area: buttons; }
-.ff-app[data-band='wide'] .ff-complete-map { flex: 0 0 48px; padding: 0; }
-.ff-app[data-band='wide'] .ff-complete-map-label { display: none; }
+.ff-app[data-band='wide'] .ff-complete-panel { padding: 14px; gap: 10px; }
+.ff-app[data-band='wide'] .ff-complete-head { flex-wrap: wrap; }
 .ff-app[data-band='wide'] .ff-complete-title { font-size: 20px; }
-.ff-app[data-band='wide'] .ff-complete-chip { font-size: 15px; padding: 6px 10px 6px 8px; }
-.ff-app[data-band='wide'] .ff-complete-chip .ff-coin { width: 15px; height: 15px; }
-.ff-app[data-band='wide'] .ff-complete-buttons { gap: 8px; }
+.ff-app[data-band='wide'] .ff-complete-sub { font-size: 13px; }
+.ff-app[data-band='wide'] .ff-complete-chip { font-size: 15px; padding: 4px 8px; }
+.ff-app[data-band='wide'] .ff-complete-chip .ff-coin { width: 16px; height: 16px; }
+.ff-app[data-band='wide'] .ff-complete-buttons { grid-template-columns: 48px minmax(0, 1fr); gap: 8px; }
+.ff-app[data-band='wide'] .ff-complete[data-more='false'] .ff-complete-buttons { grid-template-columns: minmax(0, 1fr); }
 .ff-app[data-band='wide'] .ff-complete-buttons button { height: 48px; font-size: 14px; padding: 0 8px; gap: 6px; }
-.ff-app[data-band='wide'] .ff-complete-ring { width: 20px; height: 20px; }
+.ff-app[data-band='wide'] .ff-complete[data-more='true'] .ff-complete-map-label { display: none; }
 .ff-app[data-band='wide'] .ff-complete-note { display: none; }
-.ff-complete-ring { width: 24px; height: 24px; transform: rotate(-90deg); flex-shrink: 0; }
-.ff-ring-track, .ff-ring-fill { fill: none; stroke-width: 5; }
-.ff-ring-track { stroke: color-mix(in srgb, var(--ff-on-gold) 18%, transparent); }
-.ff-ring-fill { stroke: var(--ff-on-gold); stroke-linecap: round; stroke-dashoffset: 0; }
-.ff-counting .ff-ring-fill { animation: ff-count var(--ff-countdown, 3000ms) linear both; }
-@keyframes ff-count { from { stroke-dashoffset: 0; } to { stroke-dashoffset: 126; } }
 .ff-enter .ff-complete-chip { animation: ff-coin-up 700ms ease-out 400ms both; }
 @keyframes ff-coin-up { 0% { transform: translateY(16px); opacity: 0; } 30% { transform: translateY(-4px); opacity: 1; } 100% { transform: none; opacity: 1; } }
-
-/* The solve burst: sparks from the board's centre. */
-.ff-burst { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; z-index: 1; }
-.ff-spark {
-  position: absolute; left: -4px; top: -4px; width: var(--size); height: var(--size); border-radius: 999px;
-  background: var(--ff-spark); box-shadow: 0 0 10px 3px var(--ff-spark);
-  animation: ff-burst 1.4s ease-out var(--delay) both;
-}
-.ff-spark-0 { --ff-spark: var(--ff-glow); }
-.ff-spark-1 { --ff-spark: var(--ff-gold); }
-.ff-spark-2 { --ff-spark: var(--ff-petal-pink); }
-.ff-spark-3 { --ff-spark: var(--ff-petal-cream); }
-@keyframes ff-burst { 0% { transform: translate(0, 0) scale(0.4); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) scale(1.1); opacity: 0; } }
-
-.ff-app[data-motion='reduced'] .ff-counting .ff-ring-fill,
+/* Reduced motion: the bar shows the wait without moving (it stays empty until the garden opens). */
+.ff-app[data-motion='reduced'] .ff-counting.ff-complete-bar,
 .ff-app[data-motion='reduced'] .ff-enter .ff-complete-chip { animation: none; }
-.ff-app[data-motion='reduced'] .ff-burst { display: none; }
+.ff-complete :focus-visible { outline-color: var(--ff-sumi); }
+
+/* Focus on paper: the glow ring (theme.css) vanishes against paper, so inside a sheet the ring is ink. */
+.ff-sheet :focus-visible { outline-color: var(--ff-sumi); }
 .ff-board:focus-visible { outline: none; } /* the board draws its own focus ring on the focused cell */
-.ff-fps { position: fixed; right: 6px; bottom: 6px; z-index: 50; font: 700 11px var(--ff-font-body); color: var(--ff-label); pointer-events: none; } /* dev builds only */
+.ff-fps { position: fixed; right: 6px; bottom: 6px; z-index: 50; font: 700 11px var(--ff-font-body); color: var(--ff-paper-quiet); pointer-events: none; } /* dev builds only */

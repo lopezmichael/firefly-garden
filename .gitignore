@@ -10,3 +10,7 @@ coverage/
 dist-e2e/
 test-results/
 playwright-report/
+
+# Stray captures from local scripts; the repo root holds no images.
+/*.png
+/*.webm

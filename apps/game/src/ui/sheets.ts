@@ -1,4 +1,6 @@
 import type { MotionSetting } from '../state/save.ts';
+import { coin, icon } from './icons.ts';
+import type { IconName } from './icons.ts';
 
 /**
  * Bottom sheets over the play screen: the hint sheet and settings with the
@@ -19,6 +21,13 @@ function button(className: string, text: string, onClick: () => void): HTMLButto
   b.type = 'button';
   b.addEventListener('click', onClick);
   return b;
+}
+
+/** A settings section heading with its icon. */
+function sectionTitle(name: IconName, text: string): HTMLHeadingElement {
+  const h = el('h3', 'ff-section-title');
+  h.append(icon(name), document.createTextNode(text));
+  return h;
 }
 
 class Sheet {
@@ -90,17 +99,19 @@ export class HintSheet extends Sheet {
   constructor() {
     super('ff-hint-title');
     const head = el('div', 'ff-sheet-head');
-    const text = el('div', 'ff-sheet-text');
     const title = el('h2', 'ff-sheet-title', 'Use a hint');
     title.id = 'ff-hint-title';
-    text.append(title, el('p', 'ff-sheet-sub', "A hint places one firefly that's sure to be right, or lifts one that can't stay. Hint fireflies are locked in place."));
-    head.append(text);
-
+    // The hint's mark: firefly with a dashed seal-red ring, as on the board's hint firefly.
+    const badge = el('span', 'ff-sheet-badge');
+    badge.append(icon('hint'));
+    head.append(badge, title);
+    const sub = el('p', 'ff-sheet-sub', "A hint places one firefly that's sure to be right, or lifts one that can't stay. Hint fireflies are locked in place.");
 
     this.primary = button('ff-sheet-primary', '', () => this.pick('pay'));
     this.ad = button('ff-sheet-ad', 'Watch a video for 3 hints', () => this.pick('ad'));
-    this.decline = button('ff-sheet-quiet', 'No thanks', () => this.pick(null));
-    this.panel.append(head, this.wallet, this.primary, this.ad, this.note, this.decline);
+    this.ad.prepend(icon('video'));
+    this.decline = button('ff-sheet-link', 'No thanks', () => this.pick(null));
+    this.panel.append(head, sub, this.wallet, this.primary, this.ad, this.note, this.decline);
     this.onClose = () => this.settle(null);
   }
 
@@ -112,7 +123,7 @@ export class HintSheet extends Sheet {
     this.primary.replaceChildren(document.createTextNode(offer.bank > 0 ? 'Use a saved hint' : 'Use a hint'));
     if (offer.bank === 0) {
       const cost = el('span', 'ff-cost');
-      cost.append(el('span', 'ff-coin'), this.primaryCost);
+      cost.append(coin(), this.primaryCost);
       this.primaryCost.textContent = String(offer.cost);
       this.primary.append(cost);
     }
@@ -169,7 +180,7 @@ export class SettingsSheet extends Sheet {
     title.id = 'ff-settings-title';
 
     const sound = el('section', 'ff-section');
-    sound.append(el('h3', 'ff-section-title', 'Sound'));
+    sound.append(sectionTitle('sound', 'Sound'));
     const soundGroup = el('div', 'ff-segments');
     soundGroup.setAttribute('role', 'radiogroup');
     soundGroup.setAttribute('aria-label', 'Sound');
@@ -185,7 +196,7 @@ export class SettingsSheet extends Sheet {
     sound.append(soundGroup);
 
     const motion = el('section', 'ff-section');
-    motion.append(el('h3', 'ff-section-title', 'Reduce motion'),
+    motion.append(sectionTitle('motion', 'Reduce motion'),
       el('p', 'ff-sheet-sub', 'Keeps every change you make, drops the drifting, bobbing and sparkles.'));
     const group = el('div', 'ff-segments');
     group.setAttribute('role', 'radiogroup');
@@ -203,11 +214,13 @@ export class SettingsSheet extends Sheet {
 
     const log = el('section', 'ff-section');
     this.copy = button('ff-sheet-ad', 'Copy play log', () => void this.copyLog());
-    log.append(el('h3', 'ff-section-title', 'Play log'), this.summary,
+    log.append(sectionTitle('log', 'Play log'), this.summary,
       el('p', 'ff-sheet-sub', 'Helping us test? Copy your play log and send it back. It holds level ids, times and counts, nothing about you, and it never leaves this device unless you send it.'),
       this.copy);
 
-    this.panel.append(title, sound, motion, log, button('ff-sheet-quiet', 'Done', () => this.close()));
+    const rule = el('hr', 'ff-rule');
+    rule.setAttribute('aria-hidden', 'true');
+    this.panel.append(title, sound, motion, rule, log, button('ff-sheet-quiet', 'Done', () => this.close()));
   }
 
   open(view: SettingsView): void {

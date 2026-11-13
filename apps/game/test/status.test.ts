@@ -72,8 +72,11 @@ describe('level-complete line', () => {
 });
 
 describe('status wording fits the card', () => {
-  // The card reserves one title line, and two sub-lines (three below 290 px of text width; see
-  // game.css, .ff-status-text). The tightest case is two sub-lines at 290 px (a ~360 px phone).
+  // The card reserves one title line, and two sub-lines (three below 244 px of text width; see
+  // game.css, .ff-status-text). Measured with the shipped fonts on 2026-11-13: at these limits
+  // every title fits one line from 264 px of text (18 px), 236 px (16 px) or 206 px (14 px), and
+  // every sub-line two lines from 244 px; a 360 px phone gives about 256 px, a 320 px one 216 px
+  // (titles at 14 px there, which fit from 206 px).
   // Character counts are a proxy for rendered width: these limits leave margin for wide letters,
   // measured in Chromium with the shipped fonts. The CI browser smoke test measures the real card.
   // Longer wording needs a shorter line, not a taller card.

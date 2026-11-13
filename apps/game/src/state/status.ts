@@ -40,7 +40,7 @@ export function boardStatus(ev: Evaluation, firstMove: boolean, coinsPerSolve: n
       title: `${ev.unlit} path ${ev.unlit === 1 ? 'tile' : 'tiles'} still dark`,
       sub: firstMove
         ? 'Tap a tile to send out a firefly. Bush dots fill as fireflies land.'
-        : 'A bush is done when all its dots are gold.',
+        : 'A bush blooms when all its dots are gold.',
       tone: 'plain',
     };
   }

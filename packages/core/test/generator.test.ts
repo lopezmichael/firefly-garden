@@ -92,9 +92,17 @@ describe('generate', () => {
   });
 
   it('respects maxSeconds', () => {
-    for (let i = 0; i < 6; i++) {
-      const gen = generate({ id: `ms${i}`, seed: 600 + i, w: 10, h: 10, bushDensity: 0.16, hide: 'max', maxSeconds: 150 });
-      if (gen) expect(gen.difficulty.estimatedSeconds).toBeLessThanOrEqual(150);
+    // Seeds whose uncapped level runs well past the cap, so the cap is what keeps
+    // them under it. (Seeds that yield no level at all asserted nothing and cost
+    // most of this test's time once grading became count-aware.)
+    for (const seed of [601, 602, 604]) {
+      const spec = { id: `ms${seed}`, seed, w: 10, h: 10, bushDensity: 0.16, hide: 'max' as const };
+      const free = generate(spec);
+      const capped = generate({ ...spec, maxSeconds: 150 });
+      expect(free).not.toBeNull();
+      expect(free!.difficulty.estimatedSeconds).toBeGreaterThan(150);
+      expect(capped).not.toBeNull();
+      expect(capped!.difficulty.estimatedSeconds).toBeLessThanOrEqual(150);
     }
   });
 });

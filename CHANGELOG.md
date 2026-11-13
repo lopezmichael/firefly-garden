@@ -4,6 +4,30 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Changed
+- Look pass 2: the ink and wash theme (plan `docs/plans/2026-11-12-ink-wash-theme.md`, design
+  canvas "Firefly Garden · Character"). A theme change only: game logic, levels, layout bands and
+  the screen flow are as they were.
+  - Tokens and type: the ink and wash colour set (night, paper, sumi, seal red, dusk, gold, moss,
+    roses, warn, wilt) and Young Serif with Figtree, self-hosted woff2 only (bundle 1.10 → 1.07 MB).
+    The board's palette is every colour token by its own name (`pal.goldPool` is `--ff-gold-pool`).
+  - The board: fibre-card dark tiles and paper-rimmed lit tiles with a pooled gold wash; bushes
+    with roses when happy, a wilted bush with a dashed border when overfull, firefly C with
+    flapping wings and a bob, the hint firefly's seal-red halo and seal, the conflict's shiver
+    lines and hatching, a brush cross for ruled out, one rounded outline around a hint's cells.
+    The tray and the camera tilt are gone (decided 2026-11-12).
+  - Chrome on paper: the status card with a paper lantern (a light per firefly left), the coin
+    pill and rose cog, paper buttons with Hint as the one seal-red action, the icon set, paper
+    hint and settings sheets. Behind it all: a grained night, crescent moon, hills with roses and
+    drifting motes.
+  - Motion: the light spreads tile by tile, roses open as a bush is satisfied, an overfull bush
+    slumps, and a solve blooms every bush in a ripple from the last firefly (replacing the spark
+    burst). Reduced motion keeps every state change and drops only the movement.
+  - The level-complete card is paper with a countdown bar; the garden map is a dotted ink path
+    of chapter stops, with fireflies circling finished chapters and a one-time flight to a newly
+    unlocked one (remembered in a new, validated save field, `mapSeen`).
+  - Copy: "A bush blooms when all its dots are gold." (was "is done", decided 2026-11-12).
+
 ### Added
 - Keyboard play for desktop portals: arrows move a focus ring over the board (following the board
   as drawn, rotation included), space or enter places or lifts a firefly, Z (or Ctrl/Cmd+Z) undoes,
@@ -25,6 +49,13 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
   finished one, reload and resume, rotation and fold mid-level, keyboard, sound muting, the status
   card's height for every message at 320 and 360 px, and a still board drawing no frames.
 - Dev builds show an fps readout in the corner.
+- Ratchets: WCAG contrast for every token pair that carries text or state
+  (`tests/contrast.test.ts`); every CSS animation and transition stops under reduced motion
+  (`apps/game/test/motion-css.test.ts`); the status card's reserved height matches its fonts
+  (`status-css.test.ts`); the board palette matches the tokens (`theme.test.ts`).
+- Dev-only pages (not built): `/dev/states.html`, every board state from the real renderer
+  (`?level=<id>` for a launch level, `&solve` for the bloom), and `/dev/textures.html`, the texture
+  kit and its timing.
 - The level-complete card (milestone 3): replaces the status card and moves once a garden is
   solved, with the garden, time and hints used, a +10 coin chip, Garden map, and Next garden with
   a ring that counts down the auto-advance (no Next on the last garden); sparks burst from the
@@ -41,6 +72,11 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 - The status card still grew by 0.4 px on 320–360 px phones for two-line sub-lines: its title used
   the font's own line height (about 22 px) while the card reserves 1.2 (21.6 px). Found by the new
   browser height check; the title now has an explicit line height.
+- The first move's flight from the jar was cancelled on tall phones: the status card changed
+  height (its title font sat taller than the space reserved), which resizes the board. The
+  card keeps one height through every status message from 360 to 820 px wide (measured).
+- The level-complete card overflowed its space by up to 54 px on phones; where the space is
+  short it goes compact (title on one line, no note).
 - The board no longer jumps when a hint appears on a narrow phone (320–360 px): hint reasons were
   the status card's title in the large font and wrapped to three lines. Hints now have a short
   one-line heading ("A firefly goes here", "Crossed-out tiles stay empty", "Try a firefly here",
