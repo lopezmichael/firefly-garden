@@ -29,7 +29,10 @@ async function start(): Promise<void> {
   void bakeChromePaper(palette.css.paperGrain, window.devicePixelRatio || 1).then((url) => {
     if (url) document.documentElement.style.setProperty('--ff-paper-texture', `url(${url})`);
   });
-  await new GameApp(root, catalog, platform, palette).start();
+  const app = new GameApp(root, catalog, platform, palette);
+  await app.start();
+  // End-to-end builds only (`--mode e2e`): a constant, so production drops this line.
+  if (import.meta.env.MODE === 'e2e') Object.assign(window, { __ff: app.e2eHooks() });
 }
 
 start().catch((err: unknown) => {

@@ -93,7 +93,7 @@
 }
 .ff-status-column { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .ff-status-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.ff-status-title { font-family: var(--ff-font-display); font-weight: 400; font-size: 18px; line-height: 1.2; color: var(--ff-sumi); }
+.ff-status-title { font-family: var(--ff-font-display); font-weight: 400; font-size: 18px; line-height: 1.3; color: var(--ff-sumi); }
 .ff-status[data-tone='warn'] .ff-status-title { color: var(--ff-rose-spiral); }
 .ff-status[data-tone='glow'] .ff-status-title { color: var(--ff-seal-ink); }
 .ff-status-sub { font-size: 14px; line-height: 1.4; color: var(--ff-sumi-soft); }
@@ -157,6 +157,13 @@
   display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; color: var(--ff-sumi);
 }
 .ff-app[data-band='wide'] .ff-controls button { height: auto; }
+/* 320 px phones: the row is about 300 px, short of Hint with its cost beside Undo and Reset at
+   full size, so everything tightens a little (the e2e test checks the row fits). */
+@media (max-width: 340px) {
+  .ff-controls { gap: 8px; }
+  .ff-controls button { min-width: 0; padding-inline: 6px; gap: 6px; font-size: 15px; }
+  .ff-controls .ff-hint { flex: 1.2; }
+}
 /* Disabled stays opaque paper (the hills show through a see-through button); the ink fades instead. */
 .ff-controls button:disabled { cursor: default; color: color-mix(in srgb, var(--ff-sumi) 40%, var(--ff-paper)); border-color: color-mix(in srgb, var(--ff-sumi) 40%, var(--ff-paper)); }
 .ff-controls button:disabled .ff-icon * { opacity: 0.45; }
@@ -256,22 +263,32 @@
    sub-line), so the board above it never resizes when the wording changes: a resize cancels a
    firefly in flight. Measured in Chromium with the shipped fonts over every status the game can
    show (test/status.test.ts holds the wording to the budget): every title fits one line from 264 px
-   of text width at 18 px, or from 236 px at 16 px; every sub-line fits two lines from 244 px.
-   So narrow cards shrink the lantern a little and then the title; below 244 px of text (phones
-   narrower than 360 px) the card reserves a third sub-line instead. */
+   of text width at 18 px, from 236 px at 16 px, or from 206 px at 14 px; every sub-line fits two
+   lines from 244 px. So narrow cards shrink the lantern a little and then the title; below 244 px
+   of text (phones narrower than 360 px) the card reserves a third sub-line instead. The title's
+   1.3 line height holds Young Serif's glyphs (at 1.2 they ran 2 px past the line box). */
 .ff-status { container: ff-status / inline-size; }
 .ff-status-column { container: ff-text / inline-size; }
 .ff-app[data-band='tall'] .ff-status-text, .ff-app[data-band='square'] .ff-status-text {
-  min-height: calc(18px * 1.2 + 2px + 14px * 1.4 * 2);
+  min-height: calc(18px * 1.3 + 2px + 14px * 1.4 * 2);
 }
 @container ff-status (max-width: 340px) {
   .ff-jar { width: 40px; height: 55px; margin-right: -4px; }
 }
+/* 320 px phones: the jar and the text take 4 px each from the card's padding and the gap between
+   them (a container query cannot restyle the card itself), and the lantern shrinks again. */
+@container ff-status (max-width: 310px) {
+  .ff-app:not([data-band='wide']) .ff-jar { width: 34px; height: 47px; margin: 0 -4px 0 -4px; }
+  .ff-app:not([data-band='wide']) .ff-status-column { margin-right: -4px; }
+}
 @container ff-text (max-width: 263px) {
   .ff-app:not([data-band='wide']) .ff-status-title { font-size: 16px; }
 }
+@container ff-text (max-width: 235px) {
+  .ff-app:not([data-band='wide']) .ff-status-title { font-size: 14px; }
+}
 @container ff-text (max-width: 243px) {
-  .ff-app:not([data-band='wide']) .ff-status-text { min-height: calc(18px * 1.2 + 2px + 14px * 1.4 * 3); }
+  .ff-app:not([data-band='wide']) .ff-status-text { min-height: calc(18px * 1.3 + 2px + 14px * 1.4 * 3); }
 }
 
 /* Garden map (design canvas: "Garden map"). A screen over the play screen. */
@@ -439,3 +456,5 @@
 
 /* Focus on paper: the glow ring (theme.css) vanishes against paper, so inside a sheet the ring is ink. */
 .ff-sheet :focus-visible { outline-color: var(--ff-sumi); }
+.ff-board:focus-visible { outline: none; } /* the board draws its own focus ring on the focused cell */
+.ff-fps { position: fixed; right: 6px; bottom: 6px; z-index: 50; font: 700 11px var(--ff-font-body); color: var(--ff-paper-quiet); pointer-events: none; } /* dev builds only */

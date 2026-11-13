@@ -314,4 +314,9 @@ export class PlayScreen {
   focusNext(): void {
     this.complete.focus();
   }
+
+  /** Whether keyboard focus is on the level-complete card (a keyboard player pressing Next). */
+  completeHasFocus(): boolean {
+    return this.complete.root.contains(document.activeElement);
+  }
 }

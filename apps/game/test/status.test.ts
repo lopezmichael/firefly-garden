@@ -1,12 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { HINT_REASONS, PLAYER_CONFIG, REMOVE_REASONS, TRY_HERE_REASON } from '@firefly/core';
-import type { Evaluation, Hint, TechniqueId } from '@firefly/core';
+import { PLAYER_CONFIG } from '@firefly/core';
 import { createCatalog } from '../src/state/catalog.ts';
 import { Play } from '../src/state/play.ts';
-import { boardStatus, clockText, completeLine, finishedStatus, litPercent, noticeStatus } from '../src/state/status.ts';
-import type { Notice, StatusText } from '../src/state/status.ts';
+import { boardStatus, clockText, completeLine, litPercent, noticeStatus } from '../src/state/status.ts';
+import { everyStatus } from './status-samples.ts';
 
 const LEVELS = join(import.meta.dirname, '../../../levels');
 const read = (f: string): unknown => JSON.parse(readFileSync(join(LEVELS, f), 'utf8'));
@@ -72,54 +71,12 @@ describe('level-complete line', () => {
   });
 });
 
-/** A typed evaluation for wording tests: only what the status words read, nothing cast away. */
-function evaluation(o: { solved?: boolean; conflicts?: number[]; over?: boolean; unlit?: number }): Evaluation {
-  return {
-    fireflies: [], lit: [], conflicts: o.conflicts ?? [], unlit: o.unlit ?? 0, solved: o.solved ?? false,
-    bushes: o.over ? [{ cell: 0, want: 1, have: 2, state: 'over' }] : [],
-  };
-}
-
-/**
- * Every message the status card can show, with worst-case numbers, so the length budget below
- * covers all of them (hint reasons included). A new notice kind fails to compile until it has a
- * sample here.
- */
-function everyStatus(): StatusText[] {
-  const dark = evaluation({ unlit: 888 });
-  const notices: { readonly [K in Exclude<Notice['kind'], 'hint'>]: Extract<Notice, { kind: K }> } = {
-    locked: { kind: 'locked' },
-    'no-coins': { kind: 'no-coins', coinsPerSolve: 1000 },
-    reset: { kind: 'reset' },
-    'jar-empty': { kind: 'jar-empty' },
-  };
-  const hint = (h: Exclude<Hint, { kind: 'none' }>) => noticeStatus({ kind: 'hint', hint: h }, dark);
-  const out: StatusText[] = [
-    boardStatus(evaluation({ solved: true }), false, 1000),
-    boardStatus(evaluation({ conflicts: [1, 2] }), false, coins),
-    boardStatus(evaluation({ over: true }), false, coins),
-    boardStatus(dark, false, coins, 0),
-    boardStatus(dark, true, coins),
-    boardStatus(dark, false, coins),
-    boardStatus(evaluation({}), false, coins),
-    finishedStatus(),
-    ...Object.values(notices).map((n) => noticeStatus(n, dark)),
-    hint({ kind: 'try-here', cell: 0, reason: TRY_HERE_REASON }),
-  ];
-  for (const reason of Object.values(REMOVE_REASONS)) out.push(hint({ kind: 'remove', cell: 0, reason }));
-  for (const technique of Object.keys(HINT_REASONS) as TechniqueId[]) {
-    for (const ruledOut of [[], [1]]) {
-      out.push(hint({ kind: 'place', cell: 0, technique, reason: HINT_REASONS[technique], because: [], ruledOut }));
-    }
-  }
-  return out;
-}
-
 describe('status wording fits the card', () => {
   // The card reserves one title line, and two sub-lines (three below 244 px of text width; see
   // game.css, .ff-status-text). Measured with the shipped fonts on 2026-11-13: at these limits
-  // every title fits one line from 264 px of text (18 px) or 236 px (16 px, narrow cards), and
-  // every sub-line two lines from 244 px; a 360 px phone gives about 242 px.
+  // every title fits one line from 264 px of text (18 px), 236 px (16 px) or 206 px (14 px), and
+  // every sub-line two lines from 244 px; a 360 px phone gives about 256 px, a 320 px one 216 px
+  // (titles at 14 px there, which fit from 206 px).
   // Character counts are a proxy for rendered width: these limits leave margin for wide letters,
   // measured in Chromium with the shipped fonts. The CI browser smoke test measures the real card.
   // Longer wording needs a shorter line, not a taller card.
@@ -128,7 +85,7 @@ describe('status wording fits the card', () => {
 
   it('every title fits on one line and every sub-line in two', () => {
     const all = everyStatus();
-    expect(all).toHaveLength(34);
+    expect(all).toHaveLength(35);
     for (const s of all) {
       expect(s.title.length, s.title).toBeLessThanOrEqual(TITLE_MAX);
       expect(s.sub.length, s.sub).toBeLessThanOrEqual(SUB_MAX);

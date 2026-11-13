@@ -152,6 +152,7 @@ export class HintSheet extends Sheet {
 }
 
 export interface SettingsView {
+  readonly sound: boolean;
   readonly motion: MotionSetting;
   readonly played: number;
   readonly solved: number;
@@ -159,14 +160,17 @@ export interface SettingsView {
 }
 
 export interface SettingsHandlers {
+  sound(on: boolean): void;
   motion(m: MotionSetting): void;
   copyLog(): Promise<boolean>;
 }
 
 const MOTION: readonly [MotionSetting, string][] = [['device', 'Device'], ['on', 'On'], ['off', 'Off']];
+const SOUND: readonly [boolean, string][] = [[true, 'On'], [false, 'Off']];
 
 export class SettingsSheet extends Sheet {
   private readonly motionButtons = new Map<MotionSetting, HTMLButtonElement>();
+  private readonly soundButtons = new Map<boolean, HTMLButtonElement>();
   private readonly summary = el('p', 'ff-sheet-line');
   private readonly copy: HTMLButtonElement;
 
@@ -174,6 +178,22 @@ export class SettingsSheet extends Sheet {
     super('ff-settings-title');
     const title = el('h2', 'ff-sheet-title', 'Settings');
     title.id = 'ff-settings-title';
+
+    const sound = el('section', 'ff-section');
+    sound.append(sectionTitle('sound', 'Sound'));
+    const soundGroup = el('div', 'ff-segments');
+    soundGroup.setAttribute('role', 'radiogroup');
+    soundGroup.setAttribute('aria-label', 'Sound');
+    for (const [value, label] of SOUND) {
+      const b = button('ff-segment', label, () => {
+        this.handlers.sound(value);
+        this.setSound(value);
+      });
+      b.setAttribute('role', 'radio');
+      this.soundButtons.set(value, b);
+      soundGroup.append(b);
+    }
+    sound.append(soundGroup);
 
     const motion = el('section', 'ff-section');
     motion.append(sectionTitle('motion', 'Reduce motion'),
@@ -200,14 +220,19 @@ export class SettingsSheet extends Sheet {
 
     const rule = el('hr', 'ff-rule');
     rule.setAttribute('aria-hidden', 'true');
-    this.panel.append(title, motion, rule, log, button('ff-sheet-quiet', 'Done', () => this.close()));
+    this.panel.append(title, sound, motion, rule, log, button('ff-sheet-quiet', 'Done', () => this.close()));
   }
 
   open(view: SettingsView): void {
+    this.setSound(view.sound);
     this.setMotion(view.motion);
     this.summary.textContent = `${plural(view.played, 'garden played', 'gardens played')} · ${view.solved} solved · ${plural(view.hints, 'hint used', 'hints used')}`;
     this.copy.textContent = 'Copy play log';
-    this.show(this.motionButtons.get(view.motion)!);
+    this.show(this.soundButtons.get(view.sound)!);
+  }
+
+  private setSound(on: boolean): void {
+    for (const [value, b] of this.soundButtons) b.setAttribute('aria-checked', String(value === on));
   }
 
   private setMotion(m: MotionSetting): void {

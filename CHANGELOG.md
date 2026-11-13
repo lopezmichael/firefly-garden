@@ -29,6 +29,26 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
   - Copy: "A bush blooms when all its dots are gold." (was "is done", decided 2026-11-12).
 
 ### Added
+- Keyboard play for desktop portals: arrows move a focus ring over the board (following the board
+  as drawn, rotation included), space or enter places or lifts a firefly, Z (or Ctrl/Cmd+Z) undoes,
+  H opens the hint sheet. The board is focusable, announces the focused cell to screen readers and,
+  after a toggle, which two fireflies see each other. Pressing Next on the complete card carries
+  keyboard focus to the new board.
+- Sound plumbing (placeholder voices, synthesized; no audio files): landing chimes pitched by the
+  row on screen, a bush chime, a conflict tone, a lift, an empty-jar bump and a solve flourish.
+  No audio starts before the first gesture; sound is muted (and the audio context suspended) while
+  the tab is hidden, while an ad shows, or when Sound is off in settings (saved). Unlocks on touch
+  as well (pointerup, touchend, click), which iOS requires. A rewarded ad that rejects instead of
+  resolving false credits nothing and no longer leaves the level clock paused.
+- The "light can cross" tip: the first time a move makes beams cross in a chapter 1 garden, the
+  status card says "Light can cross. Only fireflies can't see each other." Once per install (saved
+  as `tips`), never over a conflict message or a solve. Core gains `conflictPairs`, `lightCounts`
+  and `crossings` for the coming conflict beam and brighter crossings.
+- Browser smoke test (Playwright, its own CI job) against an e2e build with a scriptable test
+  platform adapter: a solve by real taps, a paid hint, a cancelled ad (no credit, silent) and a
+  finished one, reload and resume, rotation and fold mid-level, keyboard, sound muting, the status
+  card's height for every message at 320 and 360 px, and a still board drawing no frames.
+- Dev builds show an fps readout in the corner.
 - Ratchets: WCAG contrast for every token pair that carries text or state
   (`tests/contrast.test.ts`); every CSS animation and transition stops under reduced motion
   (`apps/game/test/motion-css.test.ts`); the status card's reserved height matches its fonts
@@ -49,6 +69,9 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
   called back, and hints send a gold one; saves holding more fireflies than the jar are dropped.
 
 ### Fixed
+- The status card still grew by 0.4 px on 320–360 px phones for two-line sub-lines: its title used
+  the font's own line height (about 22 px) while the card reserves 1.2 (21.6 px). Found by the new
+  browser height check; the title now has an explicit line height.
 - The first move's flight from the jar was cancelled on tall phones: the status card changed
   height (its title font sat taller than the space reserved), which resizes the board. The
   card keeps one height through every status message from 360 to 820 px wide (measured).
@@ -68,6 +91,10 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
   wording changed length and the board resized to fill the space).
 
 ### Changed
+- Performance: the board draws only while something moves; a still board (any board in reduced
+  motion, an empty one otherwise) renders once per change and stops its ticker (main thread at 4x
+  CPU throttling: about 100% → 2% idle in reduced motion). Hint outlines and crossed-out marks are
+  redrawn only on the tiles whose state changed.
 - Shipped grading is count-aware: the game will show how many fireflies each garden needs (the
   firefly jar), so `gradeLevel(level, board)` (new, core) grades with the count known, and the
   generator, stored tier/score/seconds, ramp inputs, simulated players, level ratchets and `hint`

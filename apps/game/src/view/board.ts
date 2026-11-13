@@ -2,7 +2,7 @@
 import 'pixi.js/unsafe-eval';
 import { Application, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js';
 import type { Board, Evaluation, Transform } from '@firefly/core';
-import { fitBoard } from './layout.ts';
+import { canonicalCell, displayDims, fitBoard } from './layout.ts';
 import type { BoardFit } from './layout.ts';
 import type { Palette } from './theme.ts';
 import { bushLayout, dotPositions, FACE_CENTER_Y, bloomDelays, FLY_BOXES, FLY_MOTION, MOTION_TIMING, outlinePolylines, pulse, rippleDelays, ROSE_SLOTS, roseVariants, SWAY_ORIGIN, UNIT, WING_ROOT } from './art/geometry.ts';
@@ -187,8 +187,13 @@ export class BoardView {
   private readonly stage = new Container();
   private readonly cellsLayer = new Container();
   private readonly ghostLayer = new Container();
+  /** Keyboard focus ring (desktop portals): drawn only while the board has keyboard focus. */
+  private readonly focusRing = new Graphics();
+  private focusCell: number | null = null;
   /** The hint reason outline, one shape around every cell a hint names. */
   private readonly outline = new Graphics();
+  /** The cells `outline` currently surrounds (sorted, joined), or null after a rebuild. */
+  private outlineKey: string | null = null;
   private board: Board | null = null;
   private transform: Transform = 'identity';
   private fit: BoardFit | null = null;
@@ -202,15 +207,19 @@ export class BoardView {
   private state: BoardState | null = null;
   private time = 0;
   private area = { w: 0, h: 0 };
+  /** Frames drawn and milliseconds elapsed since load, for the fps readout and the perf check. */
+  private readonly frames = { count: 0, ms: 0 };
 
   private constructor(app: Application, opts: BoardViewOptions) {
     this.app = app;
     this.pal = opts.palette;
     this.onTap = opts.onTap;
     this.motion = !opts.reducedMotion;
-    this.stage.addChild(this.cellsLayer, this.outline, this.particleLayer, this.ghostLayer);
+    this.stage.addChild(this.cellsLayer, this.outline, this.particleLayer, this.ghostLayer, this.focusRing);
     app.stage.addChild(this.stage);
     app.ticker.add((ticker) => this.tick(ticker.deltaMS));
+    // A lost and restored WebGL context (common on phones in the background) needs a fresh frame.
+    app.canvas.addEventListener('webglcontextrestored', () => this.wake());
   }
 
   static async create(host: HTMLElement, opts: BoardViewOptions): Promise<BoardView> {
@@ -235,12 +244,36 @@ export class BoardView {
     this.motion = !reduced;
     // Turning motion off mid-moment: every running moment lands now.
     if (reduced) this.finishMoments();
+    this.wake();
   }
 
   private finishMoments(): void {
     const running = this.tweens;
     this.tweens = [];
     for (const tw of running) tw.step(1);
+  }
+
+  /**
+   * Frames are drawn only while something moves (a bobbing firefly, a moment
+   * such as a spreading wash or opening roses, a pulsing hint outline, a
+   * firefly lifting away). A still board, which is every board in reduced
+   * motion once its moments land and an empty one otherwise, draws once per
+   * change and then stops the ticker: no GPU or battery spent on identical frames.
+   */
+  /** Draw at least one more frame (the tab came back, the context was restored). */
+  redraw(): void {
+    this.wake();
+  }
+
+  private wake(): void {
+    if (!this.app.ticker.started) this.app.ticker.start();
+  }
+
+  private animating(): boolean {
+    if (this.ghosts.length > 0 || this.tweens.length > 0) return true;
+    if (!this.motion) return false;
+    if ((this.state?.because.size ?? 0) > 0) return true;
+    return this.cells.some((v) => v.fly?.root.visible === true);
   }
 
   setLevel(board: Board, transform: Transform): void {
@@ -265,16 +298,21 @@ export class BoardView {
     this.build();
   }
 
-  /** Display grid size for the current orientation. */
-  private dims(): [cols: number, rows: number] {
-    const b = this.board!;
-    return this.transform === 'rot90' ? [b.h, b.w] : [b.w, b.h];
+  /** Show the keyboard focus ring on a canonical cell, or hide it (null). */
+  setFocus(cell: number | null): void {
+    this.focusCell = cell;
+    this.drawFocus();
   }
 
-  /** Display (row, col) → canonical cell index. */
-  private canonical(dr: number, dc: number): number {
-    const b = this.board!;
-    return this.transform === 'rot90' ? (b.h - 1 - dc) * b.w + dr : dr * b.w + dc;
+  private drawFocus(): void {
+    this.wake();
+    this.focusRing.clear();
+    const v = this.focusCell === null ? undefined : this.cells.find((c) => c.cell === this.focusCell);
+    if (!v || !this.fit) return;
+    const { cell } = this.fit;
+    const inset = -Math.max(3, Math.round(cell * 0.07));
+    this.focusRing.roundRect(v.root.x + inset, v.root.y + inset, cell - 2 * inset, cell - 2 * inset, cell * 0.3)
+      .stroke({ width: 3, color: this.pal.glow });
   }
 
   /**
@@ -350,9 +388,11 @@ export class BoardView {
   }
 
   private build(): void {
+    this.wake();
     this.cellsLayer.removeChildren().forEach((c) => c.destroy({ children: true }));
     this.cells = [];
     this.outline.clear();
+    this.outlineKey = null;
     // Ghosts, moments and particles use the old size's sprites and textures, which the
     // prune below frees: end them first (a rebuild redraws the position at rest).
     for (const g of this.ghosts) g.fly.root.destroy({ children: true });
@@ -361,7 +401,7 @@ export class BoardView {
     this.particleLayer.removeChildren().forEach((p) => p.destroy());
     if (!this.board || this.area.w < 10 || this.area.h < 10) return;
     const b = this.board;
-    const [cols, rows] = this.dims();
+    const [cols, rows] = displayDims(this.transform, b.w, b.h);
     const fit = fitBoard(cols, rows, this.area.w, this.area.h);
     this.fit = fit;
     this.pruneTextures(fit.cell);
@@ -372,7 +412,7 @@ export class BoardView {
     this.art = art;
     for (let dr = 0; dr < rows; dr++) {
       for (let dc = 0; dc < cols; dc++) {
-        const i = this.canonical(dr, dc);
+        const i = canonicalCell(this.transform, b.w, b.h, dr, dc);
         const kind = b.kind[i]!;
         const root = new Container();
         root.position.set(pad + dc * (cell + gap), pad + dr * (cell + gap));
@@ -426,6 +466,7 @@ export class BoardView {
       }
     }
     if (this.state) this.render(this.state, { quiet: true });
+    this.drawFocus();
   }
 
   /**
@@ -438,6 +479,7 @@ export class BoardView {
   render(state: BoardState, opts: { quiet?: boolean; removed?: number | null; arriving?: number | null; arrivalMs?: number } = {}): void {
     const prev = this.state;
     this.state = state;
+    this.wake();
     if (!this.board || !this.fit) return;
     const { cell } = this.fit;
     const u = cell / UNIT;
@@ -618,6 +660,10 @@ export class BoardView {
 
   /** The dashed gold outline around the cells a hint names (one shape per touching group). */
   private drawOutline(because: ReadonlySet<number>): void {
+    // Redraw only when the named cells change (a move with the same hint showing keeps its shape).
+    const key = [...because].sort((x, y) => x - y).join(',');
+    if (key === this.outlineKey) return;
+    this.outlineKey = key;
     this.outline.clear();
     if (!this.fit || because.size === 0) return;
     const { cell } = this.fit;
@@ -648,7 +694,14 @@ export class BoardView {
     this.ghosts.push({ fly, age: 0 });
   }
 
+  /** Frames drawn and time elapsed since load (dev readout, e2e perf check). */
+  frameStats(): { count: number; ms: number } {
+    return { ...this.frames };
+  }
+
   private tick(dt: number): void {
+    this.frames.count++;
+    this.frames.ms += dt;
     this.time += dt;
     if (this.tweens.length > 0) {
       this.tweens = this.tweens.filter((tw) => {
@@ -676,6 +729,8 @@ export class BoardView {
       }
       return true;
     });
+    // This frame still draws (the app renders after this listener); later ones wait for a change.
+    if (!this.animating()) this.app.ticker.stop();
   }
 
   destroy(): void {

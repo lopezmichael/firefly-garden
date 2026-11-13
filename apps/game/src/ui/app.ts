@@ -1,6 +1,8 @@
 import { hintStep, PLAYER_CONFIG } from '@firefly/core';
-import type { NextLevel, Transform } from '@firefly/core';
-import type { Platform } from '../platform/index.ts';
+import type { Evaluation, NextLevel, Transform } from '@firefly/core';
+import { AudioEngine } from '../audio/engine.ts';
+import type { AudioState, Voice } from '../audio/engine.ts';
+import type { Platform, TestPlatform } from '../platform/index.ts';
 import type { Catalog } from '../state/catalog.ts';
 import { EVENT_LOG_KEY, EventLog, parseEventLog } from '../state/events.ts';
 import type { EventBody } from '../state/events.ts';
@@ -9,11 +11,16 @@ import type { ShownHint } from '../state/play.ts';
 import { DEFAULT_SETTINGS, MAX_PARKED, newInstallId, parseSave, SAVE_KEY, serializeSave } from '../state/save.ts';
 import type { CurrentPlay, MotionSetting, SaveData, Settings } from '../state/save.ts';
 import { Session } from '../state/session.ts';
+import { cuesFor } from '../state/cues.ts';
+import type { Cue, Move } from '../state/cues.ts';
+import { describeCell } from '../state/describe.ts';
 import { boardStatus, completeLine, finishedStatus, noticeStatus } from '../state/status.ts';
-import type { Notice } from '../state/status.ts';
+import type { Notice, StatusText } from '../state/status.ts';
+import { conflictWords, crossTipDue } from '../state/teach.ts';
+import type { TipId } from '../state/teach.ts';
 import { Wallet } from '../state/wallet.ts';
 import { BoardView } from '../view/board.ts';
-import { bandFor, keepOrTurn, orientFor } from '../view/layout.ts';
+import { bandFor, canonicalCell, displayCell, displayDims, keepOrTurn, keyAction, orientFor, stepFocus } from '../view/layout.ts';
 import type { Palette } from '../view/theme.ts';
 import { cancelFlights, fly, FLIGHT_MS } from './flight.ts';
 import { PlayScreen } from './screen.ts';
@@ -34,6 +41,31 @@ const AUTO_ADVANCE_MS = 3000;
 const SESSION_BREAK_MS = 30 * 60_000;
 /** Saves are batched this long after a change (and flushed when the tab hides). */
 const SAVE_DELAY_MS = 300;
+
+/** Which voice each cue plays (placeholder sounds; the voices live in audio/engine.ts). */
+const VOICE: { readonly [K in Cue['kind']]: Voice } = {
+  place: 'chime', hint: 'sparkle', lift: 'lift', bush: 'bell', conflict: 'buzz', solve: 'flourish', empty: 'bump',
+};
+
+/** What the end-to-end tests read and drive (built only with `--mode e2e`). */
+export interface E2EHooks {
+  level(): {
+    id: string; transform: Transform; w: number; h: number; placed: number[]; locked: number[];
+    /** The answer's cells the player places (lanterns excluded). */
+    answer: number[];
+    canUndo: boolean; seconds: number; solved: boolean; remaining: number; notice: string | null; focus: number | null;
+  } | null;
+  cellPoint(cell: number): { x: number; y: number } | null;
+  wallet(): { coins: number; bank: number };
+  tips(): string[];
+  audio(): AudioState;
+  setStatus(s: StatusText): void;
+  refresh(): void;
+  /** Open a garden directly (perf checks on the largest boards). */
+  openLevel(id: string): void;
+  frames(): { count: number; ms: number };
+  platform: TestPlatform;
+}
 
 interface Stored {
   readonly save: SaveData | null;
@@ -70,6 +102,14 @@ export class GameApp {
   /** True while a rewarded ad plays: the board, moves, hints and the level clock all wait. */
   private adShowing = false;
   private boardArea = { w: 0, h: 0 };
+  private readonly audio = new AudioEngine();
+  /** One-time tips already shown (saved). */
+  private tips = new Set<TipId>();
+  /** Keyboard focus as a canonical cell, and whether its ring shows (only after keyboard use). */
+  private focusCell: number | null = null;
+  private focusRing = false;
+  /** A landing sound waiting for its firefly to arrive; cancelled by the next move or level. */
+  private cueTimer: ReturnType<typeof setTimeout> | null = null;
   /** Chapters the map has already shown finished (its one-time unlock flight played). */
   private mapSeen: ReadonlySet<string> = new Set();
   private readonly clock = { now: () => performance.now() };
@@ -83,13 +123,8 @@ export class GameApp {
     private readonly palette: Palette,
   ) {
     this.screen = new PlayScreen({
-      undo: () => this.move(() => {
-        if (this.play?.undo() === 'jar-full') {
-          this.notice = { kind: 'jar-empty' };
-          this.screen.shakeJar();
-        }
-      }),
-      reset: () => this.move(() => {
+      undo: () => this.undo(),
+      reset: () => this.move('reset', () => {
         if (this.play?.placed.size) {
           this.play.reset();
           this.notice = { kind: 'reset' };
@@ -105,6 +140,7 @@ export class GameApp {
       settings: () => this.openSettings(),
     }, palette);
     this.settingsSheet = new SettingsSheet({
+      sound: (on) => this.setSound(on),
       motion: (m) => this.setMotion(m),
       copyLog: () => this.copyLog(),
     });
@@ -131,6 +167,15 @@ export class GameApp {
     });
     this.applyMotion();
     this.reducedQuery.addEventListener('change', () => this.applyMotion());
+    // Sound starts on the first gesture (autoplay policy); muted by the setting, a hidden tab or an ad.
+    // pointerdown is a gesture only for a mouse: touch activates on pointerup/touchend/click, and
+    // WebKit (iOS) unlocks audio only from touchend or click. Listen to all; unlock is idempotent.
+    const unlock = () => this.audio.unlock();
+    for (const type of ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']) document.addEventListener(type, unlock, true);
+    this.audio.setMuted('setting', !this.settings.sound);
+    this.audio.setMuted('hidden', document.hidden);
+    this.setupKeyboard();
+    if (import.meta.env.DEV) this.fpsMeter();
     new ResizeObserver(() => this.layout()).observe(this.screen.boardHost);
     window.addEventListener('resize', () => this.updateBand());
     document.addEventListener('visibilitychange', () => this.visibility());
@@ -168,6 +213,7 @@ export class GameApp {
   private restoreState({ save, install, events }: Stored): void {
     this.install = install;
     this.settings = save?.settings ?? DEFAULT_SETTINGS;
+    this.tips = new Set(save?.tips ?? []);
     this.mapSeen = save?.mapSeen ?? new Set();
     this.parked = [...(save?.parked ?? [])];
     this.log = new EventLog(this.install, (save?.session ?? 0) + 1, new Set(this.catalog.levels.keys()), this.wallClock, events.events);
@@ -193,7 +239,7 @@ export class GameApp {
     return {
       install: this.install, session: this.log.session, coins: this.wallet.coins, bank: this.wallet.bank,
       solved: pr.solved, history: pr.history, playedReserve: pr.playedReserve, quitMain: pr.quitMain,
-      current, parked: this.parked, settings: this.settings, mapSeen: this.mapSeen,
+      current, parked: this.parked, settings: this.settings, tips: this.tips, mapSeen: this.mapSeen,
     };
   }
 
@@ -228,6 +274,7 @@ export class GameApp {
   }
 
   private visibility(): void {
+    this.audio.setMuted('hidden', document.hidden);
     if (document.hidden) {
       this.play?.pause();
       this.hiddenAt = Date.now();
@@ -247,6 +294,8 @@ export class GameApp {
       this.visibleSince = Date.now();
     }
     this.hiddenAt = null;
+    // A still board stopped drawing; the browser may have dropped its canvas while hidden.
+    this.board.redraw();
     this.resumeClock();
     if (this.advancePending) this.scheduleAdvance();
   }
@@ -272,6 +321,12 @@ export class GameApp {
     this.mapScreen.setMotion(!reduced);
   }
 
+  private setSound(on: boolean): void {
+    this.settings = { ...this.settings, sound: on };
+    this.audio.setMuted('setting', !on);
+    this.scheduleSave();
+  }
+
   private setMotion(m: MotionSetting): void {
     this.settings = { ...this.settings, motion: m };
     this.applyMotion();
@@ -283,7 +338,7 @@ export class GameApp {
     this.play?.pause();
     this.holdAdvance();
     const s = this.log.summary();
-    this.settingsSheet.open({ motion: this.settings.motion, played: s.played, solved: s.solved, hints: s.hints });
+    this.settingsSheet.open({ sound: this.settings.sound, motion: this.settings.motion, played: s.played, solved: s.solved, hints: s.hints });
   }
 
   private async copyLog(): Promise<boolean> {
@@ -354,8 +409,11 @@ export class GameApp {
     }
     const board = this.catalog.board(next.id);
     this.attempt = this.session.attempt(next.id);
+    // A keyboard player pressed Next (focus sat on the complete card, about to hide): carry on on the board.
+    const handOff = this.screen.completeHasFocus();
     this.show(next, this.unpark(next.id) ?? new Play(board, this.catalog.solution(next.id), this.clock));
     this.emit({ type: 'level_start', level: next.id, reason: next.reason, attempt: this.attempt });
+    if (handOff) this.screen.boardHost.focus({ preventScroll: true });
     this.scheduleSave();
   }
 
@@ -402,6 +460,7 @@ export class GameApp {
     this.advanceTimer = null;
     this.advancePending = false;
     cancelFlights();
+    this.cancelCues();
     const play = this.play, cur = this.current;
     // Peeking at the map from an untouched board is not a quit: the board waits, unchanged.
     const untouched = play !== null && play.placements === 0 && play.undos === 0 && play.hints === 0 && play.restarts === 0;
@@ -487,10 +546,14 @@ export class GameApp {
 
   private show(next: NextLevel, play: Play): void {
     cancelFlights();
+    this.cancelCues();
     this.screen.hideComplete();
     this.current = next;
     this.play = play;
     this.notice = null;
+    this.focusCell = null;
+    this.focusRing = false;
+    this.board.setFocus(null);
     const board = play.board;
     const { clientWidth: w, clientHeight: h } = this.screen.boardHost;
     this.transform = orientFor(board.w, board.h, w, h);
@@ -518,32 +581,67 @@ export class GameApp {
 
   // ---------------------------------------------------------------- moves
 
-  private tap(cell: number): void {
+  private tap(cell: number, viaKeyboard = false): void {
     const play = this.play;
     if (!play || play.solved || this.blocked()) return;
+    if (!viaKeyboard) {
+      // A pointer tap moves the keyboard's place too, but hides the ring until a key is used.
+      this.focusCell = cell;
+      this.focusRing = false;
+      this.board.setFocus(null);
+    }
+    this.cancelCues();
+    const before = play.evaluation;
     const r = play.tap(cell);
     if (r === 'blocked') return;
     if (r === 'jar-empty') {
       this.notice = { kind: 'jar-empty' };
       this.screen.shakeJar();
+      this.playCues(cuesFor(before, play.evaluation, { kind: 'jar-empty' }));
       this.refresh();
+      if (viaKeyboard) this.screen.announce('The jar is empty. Call a firefly back first.');
       return;
     }
     this.notice = r === 'locked' ? { kind: 'locked' } : null;
+    // First crossing beams in an opening garden: say once that light may cross (feedback 2026-11-12).
+    if (r === 'placed' && this.current && crossTipDue({
+      opening: this.isOpening(this.current.id), seen: this.tips.has('cross'), board: play.board,
+      before: before.fireflies, after: play.evaluation.fireflies, evaluation: play.evaluation,
+    })) {
+      this.tips.add('cross');
+      this.notice = { kind: 'tip-cross' };
+    }
     // A placed firefly flies out of the jar and lands when it arrives; a lifted one flies home.
     const flew = r === 'placed' ? this.flight(cell, 'out', false) : r === 'removed' ? this.flight(cell, 'home', false) : false;
+    if (r === 'placed' || r === 'removed') {
+      this.playCues(cuesFor(before, play.evaluation, r === 'placed' ? this.placeMove('placed', cell) : { kind: 'removed' }), flew ? FLIGHT_MS - 80 : 0);
+    }
     this.refresh(false, null, flew && r === 'placed' ? cell : null);
+    if (viaKeyboard) this.announceFocus(true);
     if (r === 'placed') this.platform.haptic?.('light');
     if (play.solved) this.solved();
     else this.scheduleSave();
   }
 
-  private move(fn: () => void): void {
+  private undo(): void {
+    this.move('undo', () => {
+      if (this.play?.undo() === 'jar-full') {
+        this.notice = { kind: 'jar-empty' };
+        this.screen.shakeJar();
+        this.playCues([{ kind: 'empty' }]);
+      }
+    });
+  }
+
+  private move(kind: 'undo' | 'reset', fn: () => void): void {
     const play = this.play;
     if (!play || play.solved || this.blocked()) return;
     this.notice = null;
     play.dismissHint();
+    this.cancelCues();
+    const before = play.evaluation;
     fn();
+    if (play.evaluation !== before) this.playCues(cuesFor(before, play.evaluation, { kind }));
     this.refresh();
     // An undo can land on a solved board (a hint rewrote the history): credit it like any solve.
     if (play.solved) this.solved();
@@ -566,11 +664,17 @@ export class GameApp {
     } else if (choice === 'ad' && this.platform.rewardedAds) {
       const started = Date.now();
       this.adShowing = true;
+      this.audio.setMuted('ad', true);
       let completed = false;
       try {
         completed = await this.platform.showRewarded();
+      } catch (err) {
+        // An adapter that rejects instead of resolving false (real SDKs do): no credit, carry on.
+        console.warn('Rewarded ad failed:', err);
+        completed = false;
       } finally {
         this.adShowing = false;
+        this.audio.setMuted('ad', false);
       }
       this.emit({ type: 'ad', kind: 'rewarded', completed, seconds: Math.round((Date.now() - started) / 1000) });
       // Credited only when the ad finished (rules.md); a failed or skipped ad charges and credits nothing.
@@ -585,12 +689,15 @@ export class GameApp {
       this.refresh();
       return;
     }
+    const before = play.evaluation;
     const h = play.applyHint();
     if (h.kind === 'none') return;
     this.emit({ type: 'hint', level: this.current!.id, source, step: hintStep(this.catalog.grade(this.current!.id), h.cell) });
     this.notice = { kind: 'hint', hint: h };
     // A placing hint sends a gold firefly from the jar; a removal sends the wrong one home.
     const flew = this.flight(h.cell, h.kind === 'remove' ? 'home' : 'out', h.kind !== 'remove');
+    this.playCues(cuesFor(before, play.evaluation, h.kind === 'remove' ? { kind: 'hint-removed' } : this.placeMove('hint-placed', h.cell)),
+      flew && h.kind !== 'remove' ? FLIGHT_MS - 80 : 0);
     this.refresh(false, flew ? null : h.kind === 'remove' ? h.cell : null, flew && h.kind !== 'remove' ? h.cell : null);
     if (play.solved) this.solved();
     else this.scheduleSave();
@@ -637,6 +744,174 @@ export class GameApp {
     this.screen.setMoves(false, false, true);
     this.screen.setJar(0, 0);
     this.scheduleSave();
+  }
+
+  /** The opening gardens (chapter 1 of the main path), where one-time tips may show. */
+  private isOpening(levelId: string): boolean {
+    return this.catalog.place(levelId)?.chapter.id === this.catalog.chapters[0]?.id;
+  }
+
+  /** A placement as a sound move: its row as drawn on screen, so higher tiles ring higher. */
+  private placeMove(kind: 'placed' | 'hint-placed', cell: number): Move {
+    const b = this.play!.board;
+    return { kind, row: displayCell(this.transform, b.w, b.h, cell)[0], rows: displayDims(this.transform, b.w, b.h)[1] };
+  }
+
+  /** Play cues now, or after `delayMs` (a firefly still flying in rings when it lands). */
+  private playCues(cues: readonly Cue[], delayMs = 0): void {
+    if (cues.length === 0) return;
+    const go = () => {
+      for (const c of cues) this.audio.play(VOICE[c.kind], c.kind === 'place' || c.kind === 'hint' ? c.pitch : 0.5);
+    };
+    // The solve flourish never waits: the complete card is already up.
+    this.cancelCues();
+    if (delayMs <= 0 || cues.some((c) => c.kind === 'solve')) go();
+    else this.cueTimer = setTimeout(() => {
+      this.cueTimer = null;
+      go();
+    }, delayMs);
+  }
+
+  /** Drop a landing sound still waiting (its firefly was lifted, the level changed). */
+  private cancelCues(): void {
+    if (this.cueTimer !== null) clearTimeout(this.cueTimer);
+    this.cueTimer = null;
+  }
+
+  // ---------------------------------------------------------------- keyboard
+
+  /** Arrows move a focus ring over the board, space/enter toggles, Z undoes, H hints (plan E). */
+  private setupKeyboard(): void {
+    const host = this.screen.boardHost;
+    host.tabIndex = 0;
+    host.setAttribute('aria-roledescription', 'puzzle board');
+    host.setAttribute('aria-label', 'Garden board. Arrow keys move, space places or lifts a firefly, Z undoes, H asks for a hint.');
+    host.addEventListener('focus', () => {
+      // A mouse or touch focus shows no ring; keyboard focus (Tab) does.
+      if (host.matches(':focus-visible')) this.showFocus();
+    });
+    host.addEventListener('blur', () => {
+      this.focusRing = false;
+      this.board.setFocus(null);
+    });
+    document.addEventListener('keydown', (e) => this.key(e));
+  }
+
+  private key(e: KeyboardEvent): void {
+    if (e.defaultPrevented) return;
+    const a = keyAction(e);
+    const play = this.play;
+    if (!a || !play || play.solved || this.blocked()) return;
+    const t = e.target;
+    if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement) return;
+    if (a.kind === 'undo') {
+      e.preventDefault();
+      this.undo();
+      return;
+    }
+    if (a.kind === 'hint') {
+      e.preventDefault();
+      if (!e.repeat) void this.hint();
+      return;
+    }
+    // Arrows and space/enter belong to the board only while it has focus; elsewhere they work buttons.
+    if (document.activeElement !== this.screen.boardHost) return;
+    e.preventDefault();
+    if (this.focusCell === null || !this.focusRing) {
+      this.showFocus();
+      if (a.kind === 'move') return;
+    }
+    const b = play.board;
+    if (a.kind === 'move') {
+      this.focusCell = stepFocus(this.transform, b.w, b.h, this.focusCell!, a.dir, (c) => b.kind[c] === 'void');
+      this.board.setFocus(this.focusCell);
+      this.announceFocus(false);
+    } else if (!e.repeat && b.kind[this.focusCell!] === 'path') {
+      this.tap(this.focusCell!, true);
+    }
+  }
+
+  private showFocus(): void {
+    const play = this.play;
+    if (!play) return;
+    this.focusCell ??= this.firstFocus();
+    this.focusRing = true;
+    this.board.setFocus(this.focusCell);
+    this.announceFocus(false);
+  }
+
+  /** The top-left garden cell as drawn on screen. */
+  private firstFocus(): number {
+    const b = this.play!.board;
+    const [cols, rows] = displayDims(this.transform, b.w, b.h);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const i = canonicalCell(this.transform, b.w, b.h, r, c);
+        if (b.kind[i] !== 'void') return i;
+      }
+    }
+    return 0;
+  }
+
+  /** Tell screen readers what the focused cell holds (and who sees whom, after a toggle). */
+  private announceFocus(afterToggle: boolean): void {
+    const play = this.play;
+    if (!play || this.focusCell === null) return;
+    const b = play.board, ev: Evaluation = play.evaluation;
+    const name = (c: number) => {
+      const [r, col] = displayCell(this.transform, b.w, b.h, c);
+      return `row ${r + 1}, column ${col + 1}`;
+    };
+    const [r, c] = displayCell(this.transform, b.w, b.h, this.focusCell);
+    let text = describeCell(b, ev, play.locked, this.focusCell, r, c);
+    if (afterToggle && !ev.solved) text += `. ${play.remaining} in the jar.`;
+    const clash = afterToggle && ev.conflicts.includes(this.focusCell) ? conflictWords(b, ev.fireflies, name) : null;
+    if (clash) text += ` ${clash}`;
+    // A solve announces itself (the complete card); don't talk over it.
+    if (!ev.solved) this.screen.announce(text);
+  }
+
+  /** Dev builds only: frames per second in a corner ("still" while the board draws nothing). */
+  private fpsMeter(): void {
+    const meter = document.createElement('div');
+    meter.className = 'ff-fps';
+    meter.setAttribute('aria-hidden', 'true');
+    this.screen.root.append(meter);
+    let last = this.board.frameStats(), at = performance.now();
+    setInterval(() => {
+      const now = this.board.frameStats(), t = performance.now();
+      const fps = ((now.count - last.count) * 1000) / Math.max(1, t - at);
+      meter.textContent = fps < 0.5 ? 'still' : `${Math.round(fps)} fps`;
+      last = now;
+      at = t;
+    }, 500);
+  }
+
+  // ---------------------------------------------------------------- e2e
+
+  /** Read and drive the game from Playwright. Null outside the e2e build, where this body is dropped. */
+  e2eHooks(): E2EHooks | null {
+    if (import.meta.env.MODE !== 'e2e') return null;
+    return {
+      level: () => {
+        const p = this.play, cur = this.current;
+        if (!p || !cur) return null;
+        return {
+          id: cur.id, transform: this.transform, w: p.board.w, h: p.board.h, placed: [...p.placed], locked: [...p.locked],
+          answer: [...p.solution].filter((c) => !p.board.lantern[c]), canUndo: p.canUndo, seconds: p.seconds, solved: p.solved, remaining: p.remaining,
+          notice: this.notice?.kind ?? null, focus: this.focusRing ? this.focusCell : null,
+        };
+      },
+      cellPoint: (cell) => this.board.cellScreenCenter(cell),
+      wallet: () => ({ coins: this.wallet.coins, bank: this.wallet.bank }),
+      tips: () => [...this.tips],
+      audio: () => this.audio.state,
+      setStatus: (st) => this.screen.setStatus(st),
+      refresh: () => this.refresh(),
+      openLevel: (id) => this.show({ id, reason: 'main' }, new Play(this.catalog.board(id), this.catalog.solution(id), this.clock)),
+      frames: () => this.board.frameStats(),
+      platform: this.platform as TestPlatform,
+    };
   }
 
   /** Animate a firefly between the jar and a tile. False when skipped (reduced motion, no layout). */
