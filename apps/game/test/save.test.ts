@@ -5,6 +5,7 @@ import { cellCoord, createRng } from '@firefly/core';
 import { createCatalog } from '../src/state/catalog.ts';
 import { DEFAULT_SETTINGS, MAX_COINS, MAX_PARKED, MAX_SAVE_CHARS, newInstallId, parseSave, SAVE_VERSION, serializeSave } from '../src/state/save.ts';
 import type { SaveData } from '../src/state/save.ts';
+import { TIP_IDS } from '../src/state/teach.ts';
 import { HISTORY_CAP } from '../src/state/session.ts';
 import { MAX_BANKED_HINTS } from '../src/state/wallet.ts';
 
@@ -282,7 +283,7 @@ describe('save fuzz', () => {
     for (let i = 0; i < 5; i++) o[pick(['levelId', 'reason', 'placed', 'locked', 'coins', 'bank', 'x', '__proto__', 'constructor', 'seconds'])] = junk(depth + 1);
     return o;
   };
-  const FIELDS = ['session', 'coins', 'bank', 'solved', 'history', 'playedReserve', 'quitMain', 'current', 'parked', 'settings', 'mapSeen'];
+  const FIELDS = ['session', 'coins', 'bank', 'solved', 'history', 'playedReserve', 'quitMain', 'current', 'parked', 'settings', 'mapSeen', 'tips'];
 
   it('never throws, never locks a wrong cell, never exceeds a cap, over 3000 hostile saves', () => {
     for (let i = 0; i < 3000; i++) {
@@ -298,6 +299,7 @@ describe('save fuzz', () => {
         }
         // Real chapter ids too (finished or not, repeated, in long lists), so the finished check is reached.
         if (rng.next() < 0.3) o.mapSeen = Array.from({ length: Math.floor(rng.next() * 40) }, () => pick([...catalog.chapters.map((c) => c.id), 'c99', 7, '__proto__']));
+        if (rng.next() < 0.3) o.tips = Array.from({ length: Math.floor(rng.next() * 40) }, () => pick(['cross', 'nope', 7, '__proto__', null]));
         if (rng.next() < 0.3) o.solved = rng.next() < 0.5 ? [...catalog.chapters[0]!.levels] : catalog.mainPath.slice(0, Math.floor(rng.next() * 30));
         if (rng.next() < 0.3 && o.current && typeof o.current === 'object') {
           const cur = o.current as Record<string, unknown>;
@@ -326,6 +328,8 @@ describe('save fuzz', () => {
         expect(ch, `mapSeen holds unknown ${c}`).toBeDefined();
         expect(ch!.levels.every((l) => data.solved.has(l))).toBe(true);
       }
+      // Tips are only known tip ids.
+      for (const t of data.tips) expect(TIP_IDS.has(t), `tips holds unknown ${String(t)}`).toBe(true);
       const cur = data.current;
       if (cur) {
         const sol = catalog.solution(cur.levelId);
