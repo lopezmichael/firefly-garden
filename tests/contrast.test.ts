@@ -48,6 +48,9 @@ const PAIRS: readonly (readonly [string, string, number, string])[] = [
   ['sumi-quiet', 'paper-dim', TEXT, 'locked map stop caption'],
   ['sumi', 'paper-warm', TEXT, 'coin badge'],
   ['on-seal', 'seal', TEXT, 'text on the seal-red action'],
+  ['seal-ink', 'paper', TEXT, 'hint status title on the paper card'],
+  ['rose-spiral', 'paper', TEXT, 'warning status title on the paper card'],
+  ['sumi', 'gold', TEXT, 'coin badge and hint chip text over gold'],
   // Board numbers (Young Serif, 24 px and up)
   ['paper', 'moss', LARGE, 'bush number, wanting'],
   ['gold', 'moss', LARGE, 'bush number, happy'],

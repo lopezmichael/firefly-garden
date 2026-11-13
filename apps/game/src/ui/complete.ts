@@ -1,3 +1,4 @@
+import { coin } from './icons.ts';
 /**
  * The level-complete card (design baseline: Complete artboard): it takes the
  * place of the status card and the move buttons once a garden is solved. The
@@ -50,7 +51,7 @@ export class CompleteCard {
     const title = el('h2', 'ff-complete-title', 'The garden is glowing!');
     title.id = 'ff-complete-title';
     this.chipText.setAttribute('aria-hidden', 'true');
-    this.chip.append(el('span', 'ff-coin'), this.chipText, this.chipSr);
+    this.chip.append(coin(), this.chipText, this.chipSr);
     head.append(title, this.chip);
 
     const buttons = el('div', 'ff-complete-buttons');

@@ -147,15 +147,23 @@ milestone that changes what's on screen.
 
 ### 5. Chrome and sheets
 
-- [ ] Status card: paper card, the paper lantern jar replacing `JAR_SVG` in `ui/screen.ts`
+- [x] Status card: paper card, the paper lantern jar replacing `JAR_SVG` in `ui/screen.ts`
       (lights inside = fireflies left, dim and shaking when empty), slot row unchanged
-- [ ] Top bar: coin pill with the rose-stamp coin, settings button with the rose cog, progress
+- [x] Top bar: coin pill with the rose-stamp coin, settings button with the rose cog, progress
       dashes
-- [ ] Controls: paper buttons, Hint as the one seal-red filled action, icons from the Components
-      board as inline SVG with CSS classes
-- [ ] Hint sheet and settings sheet in paper; settings toggles keep their current behaviour; the
-      play log stays one line
-- [ ] Evidence: screenshots of every sheet in all three bands; 44 px targets measured
+- [x] Controls: paper buttons, Hint as the one seal-red filled action, icons from the Components
+      board as inline SVG with CSS classes (`ui/icons.ts`: the twelve icons, coin and lantern;
+      lines in `currentColor`, accents by token classes)
+- [x] Hint sheet and settings sheet in paper; settings toggles keep their current behaviour; the
+      play log stays one line. (Settings keeps its Done button and its bottom-sheet shape; no Sound
+      control yet, that comes with sound. Status titles on paper: warn in `--ff-rose-spiral`, hint
+      in the new `--ff-seal-ink`, both in the contrast ratchet)
+- [x] Evidence: screenshots of every sheet in all three bands; 44 px targets measured (every
+      button on the play screen and in both sheets, at 390×844, 360×740, 820×1000, 1280×720 and
+      844×390: smallest 44 px). The status card keeps one height through all 34 status messages at
+      360, 375, 390, 430, 600 and 820 px wide (measured live): Young Serif titles need 264 px of
+      text, so narrow cards shrink the lantern a little and then the title (container queries in
+      `game.css`), and the count line and slots always sit on their own rows
 
 ### 6. Scenery
 

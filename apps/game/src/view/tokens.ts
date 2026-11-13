@@ -8,7 +8,7 @@ export const COLOR_TOKENS = [
   'night', 'night-deep', 'hill-dusk', 'hill-ink', 'hill-dots',
   'paper', 'paper-quiet', 'paper-dim', 'paper-track', 'paper-handle', 'paper-rule', 'paper-warm', 'paper-grain',
   'sumi', 'sumi-soft', 'sumi-quiet',
-  'seal', 'on-seal',
+  'seal', 'on-seal', 'seal-ink',
   'dusk', 'dusk-edge', 'dusk-wash', 'dusk-quiet', 'dusk-locked',
   'gold', 'gold-edge', 'gold-pool', 'gold-deep', 'glow', 'glow-soft', 'glow-warm',
   'moss', 'moss-lo', 'moss-hi', 'moss-plain', 'moss-plain-lo', 'leaf', 'wilt', 'wilt-lo',

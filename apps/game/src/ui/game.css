@@ -62,20 +62,20 @@
 
 .ff-top { grid-area: top; position: relative; display: flex; align-items: center; gap: 10px; }
 .ff-chapter { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-.ff-chapter-label { font-size: 14px; font-weight: 700; color: var(--ff-paper-quiet); }
-.ff-dots { display: flex; gap: 5px; }
-.ff-dot { width: 18px; height: 6px; border-radius: 999px; background: var(--ff-dusk-quiet); }
+.ff-chapter-label { font-size: 13px; font-weight: 600; color: var(--ff-paper-quiet); }
+.ff-dots { display: flex; gap: 4px; }
+.ff-dot { width: 16px; height: 4px; border-radius: 2px; background: var(--ff-dusk-quiet); }
 .ff-dot[data-state='done'] { background: var(--ff-gold); }
 .ff-dot[data-state='now'] { background: var(--ff-paper); }
 .ff-coins {
-  display: flex; align-items: center; gap: 6px; padding: 6px 12px 6px 8px; border-radius: 999px;
-  background: color-mix(in srgb, var(--ff-dusk) 85%, transparent); font-weight: 700; font-size: 15px;
+  height: 36px; box-sizing: border-box; display: flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 18px;
+  border: 2px solid var(--ff-sumi); color: var(--ff-sumi); font-weight: 700; font-size: 15px;
 }
-.ff-coin { width: 18px; height: 18px; flex-shrink: 0; border-radius: 999px; background: var(--ff-gold); box-shadow: inset 0 0 0 4px var(--ff-gold), inset 0 0 0 5.5px var(--ff-gold-edge); }
+.ff-coins .ff-coin { width: 16px; height: 16px; }
 
 .ff-title {
   grid-area: title; position: relative; margin: 0; font-family: var(--ff-font-display); font-weight: 400;
-  font-size: 30px; line-height: 1.05; color: var(--ff-glow);
+  font-size: 32px; line-height: 1.05; color: var(--ff-paper);
 }
 .ff-app[data-band='wide'] .ff-title { font-size: 28px; }
 
@@ -83,38 +83,47 @@
 .ff-board canvas { position: absolute; inset: 0; display: block; }
 
 .ff-status {
-  grid-area: status; position: relative; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;
-  background: color-mix(in srgb, var(--ff-dusk) 90%, transparent);
+  grid-area: status; position: relative; border: 2px solid var(--ff-sumi); border-radius: 12px; padding: 8px 16px;
+  display: flex; gap: 14px; align-items: center; color: var(--ff-sumi);
 }
-.ff-status[data-tone='solved'] { background: color-mix(in srgb, var(--ff-moss-lo) 95%, transparent); }
-.ff-status-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.ff-status-column { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .ff-status-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.ff-status-title { font-family: var(--ff-font-display); font-weight: 400; font-size: 18px; line-height: 1.2; color: var(--ff-paper); }
-.ff-status[data-tone='warn'] .ff-status-title { color: var(--ff-warn); }
-.ff-status[data-tone='glow'] .ff-status-title, .ff-status[data-tone='solved'] .ff-status-title { color: var(--ff-glow); }
-.ff-status-sub { font-size: 15px; line-height: 1.4; color: var(--ff-paper-quiet); }
+.ff-status-title { font-family: var(--ff-font-display); font-weight: 400; font-size: 18px; line-height: 1.2; color: var(--ff-sumi); }
+.ff-status[data-tone='warn'] .ff-status-title { color: var(--ff-rose-spiral); }
+.ff-status[data-tone='glow'] .ff-status-title { color: var(--ff-seal-ink); }
+.ff-status-sub { font-size: 14px; line-height: 1.4; color: var(--ff-sumi-soft); }
 .ff-app[data-band='wide'] .ff-status { padding: 12px 14px; }
 .ff-app[data-band='wide'] .ff-status-title { font-size: 16px; }
-.ff-app[data-band='wide'] .ff-status-sub { font-size: 14px; }
-/* Firefly jar and slots (design: jar plus slot row, chosen 2026-11-12). */
-.ff-jar { width: 44px; height: 56px; flex-shrink: 0; }
-.ff-jar svg { width: 100%; height: 100%; overflow: visible; }
-.ff-jar-glow { fill: var(--ff-glow); opacity: calc(0.12 + var(--ff-jar-fill, 1) * 0.45); filter: blur(10px); transition: opacity 400ms ease; }
-.ff-jar-glass { fill: color-mix(in srgb, var(--ff-paper) 16%, transparent); stroke: color-mix(in srgb, var(--ff-paper) 75%, transparent); stroke-width: 2.5; }
-.ff-jar-shine { fill: none; stroke: color-mix(in srgb, var(--ff-wing) 45%, transparent); stroke-width: 2.5; stroke-linecap: round; }
-.ff-jar-cork { fill: var(--ff-gold-edge); }
-.ff-jar-cork-hi { fill: var(--ff-gold); }
-.ff-jar-lid { transform-box: view-box; transform-origin: 18px 16px; }
+.ff-app[data-band='wide'] .ff-status-sub { font-size: 13px; }
+
+/* The firefly jar: a paper lantern with a light inside for each firefly left, plus the
+   slot row (design: Round 4, chosen 2026-11-12). */
+.ff-jar { width: 48px; height: 66px; flex-shrink: 0; }
+.ff-lantern { width: 100%; height: 100%; overflow: visible; }
+.ff-lantern-halo { fill: var(--ff-gold); opacity: calc(0.06 + var(--ff-jar-fill, 1) * 0.14); transition: opacity 400ms ease; }
+.ff-lantern-paper { fill: var(--ff-gold); stroke: var(--ff-sumi); stroke-width: 2; }
+.ff-lantern-inner { fill: var(--ff-jar-paper); transition: fill 400ms ease; }
+.ff-lantern-ribs { fill: none; stroke: var(--ff-jar-rib); stroke-width: 1.6; }
+.ff-lantern-cap { fill: var(--ff-sumi); }
+.ff-lantern-hook { stroke: var(--ff-sumi); stroke-width: 1.6; }
+.ff-lantern-tassel { stroke: var(--ff-seal); stroke-width: 2.6; stroke-linecap: round; }
+.ff-lantern-light { fill: var(--ff-glow); stroke: var(--ff-gold-edge); stroke-width: 1; opacity: 0; transition: opacity 250ms ease; }
+.ff-lantern-light.ff-on { opacity: 1; }
+/* Empty: the paper dims (and shakes when a move needs a firefly that isn't there). */
+.ff-jar[data-empty='true'] .ff-lantern-inner, .ff-jar[data-empty='true'] .ff-lantern-paper { fill: var(--ff-paper-dim); }
+.ff-jar-lid { transform-box: view-box; transform-origin: 14px 10px; }
 .ff-jar-open .ff-jar-lid { animation: ff-lid 620ms ease-in-out; }
 .ff-jar-shake { animation: ff-shake 420ms ease-in-out; }
-@keyframes ff-lid { 0%, 100% { transform: none; } 25%, 70% { transform: translate(-3px, -9px) rotate(-22deg); } }
+@keyframes ff-lid { 0%, 100% { transform: none; } 25%, 70% { transform: translate(-2px, -6px) rotate(-16deg); } }
 @keyframes ff-shake { 0%, 100% { transform: none; } 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
-.ff-jar-count { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-.ff-jar-line { font-size: 14px; font-weight: 700; color: var(--ff-paper-quiet); }
-.ff-slots { display: flex; flex-wrap: wrap; gap: 5px; }
-.ff-slot { width: 16px; height: 16px; box-sizing: border-box; border-radius: 999px; border: 2px solid var(--ff-dusk-quiet); transition: background 200ms ease, border-color 200ms ease; }
-.ff-slot[data-on='true'] { border-color: var(--ff-gold); background: var(--ff-glow); box-shadow: 0 0 8px 2px color-mix(in srgb, var(--ff-glow) 55%, transparent); }
-.ff-status-row { align-items: center; }
+/* The count line and the slots on their own rows, always: side by side, a longer line ("All 5
+   fireflies are out") could push the slots onto a second row mid-play, and any change in the
+   card's height resizes the board, which cancels a firefly in flight. */
+.ff-jar-count { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ff-jar-line { font-size: 13px; color: var(--ff-sumi-quiet); }
+.ff-slots { display: flex; flex-wrap: wrap; gap: 4px; }
+.ff-slot { width: 14px; height: 14px; box-sizing: border-box; border-radius: 999px; border: 1.5px solid var(--ff-sumi); transition: background 200ms ease; }
+.ff-slot[data-on='true'] { background: var(--ff-gold); }
 
 /* A firefly in flight between the jar and the board. */
 .ff-flier {
@@ -136,34 +145,36 @@
 @keyframes ff-flap-l { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-28deg); } }
 @keyframes ff-flap-r { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(28deg); } }
 
-/* Hint is a secondary action: outlined, so the paid move is never the loudest thing on screen. */
-.ff-hint { border: 2px solid var(--ff-gold); background: var(--ff-dusk); color: var(--ff-glow); font-weight: 700; cursor: pointer; }
-.ff-hint:disabled { opacity: 0.5; cursor: default; }
-
-.ff-controls { grid-area: controls; position: relative; display: flex; gap: 10px; }
+/* Paper buttons; Hint is the one seal-red filled action (design: Round 4 and the play bands). */
+.ff-controls { grid-area: controls; position: relative; display: flex; gap: 12px; }
 .ff-controls button {
-  flex: 1; height: 56px; min-height: 44px; border-radius: 16px; font-weight: 700; font-size: 15px;
-  display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;
+  flex: 1; height: 52px; min-height: 44px; border-radius: 10px; border: 2px solid var(--ff-sumi); font-weight: 700; font-size: 16px;
+  display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; color: var(--ff-sumi);
 }
 .ff-app[data-band='wide'] .ff-controls button { height: auto; }
-.ff-quiet { border: 2px solid var(--ff-dusk-quiet); background: var(--ff-dusk); color: var(--ff-paper); }
-.ff-quiet:disabled { opacity: 0.5; cursor: default; }
-.ff-controls .ff-hint { flex: 1.3; }
-.ff-cost {
-  display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px 2px 4px; border-radius: 999px; font-size: 13px;
-  background: color-mix(in srgb, var(--ff-gold) 16%, transparent);
+.ff-controls button:disabled { opacity: 0.5; cursor: default; }
+.ff-controls .ff-hint { background: var(--ff-seal); color: var(--ff-on-seal); }
+.ff-cost { display: inline-flex; align-items: center; gap: 4px; }
+.ff-app[data-band='wide'] .ff-cost-sep { display: none; }
+.ff-icon {
+  width: 20px; height: 20px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round;
 }
-.ff-cost .ff-coin { width: 13px; height: 13px; }
-.ff-sheet-primary .ff-cost { background: color-mix(in srgb, var(--ff-sumi) 14%, transparent); }
-.ff-sheet-primary .ff-cost .ff-coin { background: var(--ff-sumi); box-shadow: inset 0 0 0 3px var(--ff-sumi), inset 0 0 0 4.5px var(--ff-gold); }
-.ff-icon { width: 18px; height: 18px; flex-shrink: 0; }
+.ff-i-gold { fill: var(--ff-gold); stroke: var(--ff-sumi); }
+.ff-i-seal { fill: var(--ff-seal); stroke: none; }
+.ff-i-ink { fill: currentColor; stroke: none; }
+.ff-i-slash { stroke: var(--ff-seal); }
+.ff-coin { width: 18px; height: 18px; flex-shrink: 0; }
+.ff-coin-disc { fill: var(--ff-gold); stroke: var(--ff-sumi); stroke-width: 1.6; }
+.ff-coin-rim { fill: none; stroke: var(--ff-gold-edge); stroke-width: 1; }
+.ff-coin-spiral { fill: none; stroke: var(--ff-sumi); stroke-width: 1.3; stroke-linecap: round; }
 
 .ff-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* Reduced motion follows the in-game setting, which itself defaults to the device's
    (data-motion is set by the controller), so "Off" can override a device preference too. */
 .ff-app[data-motion='reduced'] .ff-star { animation: none; }
-.ff-app[data-motion='reduced'] .ff-slot, .ff-app[data-motion='reduced'] .ff-jar-glow { transition: none; }
+.ff-app[data-motion='reduced'] .ff-slot, .ff-app[data-motion='reduced'] .ff-lantern-halo,
+.ff-app[data-motion='reduced'] .ff-lantern-inner, .ff-app[data-motion='reduced'] .ff-lantern-light { transition: none; }
 .ff-app[data-motion='reduced'] .ff-jar-open .ff-jar-lid, .ff-app[data-motion='reduced'] .ff-jar-shake { animation: none; }
 
 /* Wide band: the narrow info panel puts coins above the chapter label, and the
@@ -177,52 +188,83 @@
 .ff-fail h1 { margin: 0; font-family: var(--ff-font-display); font-weight: 400; color: var(--ff-glow); }
 .ff-fail p { margin: 0; color: var(--ff-paper-quiet); max-width: 32em; }
 
-/* Sheets (hint, settings): design baseline HintDialog and Settings artboards. */
+/* Sheets (hint, settings) on paper: design canvas "Hint sheet" and "Settings and play log". */
 .ff-backdrop {
   position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
-  background: color-mix(in srgb, var(--ff-night) 62%, transparent);
+  background: color-mix(in srgb, var(--ff-night-deep) 55%, transparent);
 }
 .ff-backdrop[hidden] { display: none; }
 .ff-sheet {
-  box-sizing: border-box; width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto;
-  background: var(--ff-dusk); border-radius: 28px 28px 0 0; box-shadow: inset 0 2px 0 var(--ff-dusk-quiet);
-  padding: 12px 20px max(28px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 14px;
+  box-sizing: border-box; width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto; color: var(--ff-sumi);
+  border: 2px solid var(--ff-sumi); border-bottom: 0; border-radius: 20px 20px 0 0;
+  padding: 12px 20px max(26px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 12px;
 }
-.ff-app[data-band='wide'] .ff-sheet { border-radius: 28px; margin-bottom: 16px; }
-.ff-sheet-handle { align-self: center; width: 44px; height: 5px; border-radius: 999px; background: var(--ff-dusk-quiet); }
-.ff-sheet-head { display: flex; gap: 14px; align-items: center; }
-.ff-sheet-text { display: flex; flex-direction: column; gap: 4px; }
-.ff-sheet-title { margin: 0; font-family: var(--ff-font-display); font-weight: 400; font-size: 24px; color: var(--ff-glow); }
-.ff-sheet-sub, .ff-sheet-note { margin: 0; font-size: 15px; line-height: 1.45; color: var(--ff-paper-quiet); }
-.ff-sheet-line { margin: 0; font-size: 16px; font-weight: 700; color: var(--ff-paper); }
+.ff-app[data-band='wide'] .ff-sheet { border-bottom: 2px solid var(--ff-sumi); border-radius: 20px; margin-bottom: 16px; }
+.ff-sheet-handle { align-self: center; width: 44px; height: 5px; border-radius: 3px; background: var(--ff-paper-handle); }
+.ff-sheet-head { display: flex; gap: 10px; align-items: center; }
+.ff-sheet-badge {
+  width: 34px; height: 34px; flex-shrink: 0; box-sizing: border-box; border-radius: 50%; border: 1.5px dashed var(--ff-seal);
+  display: flex; align-items: center; justify-content: center; color: var(--ff-sumi);
+}
+.ff-sheet-badge .ff-icon { width: 26px; height: 26px; }
+.ff-sheet-title { margin: 0; font-family: var(--ff-font-display); font-weight: 400; font-size: 26px; color: var(--ff-sumi); }
+.ff-sheet-sub, .ff-sheet-note { margin: 0; font-size: 15px; line-height: 1.5; color: var(--ff-sumi-soft); }
+.ff-sheet-line { margin: 0; font-size: 15px; font-weight: 600; color: var(--ff-sumi); }
 .ff-sheet-note[hidden] { display: none; }
-.ff-sheet button { min-height: 52px; border-radius: 16px; font-weight: 700; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
-.ff-sheet-primary { border: 0; background: var(--ff-gold); color: var(--ff-sumi); }
+.ff-sheet button {
+  min-height: 52px; border-radius: 10px; font-weight: 700; font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.ff-sheet-primary { border: 2px solid var(--ff-sumi); background: var(--ff-seal); color: var(--ff-on-seal); }
 .ff-sheet-primary:disabled { opacity: 0.45; cursor: default; }
-.ff-sheet-ad { border: 2px solid var(--ff-gold); background: transparent; color: var(--ff-glow); }
+.ff-sheet-primary .ff-cost { gap: 4px; padding: 2px 8px; border-radius: 12px; background: var(--ff-paper); color: var(--ff-sumi); font-size: 14px; }
+.ff-sheet-primary .ff-cost .ff-coin { width: 14px; height: 14px; }
+.ff-sheet-ad, .ff-sheet-quiet { border: 2px solid var(--ff-sumi); color: var(--ff-sumi); }
 .ff-sheet-ad[hidden] { display: none; }
-.ff-sheet-quiet { border: 2px solid var(--ff-dusk-quiet); background: var(--ff-night-deep); color: var(--ff-paper); }
-.ff-section { display: flex; flex-direction: column; gap: 10px; }
-.ff-section-title { margin: 0; font-size: 16px; font-weight: 700; color: var(--ff-paper); }
-.ff-segments { display: flex; background: var(--ff-night-deep); border-radius: 14px; padding: 4px; gap: 4px; }
-.ff-sheet .ff-segment { flex: 1; min-height: 44px; border-radius: 11px; border: 0; background: transparent; color: var(--ff-paper); font-size: 14px; }
-.ff-sheet .ff-segment[aria-checked='true'] { background: var(--ff-gold); color: var(--ff-sumi); }
+.ff-sheet .ff-sheet-link {
+  min-height: 46px; border: 0; background: transparent; color: var(--ff-sumi-soft);
+  text-decoration: underline; text-underline-offset: 4px;
+}
+.ff-section { display: flex; flex-direction: column; gap: 8px; }
+.ff-section-title { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 700; color: var(--ff-sumi); }
+.ff-rule { width: 100%; margin: 0; border: 0; border-top: 1.5px dashed var(--ff-paper-rule); }
+.ff-segments { display: flex; border: 2px solid var(--ff-sumi); border-radius: 10px; overflow: hidden; }
+.ff-sheet .ff-segment {
+  flex: 1; min-height: 46px; border-radius: 0; border: 0; background: transparent; color: var(--ff-sumi); font-size: 16px;
+}
+.ff-sheet .ff-segment[aria-checked='true'] { background: var(--ff-sumi); color: var(--ff-paper); }
 
 .ff-gear {
-  width: 44px; height: 44px; flex-shrink: 0; border-radius: 14px; border: 2px solid var(--ff-dusk-quiet);
-  background: var(--ff-dusk); color: var(--ff-paper); display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer;
+  width: 44px; height: 44px; flex-shrink: 0; box-sizing: border-box; border-radius: 10px; border: 2px solid var(--ff-sumi);
+  color: var(--ff-sumi); display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer;
 }
-.ff-gear .ff-icon { width: 20px; height: 20px; }
+.ff-gear .ff-icon { width: 22px; height: 22px; }
+
+/* Paper surfaces: the paper token with the grain baked at startup (main.ts) laid over it. */
+.ff-status, .ff-sheet, .ff-coins, .ff-gear, .ff-controls button:not(.ff-hint), .ff-sheet-ad, .ff-sheet-quiet {
+  background: var(--ff-paper-texture, none) 0 0 / 128px 128px, var(--ff-paper);
+}
 
 /* The status card keeps its height from move to move (room for a one-line title and a two-line
-   sub-line; three on the narrowest phones), so the board above it never jumps when the wording
-   changes. The wording is held to that budget by test/status.test.ts ("fits the card"). */
+   sub-line), so the board above it never resizes when the wording changes: a resize cancels a
+   firefly in flight. Measured in Chromium with the shipped fonts over every status the game can
+   show (test/status.test.ts holds the wording to the budget): every title fits one line from 264 px
+   of text width at 18 px, or from 236 px at 16 px; every sub-line fits two lines from 244 px.
+   So narrow cards shrink the lantern a little and then the title; below 244 px of text (phones
+   narrower than 360 px) the card reserves a third sub-line instead. */
 .ff-status { container: ff-status / inline-size; }
+.ff-status-column { container: ff-text / inline-size; }
 .ff-app[data-band='tall'] .ff-status-text, .ff-app[data-band='square'] .ff-status-text {
-  min-height: calc(18px * 1.2 + 2px + 15px * 1.4 * 2);
+  min-height: calc(18px * 1.2 + 2px + 14px * 1.4 * 2);
 }
-@container ff-status (max-width: 289px) {
-  .ff-app:not([data-band='wide']) .ff-status-text { min-height: calc(18px * 1.2 + 2px + 15px * 1.4 * 3); }
+@container ff-status (max-width: 340px) {
+  .ff-jar { width: 40px; height: 55px; margin-right: -4px; }
+}
+@container ff-text (max-width: 263px) {
+  .ff-app:not([data-band='wide']) .ff-status-title { font-size: 16px; }
+}
+@container ff-text (max-width: 243px) {
+  .ff-app:not([data-band='wide']) .ff-status-text { min-height: calc(18px * 1.2 + 2px + 14px * 1.4 * 3); }
 }
 
 /* Garden map (design baseline: Map artboard). A screen over the play screen. */
@@ -371,3 +413,6 @@
 .ff-app[data-motion='reduced'] .ff-counting .ff-ring-fill,
 .ff-app[data-motion='reduced'] .ff-enter .ff-complete-chip { animation: none; }
 .ff-app[data-motion='reduced'] .ff-burst { display: none; }
+
+/* Focus on paper: the glow ring (theme.css) vanishes against paper, so inside a sheet the ring is ink. */
+.ff-sheet :focus-visible { outline-color: var(--ff-sumi); }

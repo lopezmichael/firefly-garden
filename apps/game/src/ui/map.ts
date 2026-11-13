@@ -1,3 +1,4 @@
+import { coin, icon } from './icons.ts';
 /**
  * The garden map (design baseline: Map artboard): the area's progress, one bed
  * per chapter (glowing, in progress, still dark), the next area as a teaser,
@@ -52,12 +53,11 @@ export class MapScreen {
     const title = el('h1', 'ff-map-title', 'Firefly Garden');
     title.id = 'ff-map-title';
     const coinBox = el('div', 'ff-coins');
-    coinBox.append(el('span', 'ff-coin'), this.coins);
+    coinBox.append(coin(), this.coins);
     const gear = el('button', 'ff-gear');
     gear.type = 'button';
     gear.setAttribute('aria-label', 'Settings');
-    // Same cog as the play screen's settings button (constant markup, never game data).
-    gear.innerHTML = '<svg class="ff-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path></svg>';
+    gear.append(icon('settings'));
     gear.addEventListener('click', () => handlers.settings());
     const right = el('div', 'ff-map-top-right');
     right.append(coinBox, gear);

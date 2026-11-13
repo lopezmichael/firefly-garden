@@ -29,6 +29,7 @@
   /* Seal red: the one filled action, the hint halo and seal */
   --ff-seal: #b8432c;
   --ff-on-seal: #f8f0dd;
+  --ff-seal-ink: #993624;      /* seal red deep enough for text on paper (hint status) */
 
   /* Dark tile */
   --ff-dusk: #2c3c5f;          /* card face */
