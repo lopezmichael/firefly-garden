@@ -96,7 +96,7 @@ export class GameApp {
       next: () => this.advance(),
       settings: () => this.openSettings(),
       map: () => this.openMap(),
-    });
+    }, palette);
     this.mapScreen = new MapScreen({
       continue: () => this.leaveMap(),
       settings: () => this.openSettings(),

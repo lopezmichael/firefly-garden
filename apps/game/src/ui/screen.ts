@@ -1,7 +1,10 @@
 import type { Band } from '../view/layout.ts';
 import { CompleteCard } from './complete.ts';
 import type { CompleteView } from './complete.ts';
-import { coin, icon, LANTERN_LIGHTS, lantern } from './icons.ts';
+import { coin, icon, LANTERN_LIGHTS, lantern, moon } from './icons.ts';
+import { hillsFor, HILLS } from '../view/layout.ts';
+import { drawScenery } from '../view/art/scenery.ts';
+import type { Palette } from '../view/theme.ts';
 
 /**
  * The play screen's DOM: top bar, title, status card and controls around the
@@ -53,17 +56,23 @@ export class PlayScreen {
   private readonly announcer = el('div', 'ff-sr');
   private mapButton: HTMLButtonElement | null = null;
   private readonly complete: CompleteCard;
+  private readonly scene = el('canvas', 'ff-scene');
+  private readonly motes = el('div', 'ff-motes');
+  private sceneFrame = 0;
+  private sceneDpr = 0;
+  private resolutionQuery: MediaQueryList | null = null;
 
-  constructor(handlers: ScreenHandlers) {
+  constructor(handlers: ScreenHandlers, private readonly palette: Palette) {
+    // The scenery (theme plan, milestone 6): night, grain and hills baked into one canvas,
+    // the crescent moon and drifting motes as DOM over it.
     const sky = el('div', 'ff-sky');
     sky.setAttribute('aria-hidden', 'true');
-    for (let i = 0; i < 16; i++) {
-      const s = el('span', 'ff-star');
-      const size = i % 3 === 0 ? 3 : 2;
-      s.style.cssText = `left:${(i * 89 + 23) % 100}%;top:${(i * 47 + 11) % 30}%;width:${size}px;height:${size}px;--dur:${(2 + (i % 4) * 0.7).toFixed(1)}s;--delay:${((i * 0.37) % 3).toFixed(2)}s`;
-      sky.append(s);
+    sky.append(this.scene, moon(), this.motes);
+    for (let i = 0; i < HILLS.motes; i++) {
+      const m = el('span', 'ff-mote');
+      m.style.setProperty('--ff-mote-delay', `${(-i * 1.3).toFixed(1)}s`);
+      this.motes.append(m);
     }
-    sky.append(el('div', 'ff-moon'));
 
     const side = el('section', 'ff-side');
     const top = el('header', 'ff-top');
@@ -127,16 +136,72 @@ export class PlayScreen {
 
     this.root.append(sky, side, this.boardHost, controls, this.announcer);
     this.setBand('tall');
+    // Redraw the scenery when the screen or the card under the hills changes size or place.
+    const watch = new ResizeObserver(() => this.queueScene());
+    watch.observe(this.root);
+    watch.observe(this.status);
+    watch.observe(this.complete.root);
   }
 
   setBand(band: Band): void {
     this.root.dataset.band = band;
+    this.queueScene();
     // Visual order differs by band: the hint comes first in the wide column, last in a row.
     const controls = this.hintButton.parentElement;
     if (!controls) return;
     if (band === 'wide') controls.prepend(this.hintButton);
     else controls.append(this.hintButton);
   }
+
+  private queueScene(): void {
+    if (this.sceneFrame) return;
+    this.sceneFrame = requestAnimationFrame(() => {
+      this.sceneFrame = 0;
+      this.drawScene();
+    });
+  }
+
+  /** Bake night, grain and hills for the current size; place the motes over the ridges. */
+  private drawScene(): void {
+    const w = this.root.clientWidth, h = this.root.clientHeight;
+    if (w < 1 || h < 1) return;
+    const res = Math.min(2, window.devicePixelRatio || 1);
+    // Reallocate the backing store only when the size changes; the scene repaints every pixel anyway.
+    const cw = Math.round(w * res), ch = Math.round(h * res);
+    if (this.scene.width !== cw) this.scene.width = cw;
+    if (this.scene.height !== ch) this.scene.height = ch;
+    const ctx = this.scene.getContext('2d');
+    if (!ctx) return;
+    const origin = this.root.getBoundingClientRect();
+    const cardEl = this.status.offsetHeight > 0 ? this.status : this.complete.root;
+    const r = cardEl.getBoundingClientRect();
+    const card = { left: r.left - origin.left, top: r.top - origin.top, right: r.right - origin.left, bottom: r.bottom - origin.top };
+    const band = (this.root.dataset.band ?? 'tall') as Band;
+    const hills = hillsFor(band, w, h, card);
+    ctx.setTransform(res, 0, 0, res, 0, 0);
+    drawScenery(ctx, this.palette.css, w, h, hills);
+    [...this.motes.children].forEach((m, i) => {
+      const p = hills.motes[i];
+      if (p && m instanceof HTMLElement) m.style.transform = `translate(${p.x.toFixed(0)}px, ${p.y.toFixed(0)}px)`;
+    });
+    this.motes.dataset.placed = '';
+    this.watchResolution();
+  }
+
+  /**
+   * Redraw when the screen's pixel density changes (a window dragged between a 1x and a 2x
+   * monitor changes it without resizing anything the ResizeObserver sees).
+   */
+  private watchResolution(): void {
+    const dpr = window.devicePixelRatio || 1;
+    if (this.sceneDpr === dpr) return;
+    this.sceneDpr = dpr;
+    this.resolutionQuery?.removeEventListener('change', this.onResolution);
+    this.resolutionQuery = window.matchMedia(`(resolution: ${dpr}dppx)`);
+    this.resolutionQuery.addEventListener('change', this.onResolution);
+  }
+
+  private readonly onResolution = () => this.queueScene();
 
   setReducedMotion(reduced: boolean): void {
     this.root.dataset.motion = reduced ? 'reduced' : 'full';

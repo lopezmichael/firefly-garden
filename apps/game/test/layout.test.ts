@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bandFor, fitBoard, flightPath, keepOrTurn, MIN_TAP, orientFor } from '../src/view/layout.ts';
+import { bandFor, fitBoard, flightPath, HILLS, hillsFor, keepOrTurn, MIN_TAP, orientFor } from '../src/view/layout.ts';
 
 describe('layout bands follow the screen shape', () => {
   it.each([
@@ -58,5 +58,40 @@ describe('jar flight path', () => {
     expect(p[0]).toEqual(from);
     expect(p[p.length - 1]).toEqual(to);
     expect(Math.min(...p.map((q) => q.y))).toBeLessThan(200);
+  });
+});
+
+describe('hills sit behind the status card', () => {
+  const card = { left: 16, top: 600, right: 374, bottom: 720 };
+
+  it('rise just above the card and span the screen in tall and square', () => {
+    for (const band of ['tall', 'square'] as const) {
+      const h = hillsFor(band, 390, 844, card);
+      expect(h.left).toBe(0);
+      expect(h.right).toBe(390);
+      expect(h.mossTop).toBeLessThan(card.top);
+      expect(h.duskTop).toBeLessThan(h.mossTop);
+      expect(h.bottom).toBe(844);
+    }
+  });
+
+  it('stay in the side column, a little past it, in wide', () => {
+    const side = { left: 16, top: 520, right: 276, bottom: 700 };
+    const h = hillsFor('wide', 1280, 720, side);
+    expect(h.right).toBe(side.right + HILLS.wideReach);
+    expect(h.right).toBeLessThan(1280 / 2);
+  });
+
+  it('never start above the screen, and keep their motes over the hills', () => {
+    const h = hillsFor('tall', 390, 844, { left: 16, top: 20, right: 374, bottom: 140 });
+    expect(h.duskTop).toBeGreaterThanOrEqual(0);
+    expect(h.mossTop).toBeGreaterThanOrEqual(0);
+    const g = hillsFor('tall', 390, 844, card);
+    expect(g.motes).toHaveLength(HILLS.motes);
+    for (const m of g.motes) {
+      expect(m.x).toBeGreaterThanOrEqual(g.left - 12);
+      expect(m.x).toBeLessThanOrEqual(g.right + 12);
+      expect(m.y).toBeLessThan(g.mossTop + 30);
+    }
   });
 });

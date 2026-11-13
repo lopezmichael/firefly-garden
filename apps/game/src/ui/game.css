@@ -45,20 +45,25 @@
 .ff-app[data-band='wide'] .ff-controls button { flex: 0 0 64px; flex-direction: column; gap: 4px; font-size: 13px; }
 .ff-app[data-band='wide'] .ff-controls .ff-hint { flex-basis: 84px; }
 
-.ff-sky { position: absolute; inset: 0; pointer-events: none; }
-.ff-star {
-  position: absolute; border-radius: 999px; background: var(--ff-glow); opacity: 0.7;
-  animation: ff-star var(--dur) ease-in-out var(--delay) infinite;
+.ff-sky { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+/* Night, grain and hills, baked by screen.ts (view/art/scenery.ts) whenever the layout changes. */
+.ff-scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.ff-moon { position: absolute; right: 28px; top: 64px; width: 50px; height: 48px; }
+.ff-moon-face { fill: var(--ff-paper); opacity: 0.92; }
+.ff-app[data-band='square'] .ff-moon { top: 64px; right: 48px; }
+.ff-app[data-band='wide'] .ff-moon { right: auto; left: 200px; top: 84px; width: 42px; height: 40px; }
+/* Firefly lights drifting over the hills; still under reduced motion. */
+/* Hidden until the first scene draw has placed them (screen.ts sets data-placed). */
+.ff-motes { position: absolute; inset: 0; visibility: hidden; }
+.ff-motes[data-placed] { visibility: visible; }
+.ff-mote { position: absolute; left: -6px; top: -6px; width: 12px; height: 12px; }
+/* The light is on ::after, so the drift (transform) never fights the placement on the span. */
+.ff-mote::after {
+  content: ''; position: absolute; inset: 0; border-radius: 50%;
+  background: radial-gradient(circle, var(--ff-glow) 0, color-mix(in srgb, var(--ff-glow-soft) 60%, transparent) 40%, transparent 70%);
+  animation: ff-mote 5s ease-in-out var(--ff-mote-delay, 0s) infinite;
 }
-.ff-moon {
-  /* A crescent: the lit edge is an inset shadow on a transparent disc. */
-  position: absolute; right: 28px; top: 70px; width: 40px; height: 40px; border-radius: 999px;
-  background: transparent;
-  box-shadow: inset -11px 5px 0 0 var(--ff-paper), 6px -2px 26px -6px color-mix(in srgb, var(--ff-paper) 35%, transparent);
-  transform: rotate(-18deg);
-}
-.ff-app[data-band='square'] .ff-moon { top: 18px; right: 50%; margin-right: -20px; }
-@keyframes ff-star { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+@keyframes ff-mote { 0%, 100% { transform: translate(0, 0); opacity: 0.9; } 50% { transform: translate(3px, -6px); opacity: 0.5; } }
 
 .ff-top { grid-area: top; position: relative; display: flex; align-items: center; gap: 10px; }
 .ff-chapter { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
@@ -152,7 +157,10 @@
   display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; color: var(--ff-sumi);
 }
 .ff-app[data-band='wide'] .ff-controls button { height: auto; }
-.ff-controls button:disabled { opacity: 0.5; cursor: default; }
+/* Disabled stays opaque paper (the hills show through a see-through button); the ink fades instead. */
+.ff-controls button:disabled { cursor: default; color: color-mix(in srgb, var(--ff-sumi) 40%, var(--ff-paper)); border-color: color-mix(in srgb, var(--ff-sumi) 40%, var(--ff-paper)); }
+.ff-controls button:disabled .ff-icon * { opacity: 0.45; }
+.ff-controls .ff-hint:disabled { color: var(--ff-on-seal); border-color: var(--ff-sumi); opacity: 0.5; }
 .ff-controls .ff-hint { background: var(--ff-seal); color: var(--ff-on-seal); }
 .ff-cost { display: inline-flex; align-items: center; gap: 4px; }
 .ff-app[data-band='wide'] .ff-cost-sep { display: none; }
@@ -172,7 +180,7 @@
 
 /* Reduced motion follows the in-game setting, which itself defaults to the device's
    (data-motion is set by the controller), so "Off" can override a device preference too. */
-.ff-app[data-motion='reduced'] .ff-star { animation: none; }
+.ff-app[data-motion='reduced'] .ff-mote::after { animation: none; }
 .ff-app[data-motion='reduced'] .ff-slot, .ff-app[data-motion='reduced'] .ff-lantern-halo,
 .ff-app[data-motion='reduced'] .ff-lantern-inner, .ff-app[data-motion='reduced'] .ff-lantern-light { transition: none; }
 .ff-app[data-motion='reduced'] .ff-jar-open .ff-jar-lid, .ff-app[data-motion='reduced'] .ff-jar-shake { animation: none; }
@@ -182,7 +190,6 @@
 .ff-app[data-band='wide'] .ff-top { flex-wrap: wrap; }
 .ff-app[data-band='wide'] .ff-coins { order: -1; }
 .ff-app[data-band='wide'] .ff-chapter { flex-basis: 100%; }
-.ff-app[data-band='wide'] .ff-moon { right: 140px; top: 16px; }
 
 .ff-fail { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; text-align: center; }
 .ff-fail h1 { margin: 0; font-family: var(--ff-font-display); font-weight: 400; color: var(--ff-glow); }

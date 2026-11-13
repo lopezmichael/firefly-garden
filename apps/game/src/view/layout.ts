@@ -99,3 +99,44 @@ export function flightPath(from: Point, to: Point, steps = 16, lift = 110): Poin
   }
   return out;
 }
+
+export interface Rect {
+  readonly left: number;
+  readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
+}
+
+/**
+ * Where the hills sit, in screen pixels: behind the status card in every band
+ * (design: Round 4 and the two play bands). The moss ridge rises just above the
+ * card and the dusk ridge behind it; in the wide band they stay in the side
+ * column (and a little past it), elsewhere they span the screen. `motes` are the
+ * drifting firefly lights over the ridges.
+ */
+export interface HillLayout {
+  readonly left: number;
+  readonly right: number;
+  /** Highest point of the far (dusk) ridge and of the near (moss) ridge. */
+  readonly duskTop: number;
+  readonly mossTop: number;
+  readonly bottom: number;
+  readonly motes: readonly Point[];
+}
+
+/** How far above the card each ridge rises, and how far past the side column the wide band's hills reach. */
+export const HILLS = { mossAbove: 46, duskAbove: 96, wideReach: 40, motes: 6 } as const;
+
+export function hillsFor(band: Band, width: number, height: number, card: Rect): HillLayout {
+  const left = 0;
+  const right = band === 'wide' ? Math.min(width, card.right + HILLS.wideReach) : width;
+  const mossTop = Math.max(0, card.top - HILLS.mossAbove);
+  const duskTop = Math.max(0, card.top - HILLS.duskAbove);
+  // Motes drift in the band of sky over the ridges, spread evenly with a fixed jitter.
+  const motes: Point[] = [];
+  for (let i = 0; i < HILLS.motes; i++) {
+    const t = (i + 0.5) / HILLS.motes;
+    motes.push({ x: left + (right - left) * t + ((i * 37) % 23) - 11, y: duskTop - 18 + ((i * 53) % 44) });
+  }
+  return { left, right, duskTop, mossTop, bottom: height, motes };
+}

@@ -74,3 +74,8 @@ export function lantern(): SVGSVGElement {
     + '<path class="ff-lantern-tassel" d="M24 61 v5"></path>'
     + '<g class="ff-jar-lid"><path class="ff-lantern-hook" d="M24 0 v4"></path><rect class="ff-lantern-cap" x="14" y="4" width="20" height="6" rx="1"></rect></g>');
 }
+
+/** The crescent moon (from the canvas's night). */
+export function moon(): SVGSVGElement {
+  return svg('304 74 50 48', 'ff-moon', '<path class="ff-moon-face" d="M330 78 a24 24 0 1 0 20 37 a18 18 0 1 1 -20 -37 z"></path>');
+}

@@ -167,11 +167,14 @@ milestone that changes what's on screen.
 
 ### 6. Scenery
 
-- [ ] Background layer behind the DOM chrome: night with grain, the crescent moon, and the hills
+- [x] Background layer behind the DOM chrome: night with grain, the crescent moon, and the hills
       (dusk and moss ridges, dot texture, roses along the ridge, drifting firefly motes) behind
-      the status card, positioned per band from `view/layout.ts`
-- [ ] Motes drift only with motion on
-- [ ] Evidence: tall, square and wide screenshots matching the canvas boards
+      the status card, positioned per band from `view/layout.ts` (`hillsFor`, tested; drawn by
+      `view/art/scenery.ts` into one canvas, redrawn when the screen or the card moves: 2 to 6 ms
+      at 4× throttle, 40 ms the very first time). The twinkling stars are gone (Round 4 has a flat,
+      grained night); disabled buttons stay opaque paper so the hills never show through
+- [x] Motes drift only with motion on
+- [x] Evidence: tall, square and wide screenshots matching the canvas boards
 
 ### 7. Solve moment and motion pass
 
