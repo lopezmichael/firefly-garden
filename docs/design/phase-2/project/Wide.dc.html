@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Firefly Garden · play, phone landscape</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&amp;family=Nunito:wght@600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#0C1A22}
+a{color:#F2C66D}a:hover{color:#FFE2A0}
+button{font-family:inherit}
+button:focus-visible{outline:3px solid #FFE7A3;outline-offset:2px}
+@keyframes ffDrop{0%{transform:translateY(-46px) scale(.55);opacity:0}55%{transform:translateY(5px) scale(1.1);opacity:1}78%{transform:translateY(-2px) scale(.97)}100%{transform:translateY(0) scale(1);opacity:1}}
+@keyframes ffBob{0%,100%{transform:translateY(-4px)}50%{transform:translateY(3px)}}
+@keyframes ffShadow{0%,100%{transform:scale(.75);opacity:.25}50%{transform:scale(1);opacity:.45}}
+@keyframes ffFlutter{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.45)}}
+@keyframes ffHalo{0%,100%{transform:scale(.85);opacity:.55}50%{transform:scale(1.15);opacity:.95}}
+@keyframes ffFlicker{0%,100%{opacity:1}30%{opacity:.35}45%{opacity:.95}70%{opacity:.45}}
+@keyframes ffMote{0%{transform:translateY(0) scale(.5);opacity:0}20%{opacity:1}100%{transform:translateY(-38px) scale(1);opacity:0}}
+@keyframes ffTwinkle{0%,100%{transform:scale(.55) rotate(0deg);opacity:.55}50%{transform:scale(1.1) rotate(25deg);opacity:1}}
+@keyframes ffBloom{0%{transform:scale(0)}70%{transform:scale(1.25)}100%{transform:scale(1)}}
+@keyframes ffBurst{0%{transform:translate(0,0) scale(.4);opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(1.1);opacity:0}}
+@keyframes ffStar{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes ffRing{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+@keyframes ffGhost{0%{transform:translateY(0) scale(1);opacity:.9}100%{transform:translateY(-34px) scale(.7);opacity:0}}
+@keyframes ffPulse{0%,100%{outline-color:rgba(255,231,163,.35)}50%{outline-color:rgba(255,231,163,1)}}
+.ff-wing{transform-box:fill-box;transform-origin:50% 100%;animation:ffFlutter .16s ease-in-out infinite}
+.ff-rm .ff-wing{animation:none}
+@media (prefers-reduced-motion: reduce){*{animation:none !important}}
+</style>
+</helmet>
+<div class="{{rmClass}}" style="width: 844px; height: 390px; box-sizing: border-box; position: relative; background: linear-gradient(180deg, #0C1A22 0%, #13252C 50%, #2A1B26 100%); color: #F3EEDC; font-family: 'Nunito', system-ui, sans-serif; padding: 16px 20px; display: flex; flex-direction: row; gap: 20px; overflow: hidden">
+
+  <div aria-hidden="true" style="position: absolute; inset: 0; pointer-events: none">
+    <sc-for list="{{stars}}" as="s" hint-placeholder-count="14">
+      <span style="position: absolute; left: {{s.x}}px; top: {{s.y}}px; width: {{s.size}}px; height: {{s.size}}px; border-radius: 999px; background: #FFF0CC; opacity: 0.7; animation: {{s.anim}}"></span>
+    </sc-for>
+    <div style="position: absolute; right: 28px; top: 70px; width: 40px; height: 40px; border-radius: 999px; background: transparent; box-shadow: inset -11px 5px 0 0 #F3E4BD, 6px -2px 26px -6px rgba(243,228,189,0.35); transform: rotate(-18deg)"></div>
+  </div>
+
+  <div style="position: relative; width: 236px; flex-shrink: 0; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; align-items: center; gap: 8px; justify-content: space-between">
+    <button type="button" aria-label="Garden map" style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 14px; border: 2px solid #33494B; background: #1B2C30; color: #F3EEDC; display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"></path><path d="M9 4v14"></path><path d="M15 6v14"></path></svg>
+    </button>
+    <div aria-label="{{coinsLabel}}" style="display: flex; align-items: center; gap: 6px; background: rgba(27,44,48,0.85); border-radius: 999px; padding: 6px 12px 6px 8px; font-weight: 800; font-size: 15px">
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="8" fill="#F2C66D"></circle><circle cx="9" cy="9" r="5" fill="none" stroke="#B8862B" stroke-width="1.5"></circle></svg>
+      <span>{{coins}}</span>
+    </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <div style="font-size: 14px; font-weight: 700; color: #B3C6BD">Garden 8 of 10</div>
+      <div style="display: flex; gap: 5px" aria-hidden="true">
+        <sc-for list="{{progress}}" as="p" hint-placeholder-count="10">
+          <span style="width: 18px; height: 6px; border-radius: 999px; background: {{p.bg}}; box-shadow: {{p.glow}}"></span>
+        </sc-for>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <h1 style="margin: 0; font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 28px; line-height: 1.05; color: #FFE7A3">The Rose Bed</h1>
+      <p style="margin: 0; font-size: 13px; line-height: 1.4; color: #CDD8CF">Plain bushes have no number. They still block light.</p>
+    </div>
+    <div style="margin-top: auto; display: flex; flex-direction: column">
+  <div role="status" style="position: relative; background: {{st.bg}}; border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px">
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <div style="font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 16px; color: {{st.color}}">{{st.title}}</div>
+        <div style="font-size: 13px; line-height: 1.35; color: #CDD8CF">{{st.sub}}</div>
+      </div>
+      <sc-if value="{{solved}}" hint-placeholder-val="{{false}}">
+        <button type="button" style="flex-shrink: 0; height: 44px; padding: 0 16px; border-radius: 12px; border: 0; background: #F2C66D; color: #2A1E08; font-weight: 800; font-size: 15px; cursor: pointer">Next garden</button>
+      </sc-if>
+    </div>
+    <div style="height: 8px; border-radius: 999px; background: #0A171B; overflow: hidden">
+      <div style="height: 8px; border-radius: 999px; background: #F2C66D; width: {{litPct}}%; transition: width 400ms ease"></div>
+    </div>
+  </div>
+
+    </div>
+  </div>
+  <div style="position: relative; flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; perspective: 900px">
+    <div style="transform: rotateX(12deg); transform-origin: 50% 100%; background: #08151A; border-radius: 24px; padding: 12px 12px 16px; box-shadow: 0 18px 30px rgba(0,0,0,0.5), inset 0 0 0 2px #1C3338; position: relative">
+      <div role="grid" aria-label="Garden board" style="display: grid; grid-template-columns: repeat({{cols}}, {{S}}px); gap: {{gap}}px">
+        <sc-for list="{{cells}}" as="cell" hint-placeholder-count="25">
+          <sc-if value="{{cell.isBush}}" hint-placeholder-val="{{false}}">
+            <div aria-label="{{cell.label}}" style="position: relative; width: {{S}}px; height: {{S}}px; border-radius: 46% 54% 44% 56% / 56% 46% 54% 44%; background: {{cell.bg}}; box-shadow: 0 {{edge}}px 0 #1A3E2C, 0 10px 14px rgba(0,0,0,0.45); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; outline: {{cell.outline}}; outline-offset: 3px; animation: {{cell.pulse}}">
+              <sc-if value="{{cell.hasClue}}" hint-placeholder-val="{{true}}">
+                <span style="font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: {{clueSize}}px; line-height: 1; color: {{cell.clueColor}}; text-shadow: 0 2px 0 rgba(0,0,0,0.3)">{{cell.clue}}</span>
+                <div style="display: flex; gap: 3px; height: {{pip}}px">
+                  <sc-for list="{{cell.pips}}" as="pip" hint-placeholder-count="1">
+                    <span style="width: {{pip}}px; height: {{pip}}px; border-radius: 999px; box-sizing: border-box; border: 1.5px solid {{pip.ring}}; background: {{pip.fill}}; box-shadow: {{pip.glow}}"></span>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{cell.hidden}}" hint-placeholder-val="{{false}}">
+                <svg width="{{leaf}}" height="{{leaf}}" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19C5 10 11 5 20 4c-1 9-6 15-15 15z" fill="#4E9A6E" stroke="#1A3E2C" stroke-width="1.5"></path><path d="M5 19L14 10" stroke="#1A3E2C" stroke-width="1.5" stroke-linecap="round"></path></svg>
+              </sc-if>
+              <sc-if value="{{cell.met}}" hint-placeholder-val="{{false}}">
+                <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true" style="position: absolute; right: -4px; top: -6px; animation: {{twinkle}}"><circle cx="4" cy="15" r="1.2" fill="#FFE7A3" fill-opacity="0.35"></circle><circle cx="7.5" cy="12.5" r="1.8" fill="#FFE7A3" fill-opacity="0.6"></circle><circle cx="12" cy="8.5" r="5.5" fill="#FFE7A3" fill-opacity="0.25"></circle><circle cx="12" cy="8.5" r="3.4" fill="#FFE7A3"></circle></svg>
+              </sc-if>
+              <sc-if value="{{solved}}" hint-placeholder-val="{{false}}">
+                <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" style="position: absolute; left: 2px; top: 0px; animation: {{bloomA}}"><circle cx="8" cy="4" r="3.2" fill="#F7A8C4"></circle><circle cx="12" cy="8" r="3.2" fill="#F7A8C4"></circle><circle cx="8" cy="12" r="3.2" fill="#F7A8C4"></circle><circle cx="4" cy="8" r="3.2" fill="#F7A8C4"></circle><circle cx="8" cy="8" r="2.4" fill="#FFE7A3"></circle></svg>
+                <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true" style="position: absolute; right: 4px; bottom: 6px; animation: {{bloomB}}"><circle cx="8" cy="4" r="3.2" fill="#FBE3C2"></circle><circle cx="12" cy="8" r="3.2" fill="#FBE3C2"></circle><circle cx="8" cy="12" r="3.2" fill="#FBE3C2"></circle><circle cx="4" cy="8" r="3.2" fill="#FBE3C2"></circle><circle cx="8" cy="8" r="2.4" fill="#FFF0CC"></circle></svg>
+              </sc-if>
+            </div>
+          </sc-if>
+          <sc-if value="{{cell.isPath}}" hint-placeholder-val="{{true}}">
+            <button type="button" aria-label="{{cell.label}}" onClick="{{cell.tap}}" style="position: relative; width: {{S}}px; height: {{S}}px; border: 0; padding: 0; border-radius: {{radius}}px; background: {{cell.bg}}; box-shadow: {{cell.shadow}}; outline: {{cell.outline}}; outline-offset: 2px; cursor: pointer">
+              <sc-for list="{{cell.motes}}" as="m" hint-placeholder-count="0">
+                <span aria-hidden="true" style="position: absolute; left: {{m.left}}%; bottom: 20%; width: {{m.size}}px; height: {{m.size}}px; border-radius: 999px; background: #FFF3C4; box-shadow: 0 0 6px 2px rgba(255,230,150,0.8); pointer-events: none; animation: ffMote {{m.dur}}s ease-out {{m.delay}}s infinite"></span>
+              </sc-for>
+              <sc-if value="{{cell.hasFly}}" hint-placeholder-val="{{false}}">
+                <sc-if value="{{cell.isHint}}" hint-placeholder-val="{{false}}">
+                  <span aria-hidden="true" style="position: absolute; inset: 6%; border-radius: 999px; border: 2.5px solid #FFE7A3; box-shadow: 0 0 10px rgba(255,231,163,0.75), inset 0 0 8px rgba(255,231,163,0.45); pointer-events: none"></span>
+                  <span aria-hidden="true" style="position: absolute; inset: 0; pointer-events: none; animation: {{ringSpin}}">
+                    <svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" style="position: absolute; right: 2px; top: 2px"><circle cx="4" cy="15" r="1.2" fill="#FFE7A3" fill-opacity="0.35"></circle><circle cx="7.5" cy="12.5" r="1.8" fill="#FFE7A3" fill-opacity="0.6"></circle><circle cx="12" cy="8.5" r="5.5" fill="#FFE7A3" fill-opacity="0.25"></circle><circle cx="12" cy="8.5" r="3.4" fill="#FFE7A3"></circle></svg>
+                  </span>
+                </sc-if>
+                <span aria-hidden="true" style="position: absolute; left: 32%; right: 32%; bottom: 12%; height: 9%; border-radius: 50%; background: rgba(40,24,0,0.55); animation: {{cell.shadowAnim}}; pointer-events: none"></span>
+                <span aria-hidden="true" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; animation: {{cell.dropAnim}}">
+                  <span style="position: relative; display: flex; align-items: center; justify-content: center; animation: {{cell.bobAnim}}">
+                    <span style="position: absolute; width: {{haloSize}}px; height: {{haloSize}}px; border-radius: 999px; background: radial-gradient(circle, {{cell.haloColor}} 0%, rgba(255,214,120,0) 70%); animation: {{cell.haloAnim}}"></span>
+                    <svg width="{{flySize}}" height="{{flySize}}" viewBox="0 0 36 36" style="position: relative; filter: drop-shadow(0 0 8px {{cell.glow}})">
+                      <ellipse class="ff-wing" cx="11" cy="13" rx="7.5" ry="5" fill="#FFFFFF" fill-opacity="0.85" transform="rotate(-25 11 13)"></ellipse>
+                      <ellipse class="ff-wing" cx="25" cy="13" rx="7.5" ry="5" fill="#FFFFFF" fill-opacity="0.85" transform="rotate(25 25 13)"></ellipse>
+                      <circle cx="18" cy="21" r="8" fill="{{cell.flyColor}}" stroke="{{cell.flyStroke}}" stroke-width="1.5"></circle>
+                      <circle cx="18" cy="12" r="4.2" fill="#3A2E1A"></circle>
+                      <circle cx="16.5" cy="11" r="1.1" fill="#FFFFFF"></circle>
+                      <circle cx="19.5" cy="11" r="1.1" fill="#FFFFFF"></circle>
+                    </svg>
+                  </span>
+                </span>
+              </sc-if>
+              <sc-if value="{{cell.isGhost}}" hint-placeholder-val="{{false}}">
+                <span aria-hidden="true" style="position: absolute; inset: 14%; border-radius: 999px; border: 2px dashed rgba(255,180,180,0.8); pointer-events: none"></span>
+                <span aria-hidden="true" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; animation: {{ghostAnim}}; opacity: {{ghostOpacity}}">
+                  <svg width="{{flySize}}" height="{{flySize}}" viewBox="0 0 36 36">
+                    <ellipse cx="11" cy="13" rx="7.5" ry="5" fill="#FFFFFF" fill-opacity="0.6" transform="rotate(-25 11 13)"></ellipse>
+                    <ellipse cx="25" cy="13" rx="7.5" ry="5" fill="#FFFFFF" fill-opacity="0.6" transform="rotate(25 25 13)"></ellipse>
+                    <circle cx="18" cy="21" r="8" fill="#FF8A8A" stroke="#8A3A3A" stroke-width="1.5"></circle>
+                    <circle cx="18" cy="12" r="4.2" fill="#3A2E1A"></circle>
+                  </svg>
+                </span>
+              </sc-if>
+            </button>
+          </sc-if>
+        </sc-for>
+      </div>
+      <sc-if value="{{showBurst}}" hint-placeholder-val="{{false}}">
+        <div aria-hidden="true" style="position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none">
+          <sc-for list="{{burst}}" as="b" hint-placeholder-count="0">
+            <span style="position: absolute; left: -4px; top: -4px; width: {{b.size}}px; height: {{b.size}}px; border-radius: 999px; background: {{b.color}}; box-shadow: 0 0 10px 3px {{b.color}}; --dx: {{b.dx}}px; --dy: {{b.dy}}px; animation: ffBurst 1.4s ease-out {{b.delay}}s both"></span>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+
+  <div style="position: relative; width: 80px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; justify-content: center">
+    <button type="button" onClick="{{hint}}" aria-label="Hint, 30 coins" style="height: 84px; border-radius: 16px; border: 2px solid #F2C66D; background: #1B2C30; color: #FFE7A3; font-weight: 800; font-size: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><ellipse cx="7.5" cy="9" rx="4.5" ry="3" transform="rotate(-25 7.5 9)"></ellipse><ellipse cx="16.5" cy="9" rx="4.5" ry="3" transform="rotate(25 16.5 9)"></ellipse><circle cx="12" cy="15" r="4.6" fill="currentColor"></circle><circle cx="12" cy="8.6" r="2.4" fill="currentColor" stroke="none"></circle></svg>
+      Hint
+      <span style="display: flex; align-items: center; gap: 3px; font-size: 12px"><svg width="12" height="12" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="8" fill="#F2C66D"></circle><circle cx="9" cy="9" r="5" fill="none" stroke="#B8862B" stroke-width="1.5"></circle></svg>30</span>
+    </button>
+    <button type="button" onClick="{{undo}}" disabled="{{noUndo}}" style="height: 64px; border-radius: 16px; border: 2px solid #33494B; background: #1B2C30; color: #F3EEDC; font-weight: 800; font-size: 13px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; opacity: {{undoOpacity}}">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5"></path><path d="M4 9h10a6 6 0 0 1 0 12h-3"></path></svg>
+      Undo
+    </button>
+    <button type="button" onClick="{{reset}}" style="height: 64px; border-radius: 16px; border: 2px solid #33494B; background: #1B2C30; color: #F3EEDC; font-weight: 800; font-size: 13px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path></svg>
+      Reset
+    </button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"reducedMotion":{"editor":"boolean","default":false},"$preview":{"width":844,"height":390}}'>
+var LEVEL = { id: "c2-26", w: 6, h: 6, b: [[5,1,null],[4,5,1],[2,1,1],[4,1,1],[1,1,null],[5,2,null],[0,0,null],[1,5,1],[1,2,null],[3,5,1],[5,0,1]], s: [[0,5],[2,2],[3,4],[4,0],[5,3]] };
+var INIT = { flies: ["2,2", "5,3", "5,5"], locked: ["0,5"], coins: 40, solvedDots: 7, current: 7 };
+var S = 48;
+var W = 844, H = 234;
+
+var DIRS = [[0,1],[0,-1],[1,0],[-1,0]];
+var NEAR = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+var GLOW = "#FFE7A3", PINK = "#FFB4B4";
+var LIT_BG = "radial-gradient(circle at 50% 42%, #FFEDB5 0%, #F5CD74 55%, #E3AE4E 100%)";
+var DARK_BG = "radial-gradient(circle at 30% 25%, #2E584C 0%, #20403A 65%, #1A352F 100%)";
+var BUSH_BG = "radial-gradient(circle at 34% 28%, #5BA97A 0%, #33724F 55%, #275B40 100%)";
+var HIDDEN_BG = "radial-gradient(circle at 34% 28%, #4A8C66 0%, #2C6446 55%, #224F38 100%)";
+function k(r, c) { return r + "," + c; }
+function makeStars(n, w, h, rm) {
+  var out = [];
+  for (var i = 0; i < n; i++) out.push({ key: String(i), x: (i * 89 + 23) % w, y: (i * 47 + 11) % h, size: i % 3 === 0 ? 3 : 2,
+    anim: rm ? "none" : "ffStar " + (2 + (i % 4) * 0.7).toFixed(1) + "s ease-in-out " + ((i * 0.37) % 3).toFixed(2) + "s infinite" });
+  return out;
+}
+var BURST = [];
+var BCOL = ["#FFE7A3", "#FFF0CC", "#F7A8C4", "#FBE3C2", "#F2C66D"];
+for (var bi = 0; bi < 22; bi++) {
+  var ang = (bi / 22) * Math.PI * 2, rad = 110 + (bi % 4) * 30;
+  BURST.push({ key: String(bi), dx: Math.round(Math.cos(ang) * rad), dy: Math.round(Math.sin(ang) * rad - 40), size: 5 + (bi % 3) * 2, color: BCOL[bi % BCOL.length], delay: ((bi % 5) * 0.06).toFixed(2) });
+}
+
+function boardModel(L, st, rm, tapFor) {
+  var bush = {};
+  L.b.forEach(function (b) { bush[k(b[0], b[1])] = b[2]; });
+  var all = {}, locked = {}, because = {};
+  st.flies.concat(st.locked).forEach(function (x) { all[x] = true; });
+  st.locked.forEach(function (x) { locked[x] = true; });
+  (st.because || []).forEach(function (x) { because[x] = true; });
+  var lit = {}, conflict = {};
+  Object.keys(all).forEach(function (x) {
+    var p = x.split(","), r = +p[0], c = +p[1];
+    lit[x] = true;
+    DIRS.forEach(function (d) {
+      var rr = r + d[0], cc = c + d[1];
+      while (rr >= 0 && rr < L.h && cc >= 0 && cc < L.w && !(k(rr, cc) in bush)) {
+        var y = k(rr, cc); lit[y] = true; if (all[y]) conflict[x] = true; rr += d[0]; cc += d[1];
+      }
+    });
+  });
+  var cells = [], total = 0, nlit = 0, over = false, ok = true;
+  for (var r = 0; r < L.h; r++) {
+    for (var c = 0; c < L.w; c++) {
+      var x = k(r, c);
+      if (x in bush) {
+        var want = bush[x];
+        var hl = because[x] ? "2px dashed #FFE7A3" : "none";
+        var pulse = because[x] && !rm ? "ffPulse 1.2s ease-in-out infinite" : "none";
+        if (want === null) {
+          cells.push({ key: x, isBush: true, isPath: false, hasClue: false, hidden: true, met: false, pips: [], bg: HIDDEN_BG, outline: hl, pulse: pulse, label: "Bush with no number" });
+          continue;
+        }
+        var have = 0;
+        NEAR.forEach(function (d) { if (all[k(r + d[0], c + d[1])]) have++; });
+        var s = have > want ? "over" : have === want ? "met" : "under";
+        if (s !== "met") ok = false;
+        if (s === "over") over = true;
+        var pips = [];
+        for (var i = 0; i < want; i++) {
+          var on = i < have;
+          pips.push({ key: String(i), ring: s === "over" ? PINK : GLOW, fill: s === "over" ? PINK : (on ? GLOW : "transparent"), glow: on && s !== "over" ? "0 0 6px rgba(255,231,163,0.9)" : "none" });
+        }
+        cells.push({ key: x, isBush: true, isPath: false, hasClue: true, hidden: false, clue: String(want), pips: pips, bg: BUSH_BG, outline: hl, pulse: pulse,
+          met: s === "met" && want > 0, clueColor: s === "over" ? PINK : (s === "met" ? "#F2C66D" : "#FFFFFF"),
+          label: "Bush wants " + want + ", has " + have });
+      } else {
+        total++;
+        var isLit = !!lit[x];
+        if (isLit) nlit++;
+        var fly = !!all[x], hintF = !!locked[x], bad = !!conflict[x];
+        var delay = (((r * 7 + c * 5) % 8) * 0.3).toFixed(2);
+        var motes = [];
+        if (isLit && !fly && !rm) {
+          for (var mi = 0; mi < 2; mi++) motes.push({ key: String(mi), left: 18 + ((r * 37 + c * 53 + mi * 41) % 60), size: mi === 0 ? 3 : 2, dur: (2.4 + ((r + c + mi) % 3) * 0.6).toFixed(1), delay: (((r * 13 + c * 7 + mi * 11) % 10) * 0.28).toFixed(2) });
+        }
+        cells.push({
+          key: x, isBush: false, isPath: true, hasFly: fly, isHint: hintF, isGhost: st.ghost === x,
+          bg: isLit ? LIT_BG : DARK_BG,
+          shadow: isLit ? "0 6px 0 #A9782A, 0 0 18px rgba(255,210,120,0.45), 0 10px 14px rgba(0,0,0,0.35)" : "0 6px 0 #11241F, 0 10px 14px rgba(0,0,0,0.45)",
+          outline: because[x] ? "2px dashed #FFE7A3" : "none",
+          motes: motes,
+          dropAnim: rm ? "none" : "ffDrop 480ms cubic-bezier(.3,1.3,.5,1) both",
+          bobAnim: rm ? "none" : (bad ? "ffBob 2.6s ease-in-out " + delay + "s infinite, ffFlicker .9s linear infinite" : "ffBob 2.6s ease-in-out " + delay + "s infinite"),
+          shadowAnim: rm ? "none" : "ffShadow 2.6s ease-in-out " + delay + "s infinite",
+          haloAnim: rm ? "none" : "ffHalo 2.6s ease-in-out infinite",
+          haloColor: bad ? "rgba(255,122,122,0.75)" : (hintF ? "rgba(242,198,109,0.9)" : "rgba(255,226,140,0.85)"),
+          flyColor: bad ? "#FF8A8A" : (hintF ? "#F2C66D" : "#FFF3C4"),
+          flyStroke: bad ? "#8A3A3A" : (hintF ? "#8A5A10" : "#7A5413"),
+          glow: bad ? "#FF7A7A" : "#FFE08A",
+          label: (hintF ? "Hint firefly, locked" : fly ? "Remove firefly" : "Place firefly") + ", row " + (r + 1) + ", column " + (c + 1),
+          tap: tapFor(x)
+        });
+      }
+    }
+  }
+  var anyConflict = Object.keys(conflict).length > 0;
+  var solved = total === nlit && !anyConflict && ok;
+  return { cells: cells, solved: solved, anyConflict: anyConflict, over: over, dark: total - nlit, litPct: Math.round(nlit / total * 100) };
+}
+
+function statusFor(m, st) {
+  if (m.solved) return { title: "The garden is glowing!", sub: "Solved · +10 coins", color: GLOW, bg: "rgba(43,59,42,0.95)" };
+  if (st.msg) return { title: st.msg.title, sub: st.msg.sub, color: st.msg.color || GLOW, bg: "rgba(27,44,48,0.9)" };
+  if (m.anyConflict) return { title: "Two fireflies can see each other", sub: "Fireflies in the same row or column need a bush between them.", color: PINK, bg: "rgba(27,44,48,0.9)" };
+  if (m.over) return { title: "A bush has too many fireflies", sub: "Diagonals count too. Its number turns pink when it's over.", color: PINK, bg: "rgba(27,44,48,0.9)" };
+  if (m.dark > 0) return { title: m.dark + (m.dark === 1 ? " path tile still dark" : " path tiles still dark"), sub: "A bush is done when all its dots are gold.", color: "#F3EEDC", bg: "rgba(27,44,48,0.9)" };
+  return { title: "Every path is lit", sub: "Now make each bush match its number.", color: "#F3EEDC", bg: "rgba(27,44,48,0.9)" };
+}
+
+class Component extends DCLogic {
+  cur() {
+    var s = this.state || {};
+    return {
+      flies: s.flies || INIT.flies.slice(), locked: s.locked || INIT.locked.slice(), hist: s.hist || [],
+      because: s.because || INIT.because || [], ghost: s.ghost || null,
+      msg: s.msg === undefined ? (INIT.msg || null) : s.msg, coins: s.coins === undefined ? INIT.coins : s.coins
+    };
+  }
+  tapFor(x) {
+    var self = this;
+    return function () {
+      var c = self.cur();
+      if (c.locked.indexOf(x) >= 0) {
+        self.setState({ msg: { title: "Hint fireflies stay put", sub: "A hint firefly is always right, so it's locked in place." }, because: [], ghost: null });
+        return;
+      }
+      var has = c.flies.indexOf(x) >= 0;
+      self.setState({ flies: has ? c.flies.filter(function (y) { return y !== x; }) : c.flies.concat([x]), hist: c.hist.concat([c.flies]), msg: null, because: [], ghost: null });
+    };
+  }
+  hint() {
+    var c = this.cur(), self = this;
+    if (c.coins < 30) { this.setState({ msg: { title: "Not enough coins", sub: "Solve a garden to earn 10 more.", color: "#F3EEDC" } }); return; }
+    var sol = LEVEL.s.map(function (p) { return k(p[0], p[1]); });
+    var wrong = c.flies.filter(function (x) { return sol.indexOf(x) < 0; });
+    if (wrong.length) {
+      this.setState({ flies: c.flies.filter(function (x) { return x !== wrong[0]; }), ghost: wrong[0], coins: c.coins - 30, because: [], hist: c.hist.concat([c.flies]),
+        msg: { title: "That firefly can't stay", sub: "It isn't part of the answer, so the hint lifted it away." } });
+      setTimeout(function () { self.setState({ ghost: null }); }, 1200);
+      return;
+    }
+    var miss = sol.filter(function (x) { return c.flies.indexOf(x) < 0 && c.locked.indexOf(x) < 0; });
+    if (!miss.length) return;
+    var t = miss[0], p = t.split(","), r = +p[0], cc = +p[1], why = [];
+    LEVEL.b.forEach(function (b) { if (b[2] !== null && Math.abs(b[0] - r) <= 1 && Math.abs(b[1] - cc) <= 1) why.push(k(b[0], b[1])); });
+    this.setState({ locked: c.locked.concat([t]), coins: c.coins - 30, because: why, ghost: null,
+      msg: why.length ? { title: "This bush needs a firefly here", sub: "The highlighted bush has only this spot left." }
+                      : { title: "This tile can only be lit from here", sub: "Nothing else can reach it." } });
+  }
+  renderVals() {
+    var self = this, rm = !!this.props.reducedMotion, c = this.cur();
+    var m = boardModel(LEVEL, c, rm, function (x) { return self.tapFor(x); });
+    var coins = c.coins + (m.solved ? 10 : 0);
+    var progress = [];
+    for (var i = 0; i < 10; i++) {
+      var done = i < INIT.solvedDots || (i === INIT.current && m.solved), now = i === INIT.current && !m.solved;
+      progress.push({ key: String(i), bg: done ? "#F2C66D" : (now ? "#F3EEDC" : "#33494B"), glow: "none" });
+    }
+    return {
+      rmClass: rm ? "ff-rm" : "", stars: makeStars(16, W, H, rm), progress: progress,
+      coins: coins, coinsLabel: coins + " coins",
+      cells: m.cells, cols: LEVEL.w, S: S, gap: Math.round(S * 0.14), radius: Math.round(S * 0.24), edge: 6,
+      clueSize: Math.round(S * 0.44), pip: Math.max(6, Math.round(S * 0.12)), leaf: Math.round(S * 0.38),
+      flySize: Math.round(S * 0.78), haloSize: Math.round(S * 1.25),
+      twinkle: rm ? "none" : "ffTwinkle 1.8s ease-in-out infinite",
+      ringSpin: rm ? "none" : "ffRing 6s linear infinite",
+      ghostAnim: rm ? "none" : "ffGhost 1.1s ease-out both", ghostOpacity: rm ? "0.5" : "1",
+      bloomA: rm ? "none" : "ffBloom 500ms ease-out 200ms both", bloomB: rm ? "none" : "ffBloom 500ms ease-out 420ms both",
+      solved: m.solved, showBurst: m.solved && !rm, burst: BURST, litPct: m.litPct,
+      st: statusFor(m, c),
+      noUndo: c.hist.length === 0, undoOpacity: c.hist.length === 0 ? "0.5" : "1",
+      undo: function () { var cc = self.cur(); if (!cc.hist.length) return; self.setState({ flies: cc.hist[cc.hist.length - 1], hist: cc.hist.slice(0, -1), msg: null, because: [], ghost: null }); },
+      reset: function () { var cc = self.cur(); self.setState({ flies: [], hist: cc.hist.concat([cc.flies]), msg: { title: "Board cleared", sub: "Your hint fireflies stay.", color: "#F3EEDC" }, because: [], ghost: null }); },
+      hint: function () { self.hint(); }
+    };
+  }
+}
+</script>
+</body>
+</html>

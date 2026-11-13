@@ -53,8 +53,19 @@ describe('parseLevel', () => {
     ['a mushroom without a number', withChanges({ twists: { mushrooms: [[0, 8]] } }), /twists.mushrooms must be/],
     ['an old experimental twist', withChanges({ twists: { toadstools: [[0, 8]] } }), /unknown twist "toadstools"/],
     ['a solution missing a lantern', withChanges({ twists: { lanterns: [[0, 8]] } }), /missing the lantern/],
+    ['zero seconds', withChanges({ seconds: 0 }), /seconds must be/],
+    ['fractional seconds', withChanges({ seconds: 12.5 }), /seconds must be/],
+    ['seconds over an hour', withChanges({ seconds: 3601 }), /seconds must be/],
+    ['seconds as text', withChanges({ seconds: '40' }), /seconds must be/],
+    ['NaN seconds', withChanges({ seconds: NaN }), /seconds must be/],
+    ['infinite seconds', withChanges({ seconds: Infinity }), /seconds must be/],
+    ['negative seconds', withChanges({ seconds: -5 }), /seconds must be/],
   ])('rejects %s', (_name, json, pattern) => {
     expect(problemsOf(json).join('\n')).toMatch(pattern);
+  });
+
+  it('accepts estimated seconds', () => {
+    expect(parseLevel(withChanges({ seconds: 42 })).seconds).toBe(42);
   });
 
   it('reports every problem at once', () => {

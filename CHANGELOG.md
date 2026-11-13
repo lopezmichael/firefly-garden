@@ -5,6 +5,71 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Added
+- The level-complete card (milestone 3): replaces the status card and moves once a garden is
+  solved, with the garden, time and hints used, a +10 coin chip, Garden map, and Next garden with
+  a ring that counts down the auto-advance (no Next on the last garden); sparks burst from the
+  board (not in reduced motion). Screen readers hear the whole line and the coins.
+- The garden map (milestone 3): chapter beds glowing, in progress or still dark, the area's
+  progress, the next area as a teaser and Continue. Leaving a level for the map is a quit (the
+  policy can serve a breather); its board is parked in the save so the retry resumes it.
+- The firefly jar (milestone 3, first item): the status card shows a jar plus one slot per firefly
+  the garden needs, replacing the progress bar; placements are capped by the jar (an empty-jar tap
+  shakes it and places nothing); a firefly flies out of the jar to the tile and home again when
+  called back, and hints send a gold one; saves holding more fireflies than the jar are dropped.
+
+### Fixed
+- The board no longer jumps when a hint appears on a narrow phone (320–360 px): hint reasons were
+  the status card's title in the large font and wrapped to three lines. Hints now have a short
+  one-line heading ("A firefly goes here", "Crossed-out tiles stay empty", "Try a firefly here",
+  "That firefly can't stay") with the reason in the sub-line; the card reserves a third sub-line
+  when it is under 290 px wide; a test holds every status message to one title line and two
+  sub-lines at a 360 px phone. To fit: the conflict heading is "Fireflies can see each other",
+  the end-of-build heading "Every garden is glowing!", and the first-move line and two hint
+  reasons (T3 overlap, T3 count bound) are a few words shorter.
+- The auto-advance no longer opens the next garden behind an open settings sheet: it waits, and
+  restarts from full when the sheet closes (as it already did for a hidden tab).
+- The board no longer jumps on the first move: the status card keeps a steady height (its
+  wording changed length and the board resized to fill the space).
+
+### Changed
+- Shipped grading is count-aware: the game will show how many fireflies each garden needs (the
+  firefly jar), so `gradeLevel(level, board)` (new, core) grades with the count known, and the
+  generator, stored tier/score/seconds, ramp inputs, simulated players, level ratchets and `hint`
+  all use it. Plain `grade()` is unchanged. Packs regenerated: chapter 1 unchanged; launch T4
+  levels 159 → 107, T3 59 → 117; every ratchet holds without changes. Hints may now rule cells
+  out by count, and the property test checks those steps read true. Before/after in
+  `reports/archive/count-aware-pack-2026-11-12.json`.
+- Look pass 1 (`docs/design/phase-2/README.md`): teal and plum night, glow only on the board, an
+  outlined Hint button, sentence-case labels, visible gold on satisfied bushes, the firefly mark in
+  place of a stock sparkle, a crescent moon placed per layout band, and plainer copy.
+
+### Added
+- Firefly jar experiment: `grade(board, { knownCount })` grades as if the total firefly count
+  were shown (count complete, T1; count bound, T3; count contradictions inside T4/T5). Default
+  grading is unchanged. `scripts/experiment-count.ts` writes
+  `reports/archive/count-experiment-2026-11-12.json`; soundness tested on every shipped level.
+- Phase 2 milestone 2: saved progress (`state/save.ts`: versioned, validated field by field per
+  rules.md, fuzz-tested with 3,000 hostile saves; the board resumes exactly after a reload), the
+  local analytics log (`state/events.ts`, schema-validated ring buffer), the hint sheet (coins or a
+  saved hint; rewarded ads hidden in the friends build) and a settings sheet with reduce motion and
+  the play log (copy as JSON).
+- Phase 2 milestone 1, the playable board: chapters 1 to 3 of the launch pack in PixiJS, in the
+  approved design's look; tap to place, undo, reset, hints that lift a wrong firefly or place a
+  locked one (with reason outlines and ruled-out marks), coins from `PLAYER_CONFIG`, auto-advance
+  through the next-level policy; tall, square (iPhone Duo) and wide layouts; reduced motion.
+  Game state is DOM-free and unit-tested (`apps/game/test`). Ratchets: game state imports only
+  core; no color literals outside `theme.css`. Fonts self-hosted; bundle 1.05 MB.
+- Vercel hosting config (`vercel.json`) with a strict content security policy, tested by
+  replaying the game under those headers; Pixi switched to its eval-free path.
+- Phase 2 design baseline (`docs/design/phase-2/`).
+- Phase 2 core: `hint` (`packages/core/src/hints.ts`) removes a wrong firefly or places the
+  grader's next one from the player's position, with a one-line reason, the `because` cells
+  and the `ruledOut` cells the game marks so the reason reads true; `hintStep` ties a hint to
+  the level's full trace for analytics. `grade` options `start` (grade from a position) and
+  `stopAtFirefly`. `canPlace` refuses locked hint cells. `PolicyInput.playedReserve` /
+  `quitMain` and `POLICY_CONFIG.minHistory` so saved history can be capped. Level files carry
+  `seconds` (estimated solve time), validated by `parseLevel` and re-checked in CI; packs
+  regenerated with no other change.
 - Phase 1: technique grader (`grade`) with T1 bookkeeping, T2 one source and bush room,
   T3 one-step lookahead, T4 overlapping bushes, T5 deep trial; difficulty model (`measure`)
   with score, tier and estimated solve time; seeded generator (`generate`) with garden shapes,

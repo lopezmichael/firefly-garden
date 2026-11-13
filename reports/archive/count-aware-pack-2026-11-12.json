@@ -1,0 +1,1799 @@
+{
+ "change": "Shipped grading made count-aware (gradeLevel: knownCount = solution length, lanterns included); packs regenerated with npm run levels",
+ "date": "2026-11-12",
+ "launch": {
+  "before": {
+   "levels": 430,
+   "tiers": {
+    "T1": 6,
+    "T2": 206,
+    "T3": 59,
+    "T4": 159
+   },
+   "meanScore": 84.6,
+   "meanSeconds": 119.8,
+   "peakScore": 121,
+   "countBoundLevels": 0
+  },
+  "after": {
+   "levels": 430,
+   "tiers": {
+    "T1": 6,
+    "T2": 200,
+    "T3": 117,
+    "T4": 107
+   },
+   "meanScore": 82,
+   "meanSeconds": 121.7,
+   "peakScore": 121,
+   "countBoundLevels": 96
+  }
+ },
+ "reserve": {
+  "before": {
+   "levels": 250,
+   "tiers": {
+    "T1": 8,
+    "T2": 194,
+    "T3": 48
+   },
+   "meanScore": 63,
+   "meanSeconds": 69.7,
+   "peakScore": 87,
+   "countBoundLevels": 0
+  },
+  "after": {
+   "levels": 250,
+   "tiers": {
+    "T1": 8,
+    "T2": 176,
+    "T3": 66
+   },
+   "meanScore": 64.9,
+   "meanSeconds": 72.1,
+   "peakScore": 87,
+   "countBoundLevels": 27
+  }
+ },
+ "simulated": {
+  "before": {
+   "chapter1ClearRate": 0.9721,
+   "breatherHintRateCh1to3": 0.0269,
+   "peakHintRateCh1to3": 0.0453,
+   "maxHintRateCh1to3": 0.3558,
+   "finishCh1to3": 0.8103,
+   "newcomerFinishCh1to3": 0.617,
+   "refusedHintShare": 0.0007,
+   "finishWholePack": 0.344
+  },
+  "after": {
+   "chapter1ClearRate": 0.9721,
+   "breatherHintRateCh1to3": 0.0309,
+   "peakHintRateCh1to3": 0.0442,
+   "maxHintRateCh1to3": 0.2606,
+   "finishCh1to3": 0.841,
+   "newcomerFinishCh1to3": 0.655,
+   "refusedHintShare": 0.0006,
+   "finishWholePack": 0.3377
+  }
+ },
+ "chapters": [
+  {
+   "id": "c1",
+   "before": {
+    "levels": 10,
+    "tiers": {
+     "T1": 3,
+     "T2": 7
+    },
+    "meanScore": 48.7,
+    "meanSeconds": 35.9,
+    "peakScore": 59,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 10,
+    "tiers": {
+     "T1": 3,
+     "T2": 7
+    },
+    "meanScore": 48.7,
+    "meanSeconds": 35.9,
+    "peakScore": 59,
+    "countBoundLevels": 0
+   },
+   "removed": [],
+   "added": [],
+   "orderChanged": false
+  },
+  {
+   "id": "c2",
+   "before": {
+    "levels": 10,
+    "tiers": {
+     "T2": 6,
+     "T3": 4
+    },
+    "meanScore": 67.7,
+    "meanSeconds": 69.7,
+    "peakScore": 85,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 10,
+    "tiers": {
+     "T2": 5,
+     "T3": 5
+    },
+    "meanScore": 69.6,
+    "meanSeconds": 70.9,
+    "peakScore": 86,
+    "countBoundLevels": 1
+   },
+   "removed": [
+    "c2-17",
+    "c2-16",
+    "c2-teach-1",
+    "c2-28",
+    "c2-26",
+    "c2-08",
+    "c2-10"
+   ],
+   "added": [
+    "c2-27",
+    "c2-22",
+    "c2-teach-5",
+    "c2-18",
+    "c2-13",
+    "c2-teach-3",
+    "c2-09"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c3",
+   "before": {
+    "levels": 10,
+    "tiers": {
+     "T2": 3,
+     "T3": 1,
+     "T4": 6
+    },
+    "meanScore": 96.1,
+    "meanSeconds": 132.3,
+    "peakScore": 120,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 10,
+    "tiers": {
+     "T2": 3,
+     "T3": 2,
+     "T4": 5
+    },
+    "meanScore": 93.7,
+    "meanSeconds": 133.9,
+    "peakScore": 121,
+    "countBoundLevels": 3
+   },
+   "removed": [
+    "c3-21",
+    "c3-02",
+    "c3-15"
+   ],
+   "added": [
+    "c3-teach-1",
+    "c3-26",
+    "c3-16"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c4",
+   "before": {
+    "levels": 10,
+    "tiers": {
+     "T2": 4,
+     "T3": 1,
+     "T4": 5
+    },
+    "meanScore": 88.6,
+    "meanSeconds": 106.3,
+    "peakScore": 120,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 10,
+    "tiers": {
+     "T2": 4,
+     "T3": 3,
+     "T4": 3
+    },
+    "meanScore": 84.4,
+    "meanSeconds": 116.5,
+    "peakScore": 121,
+    "countBoundLevels": 1
+   },
+   "removed": [
+    "c4-04",
+    "c4-10",
+    "c4-24",
+    "c4-07",
+    "c4-28"
+   ],
+   "added": [
+    "c4-08",
+    "c4-26",
+    "c4-18",
+    "c4-02",
+    "c4-03"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c5",
+   "before": {
+    "levels": 10,
+    "tiers": {
+     "T2": 5,
+     "T3": 2,
+     "T4": 3
+    },
+    "meanScore": 81.8,
+    "meanSeconds": 105.2,
+    "peakScore": 120,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 10,
+    "tiers": {
+     "T2": 5,
+     "T3": 3,
+     "T4": 2
+    },
+    "meanScore": 79.9,
+    "meanSeconds": 116,
+    "peakScore": 121,
+    "countBoundLevels": 1
+   },
+   "removed": [
+    "c5-22",
+    "c5-01",
+    "c5-26",
+    "c5-23",
+    "c5-09"
+   ],
+   "added": [
+    "c5-02",
+    "c5-15",
+    "c5-21",
+    "c5-13",
+    "c5-03"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c6",
+   "before": {
+    "levels": 10,
+    "tiers": {
+     "T2": 5,
+     "T3": 2,
+     "T4": 3
+    },
+    "meanScore": 80.3,
+    "meanSeconds": 100,
+    "peakScore": 119,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 10,
+    "tiers": {
+     "T2": 5,
+     "T3": 4,
+     "T4": 1
+    },
+    "meanScore": 76,
+    "meanSeconds": 106.5,
+    "peakScore": 117,
+    "countBoundLevels": 2
+   },
+   "removed": [
+    "c6-08",
+    "c6-07",
+    "c6-16",
+    "c6-28"
+   ],
+   "added": [
+    "c6-11",
+    "c6-09",
+    "c6-18",
+    "c6-23"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c7",
+   "before": {
+    "levels": 10,
+    "tiers": {
+     "T2": 6,
+     "T4": 4
+    },
+    "meanScore": 81.9,
+    "meanSeconds": 101.7,
+    "peakScore": 118,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 10,
+    "tiers": {
+     "T2": 6,
+     "T3": 1,
+     "T4": 3
+    },
+    "meanScore": 79.9,
+    "meanSeconds": 107.9,
+    "peakScore": 120,
+    "countBoundLevels": 2
+   },
+   "removed": [
+    "c7-23",
+    "c7-28"
+   ],
+   "added": [
+    "c7-04",
+    "c7-07"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c8",
+   "before": {
+    "levels": 10,
+    "tiers": {
+     "T2": 3,
+     "T3": 2,
+     "T4": 5
+    },
+    "meanScore": 92,
+    "meanSeconds": 114.9,
+    "peakScore": 120,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 10,
+    "tiers": {
+     "T2": 4,
+     "T3": 2,
+     "T4": 4
+    },
+    "meanScore": 88.3,
+    "meanSeconds": 120.8,
+    "peakScore": 120,
+    "countBoundLevels": 2
+   },
+   "removed": [
+    "c8-01",
+    "c8-28",
+    "c8-06",
+    "c8-21"
+   ],
+   "added": [
+    "c8-24",
+    "c8-22",
+    "c8-03",
+    "c8-08"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c9",
+   "before": {
+    "levels": 10,
+    "tiers": {
+     "T2": 4,
+     "T3": 1,
+     "T4": 5
+    },
+    "meanScore": 90.2,
+    "meanSeconds": 122.2,
+    "peakScore": 121,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 10,
+    "tiers": {
+     "T2": 4,
+     "T3": 2,
+     "T4": 4
+    },
+    "meanScore": 87.9,
+    "meanSeconds": 121.1,
+    "peakScore": 121,
+    "countBoundLevels": 1
+   },
+   "removed": [
+    "c9-28",
+    "c9-03",
+    "c9-14",
+    "c9-04"
+   ],
+   "added": [
+    "c9-17",
+    "c9-11",
+    "c9-29",
+    "c9-06"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c10",
+   "before": {
+    "levels": 10,
+    "tiers": {
+     "T2": 4,
+     "T3": 1,
+     "T4": 5
+    },
+    "meanScore": 90.9,
+    "meanSeconds": 123,
+    "peakScore": 120,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 10,
+    "tiers": {
+     "T2": 4,
+     "T3": 2,
+     "T4": 4
+    },
+    "meanScore": 89,
+    "meanSeconds": 131.4,
+    "peakScore": 120,
+    "countBoundLevels": 4
+   },
+   "removed": [
+    "c10-29",
+    "c10-28",
+    "c10-24"
+   ],
+   "added": [
+    "c10-09",
+    "c10-08",
+    "c10-11"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c11",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T1": 1,
+     "T2": 8,
+     "T3": 2
+    },
+    "meanScore": 65.7,
+    "meanSeconds": 98.5,
+    "peakScore": 97,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T1": 1,
+     "T2": 6,
+     "T3": 4
+    },
+    "meanScore": 70.1,
+    "meanSeconds": 103.9,
+    "peakScore": 97,
+    "countBoundLevels": 2
+   },
+   "removed": [
+    "c11-32",
+    "c11-31",
+    "c11-02",
+    "c11-21"
+   ],
+   "added": [
+    "c11-28",
+    "c11-29",
+    "c11-06",
+    "c11-05"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c12",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T2": 4,
+     "T3": 2,
+     "T4": 5
+    },
+    "meanScore": 89.4,
+    "meanSeconds": 122.5,
+    "peakScore": 120,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T2": 4,
+     "T3": 4,
+     "T4": 3
+    },
+    "meanScore": 84.5,
+    "meanSeconds": 119,
+    "peakScore": 120,
+    "countBoundLevels": 5
+   },
+   "removed": [
+    "c12-19",
+    "c12-23",
+    "c12-27",
+    "c12-08",
+    "c12-28"
+   ],
+   "added": [
+    "c12-15",
+    "c12-03",
+    "c12-09",
+    "c12-01",
+    "c12-04"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c13",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T2": 6,
+     "T3": 1,
+     "T4": 4
+    },
+    "meanScore": 83.7,
+    "meanSeconds": 117.6,
+    "peakScore": 118,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 4,
+     "T4": 2
+    },
+    "meanScore": 82.1,
+    "meanSeconds": 131.2,
+    "peakScore": 121,
+    "countBoundLevels": 3
+   },
+   "removed": [
+    "c13-13",
+    "c13-25",
+    "c13-06",
+    "c13-32",
+    "c13-29",
+    "c13-30",
+    "c13-27"
+   ],
+   "added": [
+    "c13-28",
+    "c13-00",
+    "c13-05",
+    "c13-19",
+    "c13-02",
+    "c13-18",
+    "c13-08"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c14",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T2": 6,
+     "T3": 1,
+     "T4": 4
+    },
+    "meanScore": 85.6,
+    "meanSeconds": 138.9,
+    "peakScore": 121,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T2": 6,
+     "T3": 2,
+     "T4": 3
+    },
+    "meanScore": 82.8,
+    "meanSeconds": 134.5,
+    "peakScore": 121,
+    "countBoundLevels": 1
+   },
+   "removed": [
+    "c14-26",
+    "c14-16",
+    "c14-32"
+   ],
+   "added": [
+    "c14-27",
+    "c14-17",
+    "c14-25"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c15",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 1,
+     "T4": 5
+    },
+    "meanScore": 88.8,
+    "meanSeconds": 131.3,
+    "peakScore": 121,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 3,
+     "T4": 3
+    },
+    "meanScore": 84.3,
+    "meanSeconds": 131.5,
+    "peakScore": 120,
+    "countBoundLevels": 2
+   },
+   "removed": [
+    "c15-15",
+    "c15-30",
+    "c15-24",
+    "c15-26"
+   ],
+   "added": [
+    "c15-18",
+    "c15-09",
+    "c15-11",
+    "c15-32"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c16",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T1": 1,
+     "T2": 7,
+     "T3": 3
+    },
+    "meanScore": 70.5,
+    "meanSeconds": 125.9,
+    "peakScore": 97,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T1": 1,
+     "T2": 5,
+     "T3": 5
+    },
+    "meanScore": 74.9,
+    "meanSeconds": 128.3,
+    "peakScore": 97,
+    "countBoundLevels": 3
+   },
+   "removed": [
+    "c16-26",
+    "c16-13",
+    "c16-03",
+    "c16-31",
+    "c16-04",
+    "c16-30",
+    "c16-20",
+    "c16-16",
+    "c16-15"
+   ],
+   "added": [
+    "c16-09",
+    "c16-02",
+    "c16-21",
+    "c16-open-4",
+    "c16-19",
+    "c16-18",
+    "c16-open-0",
+    "c16-28",
+    "c16-10"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c17",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 2,
+     "T4": 4
+    },
+    "meanScore": 88,
+    "meanSeconds": 139.3,
+    "peakScore": 120,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 3,
+     "T4": 3
+    },
+    "meanScore": 86.3,
+    "meanSeconds": 146.2,
+    "peakScore": 121,
+    "countBoundLevels": 3
+   },
+   "removed": [
+    "c17-07",
+    "c17-21",
+    "c17-24",
+    "c17-10"
+   ],
+   "added": [
+    "c17-05",
+    "c17-04",
+    "c17-14",
+    "c17-26"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c18",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 3,
+     "T4": 3
+    },
+    "meanScore": 86.2,
+    "meanSeconds": 145.1,
+    "peakScore": 121,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T2": 6,
+     "T3": 2,
+     "T4": 3
+    },
+    "meanScore": 84.2,
+    "meanSeconds": 144.1,
+    "peakScore": 121,
+    "countBoundLevels": 2
+   },
+   "removed": [
+    "c18-27",
+    "c18-08",
+    "c18-06",
+    "c18-13"
+   ],
+   "added": [
+    "c18-19",
+    "c18-31",
+    "c18-32",
+    "c18-29"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c19",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T2": 3,
+     "T3": 2,
+     "T4": 6
+    },
+    "meanScore": 97.8,
+    "meanSeconds": 155.7,
+    "peakScore": 121,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T2": 3,
+     "T3": 3,
+     "T4": 5
+    },
+    "meanScore": 96.2,
+    "meanSeconds": 161.5,
+    "peakScore": 121,
+    "countBoundLevels": 2
+   },
+   "removed": [
+    "c19-04",
+    "c19-05",
+    "c19-32",
+    "c19-08",
+    "c19-20"
+   ],
+   "added": [
+    "c19-09",
+    "c19-10",
+    "c19-25",
+    "c19-02",
+    "c19-28"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c20",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 1,
+     "T4": 5
+    },
+    "meanScore": 90.8,
+    "meanSeconds": 148.5,
+    "peakScore": 121,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 3,
+     "T4": 3
+    },
+    "meanScore": 87.4,
+    "meanSeconds": 159.1,
+    "peakScore": 120,
+    "countBoundLevels": 2
+   },
+   "removed": [
+    "c20-25",
+    "c20-17",
+    "c20-12",
+    "c20-30",
+    "c20-31"
+   ],
+   "added": [
+    "c20-03",
+    "c20-08",
+    "c20-04",
+    "c20-16",
+    "c20-09"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c21",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T1": 1,
+     "T2": 7,
+     "T3": 3
+    },
+    "meanScore": 66.1,
+    "meanSeconds": 95.7,
+    "peakScore": 93,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T1": 1,
+     "T2": 5,
+     "T3": 5
+    },
+    "meanScore": 71.9,
+    "meanSeconds": 117.9,
+    "peakScore": 97,
+    "countBoundLevels": 5
+   },
+   "removed": [
+    "c21-14",
+    "c21-13",
+    "c21-05",
+    "c21-28"
+   ],
+   "added": [
+    "c21-08",
+    "c21-18",
+    "c21-01",
+    "c21-06"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c22",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 2,
+     "T4": 4
+    },
+    "meanScore": 85.4,
+    "meanSeconds": 119.7,
+    "peakScore": 121,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 4,
+     "T4": 2
+    },
+    "meanScore": 80.8,
+    "meanSeconds": 122.3,
+    "peakScore": 121,
+    "countBoundLevels": 4
+   },
+   "removed": [
+    "c22-17",
+    "c22-00",
+    "c22-11",
+    "c22-04"
+   ],
+   "added": [
+    "c22-03",
+    "c22-23",
+    "c22-18",
+    "c22-22"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c23",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 2,
+     "T4": 4
+    },
+    "meanScore": 84.4,
+    "meanSeconds": 107.5,
+    "peakScore": 117,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 4,
+     "T4": 2
+    },
+    "meanScore": 80.7,
+    "meanSeconds": 115.9,
+    "peakScore": 116,
+    "countBoundLevels": 3
+   },
+   "removed": [
+    "c23-27",
+    "c23-12",
+    "c23-24",
+    "c23-29"
+   ],
+   "added": [
+    "c23-06",
+    "c23-05",
+    "c23-15",
+    "c23-11"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c24",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 2,
+     "T4": 4
+    },
+    "meanScore": 85.8,
+    "meanSeconds": 120.8,
+    "peakScore": 121,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 3,
+     "T4": 3
+    },
+    "meanScore": 84.5,
+    "meanSeconds": 129.9,
+    "peakScore": 121,
+    "countBoundLevels": 1
+   },
+   "removed": [
+    "c24-04",
+    "c24-29"
+   ],
+   "added": [
+    "c24-16",
+    "c24-11"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c25",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 2,
+     "T4": 4
+    },
+    "meanScore": 85,
+    "meanSeconds": 122,
+    "peakScore": 121,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 4,
+     "T4": 2
+    },
+    "meanScore": 79.5,
+    "meanSeconds": 111.4,
+    "peakScore": 120,
+    "countBoundLevels": 3
+   },
+   "removed": [
+    "c25-24",
+    "c25-29",
+    "c25-26",
+    "c25-25"
+   ],
+   "added": [
+    "c25-00",
+    "c25-30",
+    "c25-32",
+    "c25-11"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c26",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T4": 6
+    },
+    "meanScore": 92.4,
+    "meanSeconds": 143,
+    "peakScore": 121,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 2,
+     "T4": 4
+    },
+    "meanScore": 86.6,
+    "meanSeconds": 129.3,
+    "peakScore": 121,
+    "countBoundLevels": 3
+   },
+   "removed": [
+    "c26-15",
+    "c26-06",
+    "c26-20",
+    "c26-09"
+   ],
+   "added": [
+    "c26-05",
+    "c26-17",
+    "c26-10",
+    "c26-19"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c27",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T2": 6,
+     "T3": 1,
+     "T4": 4
+    },
+    "meanScore": 84.5,
+    "meanSeconds": 123.8,
+    "peakScore": 120,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T2": 6,
+     "T3": 3,
+     "T4": 2
+    },
+    "meanScore": 79.7,
+    "meanSeconds": 121.9,
+    "peakScore": 119,
+    "countBoundLevels": 3
+   },
+   "removed": [
+    "c27-23",
+    "c27-13",
+    "c27-15",
+    "c27-31",
+    "c27-27"
+   ],
+   "added": [
+    "c27-30",
+    "c27-10",
+    "c27-18",
+    "c27-02",
+    "c27-17"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c28",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 1,
+     "T4": 5
+    },
+    "meanScore": 88.3,
+    "meanSeconds": 121.6,
+    "peakScore": 120,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 3,
+     "T4": 3
+    },
+    "meanScore": 84.3,
+    "meanSeconds": 121.9,
+    "peakScore": 119,
+    "countBoundLevels": 3
+   },
+   "removed": [
+    "c28-27",
+    "c28-01",
+    "c28-10",
+    "c28-03",
+    "c28-28"
+   ],
+   "added": [
+    "c28-16",
+    "c28-23",
+    "c28-32",
+    "c28-05",
+    "c28-29"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c29",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 1,
+     "T4": 5
+    },
+    "meanScore": 88.4,
+    "meanSeconds": 121.6,
+    "peakScore": 120,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 3,
+     "T4": 3
+    },
+    "meanScore": 82.6,
+    "meanSeconds": 114.6,
+    "peakScore": 120,
+    "countBoundLevels": 2
+   },
+   "removed": [
+    "c29-22",
+    "c29-29",
+    "c29-10",
+    "c29-24",
+    "c29-17"
+   ],
+   "added": [
+    "c29-15",
+    "c29-13",
+    "c29-14",
+    "c29-00",
+    "c29-03"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c30",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 1,
+     "T4": 5
+    },
+    "meanScore": 89.5,
+    "meanSeconds": 132,
+    "peakScore": 121,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 3,
+     "T4": 3
+    },
+    "meanScore": 84.5,
+    "meanSeconds": 128.5,
+    "peakScore": 120,
+    "countBoundLevels": 3
+   },
+   "removed": [
+    "c30-05",
+    "c30-30",
+    "c30-03"
+   ],
+   "added": [
+    "c30-04",
+    "c30-18",
+    "c30-21"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c31",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 1,
+     "T4": 5
+    },
+    "meanScore": 88.8,
+    "meanSeconds": 130.8,
+    "peakScore": 120,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 2,
+     "T4": 4
+    },
+    "meanScore": 87,
+    "meanSeconds": 135.7,
+    "peakScore": 120,
+    "countBoundLevels": 2
+   },
+   "removed": [
+    "c31-19"
+   ],
+   "added": [
+    "c31-16"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c32",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T2": 4,
+     "T3": 3,
+     "T4": 4
+    },
+    "meanScore": 88.6,
+    "meanSeconds": 135.3,
+    "peakScore": 120,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T2": 4,
+     "T3": 4,
+     "T4": 3
+    },
+    "meanScore": 84.5,
+    "meanSeconds": 117,
+    "peakScore": 120,
+    "countBoundLevels": 4
+   },
+   "removed": [
+    "c32-32",
+    "c32-09",
+    "c32-25",
+    "c32-28"
+   ],
+   "added": [
+    "c32-14",
+    "c32-10",
+    "c32-08",
+    "c32-06"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c33",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T2": 7,
+     "T4": 4
+    },
+    "meanScore": 81.1,
+    "meanSeconds": 116.3,
+    "peakScore": 121,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T2": 7,
+     "T3": 2,
+     "T4": 2
+    },
+    "meanScore": 76.7,
+    "meanSeconds": 117.1,
+    "peakScore": 119,
+    "countBoundLevels": 2
+   },
+   "removed": [
+    "c33-20",
+    "c33-28",
+    "c33-29"
+   ],
+   "added": [
+    "c33-00",
+    "c33-25",
+    "c33-04"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c34",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T2": 7,
+     "T3": 1,
+     "T4": 3
+    },
+    "meanScore": 78.9,
+    "meanSeconds": 115.1,
+    "peakScore": 121,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T2": 7,
+     "T3": 2,
+     "T4": 2
+    },
+    "meanScore": 77,
+    "meanSeconds": 119,
+    "peakScore": 120,
+    "countBoundLevels": 2
+   },
+   "removed": [
+    "c34-27",
+    "c34-12",
+    "c34-03",
+    "c34-06"
+   ],
+   "added": [
+    "c34-11",
+    "c34-16",
+    "c34-26",
+    "c34-10"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c35",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T2": 4,
+     "T3": 1,
+     "T4": 6
+    },
+    "meanScore": 93.9,
+    "meanSeconds": 141.8,
+    "peakScore": 121,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T2": 4,
+     "T3": 3,
+     "T4": 4
+    },
+    "meanScore": 89.3,
+    "meanSeconds": 141,
+    "peakScore": 121,
+    "countBoundLevels": 2
+   },
+   "removed": [
+    "c35-03",
+    "c35-25",
+    "c35-31",
+    "c35-26",
+    "c35-12"
+   ],
+   "added": [
+    "c35-20",
+    "c35-21",
+    "c35-23",
+    "c35-16",
+    "c35-00"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c36",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T2": 3,
+     "T3": 1,
+     "T4": 7
+    },
+    "meanScore": 97.3,
+    "meanSeconds": 132.6,
+    "peakScore": 120,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T2": 3,
+     "T3": 3,
+     "T4": 5
+    },
+    "meanScore": 93.6,
+    "meanSeconds": 143.5,
+    "peakScore": 121,
+    "countBoundLevels": 4
+   },
+   "removed": [
+    "c36-20",
+    "c36-10",
+    "c36-27",
+    "c36-19",
+    "c36-24",
+    "c36-17"
+   ],
+   "added": [
+    "c36-23",
+    "c36-02",
+    "c36-18",
+    "c36-15",
+    "c36-01",
+    "c36-06"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c37",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 2,
+     "T4": 4
+    },
+    "meanScore": 85.7,
+    "meanSeconds": 119.8,
+    "peakScore": 121,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 3,
+     "T4": 3
+    },
+    "meanScore": 83.2,
+    "meanSeconds": 117.7,
+    "peakScore": 121,
+    "countBoundLevels": 3
+   },
+   "removed": [
+    "c37-32",
+    "c37-25",
+    "c37-12",
+    "c37-03"
+   ],
+   "added": [
+    "c37-11",
+    "c37-05",
+    "c37-08",
+    "c37-30"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c38",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T2": 6,
+     "T3": 1,
+     "T4": 4
+    },
+    "meanScore": 83.4,
+    "meanSeconds": 117.8,
+    "peakScore": 120,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T2": 6,
+     "T3": 2,
+     "T4": 3
+    },
+    "meanScore": 79.9,
+    "meanSeconds": 106.7,
+    "peakScore": 120,
+    "countBoundLevels": 2
+   },
+   "removed": [
+    "c38-20",
+    "c38-16",
+    "c38-05"
+   ],
+   "added": [
+    "c38-21",
+    "c38-26",
+    "c38-14"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c39",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T2": 6,
+     "T3": 1,
+     "T4": 4
+    },
+    "meanScore": 81.3,
+    "meanSeconds": 101.8,
+    "peakScore": 121,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T2": 6,
+     "T3": 2,
+     "T4": 3
+    },
+    "meanScore": 78.1,
+    "meanSeconds": 94.9,
+    "peakScore": 119,
+    "countBoundLevels": 2
+   },
+   "removed": [
+    "c39-12",
+    "c39-11",
+    "c39-09"
+   ],
+   "added": [
+    "c39-10",
+    "c39-20",
+    "c39-22"
+   ],
+   "orderChanged": true
+  },
+  {
+   "id": "c40",
+   "before": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 1,
+     "T4": 5
+    },
+    "meanScore": 88.3,
+    "meanSeconds": 121.6,
+    "peakScore": 121,
+    "countBoundLevels": 0
+   },
+   "after": {
+    "levels": 11,
+    "tiers": {
+     "T2": 5,
+     "T3": 3,
+     "T4": 3
+    },
+    "meanScore": 84,
+    "meanSeconds": 125.7,
+    "peakScore": 121,
+    "countBoundLevels": 1
+   },
+   "removed": [
+    "c40-19",
+    "c40-21",
+    "c40-23"
+   ],
+   "added": [
+    "c40-10",
+    "c40-00",
+    "c40-17"
+   ],
+   "orderChanged": true
+  }
+ ],
+ "levelsChangedInPlace": [
+  "c3-teach-6",
+  "c3-22",
+  "c3-teach-0",
+  "c4-13",
+  "c7-03",
+  "c8-12",
+  "c9-23",
+  "c10-00",
+  "c11-20",
+  "c12-02",
+  "c12-18",
+  "c13-24",
+  "c14-31",
+  "c14-13",
+  "c16-25",
+  "c17-17",
+  "c18-23",
+  "c19-13",
+  "c19-31",
+  "c20-07",
+  "c21-19",
+  "c21-25",
+  "c22-24",
+  "c22-15",
+  "c23-18",
+  "c24-18",
+  "c25-03",
+  "c26-29",
+  "c26-04",
+  "c29-21",
+  "c30-29",
+  "c31-27",
+  "c31-05",
+  "c32-31",
+  "c35-18",
+  "c36-26",
+  "c37-29",
+  "c38-30",
+  "c38-23",
+  "c39-15",
+  "c39-25",
+  "x-015",
+  "x-019",
+  "x-029",
+  "x-035",
+  "x-060",
+  "x-062",
+  "x-067",
+  "x-097",
+  "x-102",
+  "x-103",
+  "x-109",
+  "x-114",
+  "x-115",
+  "x-121",
+  "x-156",
+  "x-165",
+  "x-176",
+  "x-200",
+  "x-202",
+  "x-206",
+  "x-207",
+  "x-214",
+  "x-226",
+  "x-240",
+  "x-241",
+  "x-245"
+ ],
+ "chapters1to3": [
+  {
+   "id": "c1",
+   "removed": [],
+   "added": [],
+   "orderChanged": false,
+   "changedInPlace": []
+  },
+  {
+   "id": "c2",
+   "removed": [
+    "c2-17",
+    "c2-16",
+    "c2-teach-1",
+    "c2-28",
+    "c2-26",
+    "c2-08",
+    "c2-10"
+   ],
+   "added": [
+    "c2-27",
+    "c2-22",
+    "c2-teach-5",
+    "c2-18",
+    "c2-13",
+    "c2-teach-3",
+    "c2-09"
+   ],
+   "orderChanged": true,
+   "changedInPlace": []
+  },
+  {
+   "id": "c3",
+   "removed": [
+    "c3-21",
+    "c3-02",
+    "c3-15"
+   ],
+   "added": [
+    "c3-teach-1",
+    "c3-26",
+    "c3-16"
+   ],
+   "orderChanged": true,
+   "changedInPlace": [
+    "c3-teach-6",
+    "c3-22",
+    "c3-teach-0"
+   ]
+  }
+ ]
+}

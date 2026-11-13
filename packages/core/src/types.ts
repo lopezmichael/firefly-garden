@@ -37,4 +37,6 @@ export interface Level {
   /** Every firefly in the answer, lanterns included. */
   readonly solution?: readonly Coord[];
   readonly techniques?: readonly string[];
+  /** Estimated solve time in whole seconds (`measure`), written by the generator. */
+  readonly seconds?: number;
 }

@@ -1,0 +1,362 @@
+/* Play screen layout. The band (tall / square / wide) is set by JS from
+   view/layout.ts so the thresholds live in one place. Colors and fonts come
+   only from theme.css tokens. */
+
+.ff-app {
+  position: fixed;
+  inset: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--ff-night-0) 0%, var(--ff-night-1) 45%, var(--ff-night-2) 100%);
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(20px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  display: grid;
+  gap: 14px;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+/* Tall (phones in portrait) and square (iPhone Duo, tablets): one column. */
+.ff-app[data-band='tall'], .ff-app[data-band='square'] {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  grid-template-areas: 'top' 'title' 'board' 'status' 'controls';
+}
+.ff-app[data-band='tall'] .ff-side, .ff-app[data-band='square'] .ff-side { display: contents; }
+.ff-app[data-band='square'] .ff-status,
+.ff-app[data-band='square'] .ff-controls { width: 100%; max-width: 560px; justify-self: center; box-sizing: border-box; }
+.ff-app[data-band='tall'] { padding-left: max(8px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); }
+.ff-app[data-band='tall'] .ff-top, .ff-app[data-band='tall'] .ff-title,
+.ff-app[data-band='tall'] .ff-status, .ff-app[data-band='tall'] .ff-controls { margin-inline: 8px; }
+
+/* Wide (phones in landscape, desktop): info panel, board, control column. */
+.ff-app[data-band='wide'] {
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) 84px;
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: 'side board controls';
+  gap: 20px;
+}
+.ff-app[data-band='wide'] .ff-side { grid-area: side; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+/* A short landscape phone: the complete card may need the panel to scroll. */
+.ff-app[data-band='wide'][data-complete] .ff-side { overflow-y: auto; }
+.ff-app[data-band='wide'] .ff-status { margin-top: auto; }
+.ff-app[data-band='wide'] .ff-controls { flex-direction: column; justify-content: center; }
+.ff-app[data-band='wide'] .ff-controls button { flex: 0 0 64px; flex-direction: column; gap: 4px; font-size: 13px; }
+.ff-app[data-band='wide'] .ff-controls .ff-hint { flex-basis: 84px; }
+
+.ff-sky { position: absolute; inset: 0; pointer-events: none; }
+.ff-star {
+  position: absolute; border-radius: 999px; background: var(--ff-star); opacity: 0.7;
+  animation: ff-star var(--dur) ease-in-out var(--delay) infinite;
+}
+.ff-moon {
+  /* A crescent: the lit edge is an inset shadow on a transparent disc. */
+  position: absolute; right: 28px; top: 70px; width: 40px; height: 40px; border-radius: 999px;
+  background: transparent;
+  box-shadow: inset -11px 5px 0 0 var(--ff-moon), 6px -2px 26px -6px color-mix(in srgb, var(--ff-moon) 35%, transparent);
+  transform: rotate(-18deg);
+}
+.ff-app[data-band='square'] .ff-moon { top: 18px; right: 50%; margin-right: -20px; }
+@keyframes ff-star { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+
+.ff-top { grid-area: top; position: relative; display: flex; align-items: center; gap: 10px; }
+.ff-chapter { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.ff-chapter-label { font-size: 14px; font-weight: 700; color: var(--ff-label); }
+.ff-dots { display: flex; gap: 5px; }
+.ff-dot { width: 18px; height: 6px; border-radius: 999px; background: var(--ff-panel-edge); }
+.ff-dot[data-state='done'] { background: var(--ff-gold); }
+.ff-dot[data-state='now'] { background: var(--ff-ink); }
+.ff-coins {
+  display: flex; align-items: center; gap: 6px; padding: 6px 12px 6px 8px; border-radius: 999px;
+  background: color-mix(in srgb, var(--ff-panel) 85%, transparent); font-weight: 800; font-size: 15px;
+}
+.ff-coin { width: 18px; height: 18px; flex-shrink: 0; border-radius: 999px; background: var(--ff-gold); box-shadow: inset 0 0 0 4px var(--ff-gold), inset 0 0 0 5.5px var(--ff-gold-deep); }
+
+.ff-title {
+  grid-area: title; position: relative; margin: 0; font-family: var(--ff-font-display); font-weight: 700;
+  font-size: 30px; line-height: 1.05; color: var(--ff-glow);
+}
+.ff-app[data-band='wide'] .ff-title { font-size: 28px; }
+
+.ff-board { grid-area: board; position: relative; min-height: 0; min-width: 0; }
+.ff-board canvas { position: absolute; inset: 0; display: block; }
+
+.ff-status {
+  grid-area: status; position: relative; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;
+  background: color-mix(in srgb, var(--ff-panel) 90%, transparent);
+}
+.ff-status[data-tone='solved'] { background: color-mix(in srgb, var(--ff-solved-panel) 95%, transparent); }
+.ff-status-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.ff-status-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ff-status-title { font-family: var(--ff-font-display); font-weight: 600; font-size: 18px; color: var(--ff-ink); }
+.ff-status[data-tone='warn'] .ff-status-title { color: var(--ff-warn); }
+.ff-status[data-tone='glow'] .ff-status-title, .ff-status[data-tone='solved'] .ff-status-title { color: var(--ff-glow); }
+.ff-status-sub { font-size: 15px; line-height: 1.4; color: var(--ff-ink-quiet); }
+.ff-app[data-band='wide'] .ff-status { padding: 12px 14px; }
+.ff-app[data-band='wide'] .ff-status-title { font-size: 16px; }
+.ff-app[data-band='wide'] .ff-status-sub { font-size: 14px; }
+/* Firefly jar and slots (design: jar plus slot row, chosen 2026-11-12). */
+.ff-jar { width: 44px; height: 56px; flex-shrink: 0; }
+.ff-jar svg { width: 100%; height: 100%; overflow: visible; }
+.ff-jar-glow { fill: var(--ff-glow); opacity: calc(0.12 + var(--ff-jar-fill, 1) * 0.45); filter: blur(10px); transition: opacity 400ms ease; }
+.ff-jar-glass { fill: color-mix(in srgb, var(--ff-jar-glass) 16%, transparent); stroke: color-mix(in srgb, var(--ff-jar-glass) 75%, transparent); stroke-width: 2.5; }
+.ff-jar-shine { fill: none; stroke: color-mix(in srgb, var(--ff-wing) 45%, transparent); stroke-width: 2.5; stroke-linecap: round; }
+.ff-jar-cork { fill: var(--ff-cork); }
+.ff-jar-cork-hi { fill: var(--ff-cork-hi); }
+.ff-jar-lid { transform-box: view-box; transform-origin: 18px 16px; }
+.ff-jar-open .ff-jar-lid { animation: ff-lid 620ms ease-in-out; }
+.ff-jar-shake { animation: ff-shake 420ms ease-in-out; }
+@keyframes ff-lid { 0%, 100% { transform: none; } 25%, 70% { transform: translate(-3px, -9px) rotate(-22deg); } }
+@keyframes ff-shake { 0%, 100% { transform: none; } 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
+.ff-jar-count { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.ff-jar-line { font-size: 14px; font-weight: 700; color: var(--ff-label); }
+.ff-slots { display: flex; flex-wrap: wrap; gap: 5px; }
+.ff-slot { width: 16px; height: 16px; box-sizing: border-box; border-radius: 999px; border: 2px solid var(--ff-panel-edge); transition: background 200ms ease, border-color 200ms ease; }
+.ff-slot[data-on='true'] { border-color: var(--ff-gold); background: var(--ff-firefly); box-shadow: 0 0 8px 2px color-mix(in srgb, var(--ff-glow) 55%, transparent); }
+.ff-status-row { align-items: center; }
+
+/* A firefly in flight between the jar and the board. */
+.ff-flier { position: fixed; left: 0; top: 0; width: 30px; height: 30px; margin: -15px 0 0 -15px; pointer-events: none; z-index: 20; }
+.ff-flier svg { width: 100%; height: 100%; overflow: visible; }
+.ff-flier-halo { fill: var(--ff-glow); opacity: 0.35; }
+.ff-flier-wing { fill: var(--ff-wing); opacity: 0.85; }
+.ff-flier-body { fill: var(--ff-firefly); stroke: var(--ff-firefly-edge); stroke-width: 1.5; }
+.ff-flier[data-gold='true'] .ff-flier-body { fill: var(--ff-hint-firefly); stroke: var(--ff-hint-firefly-edge); }
+.ff-flier-head { fill: var(--ff-firefly-head); }
+
+/* Hint is a secondary action: outlined, so the paid move is never the loudest thing on screen. */
+.ff-hint { border: 2px solid var(--ff-gold); background: var(--ff-panel); color: var(--ff-glow); font-weight: 800; cursor: pointer; }
+.ff-hint:disabled { opacity: 0.5; cursor: default; }
+
+.ff-controls { grid-area: controls; position: relative; display: flex; gap: 10px; }
+.ff-controls button {
+  flex: 1; height: 56px; min-height: 44px; border-radius: 16px; font-weight: 800; font-size: 15px;
+  display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;
+}
+.ff-app[data-band='wide'] .ff-controls button { height: auto; }
+.ff-quiet { border: 2px solid var(--ff-panel-edge); background: var(--ff-panel); color: var(--ff-ink); }
+.ff-quiet:disabled { opacity: 0.5; cursor: default; }
+.ff-controls .ff-hint { flex: 1.3; }
+.ff-cost {
+  display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px 2px 4px; border-radius: 999px; font-size: 13px;
+  background: color-mix(in srgb, var(--ff-gold) 16%, transparent);
+}
+.ff-cost .ff-coin { width: 13px; height: 13px; }
+.ff-sheet-primary .ff-cost { background: color-mix(in srgb, var(--ff-on-gold) 14%, transparent); }
+.ff-sheet-primary .ff-cost .ff-coin { background: var(--ff-on-gold); box-shadow: inset 0 0 0 3px var(--ff-on-gold), inset 0 0 0 4.5px var(--ff-gold); }
+.ff-icon { width: 18px; height: 18px; flex-shrink: 0; }
+
+.ff-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Reduced motion follows the in-game setting, which itself defaults to the device's
+   (data-motion is set by the controller), so "Off" can override a device preference too. */
+.ff-app[data-motion='reduced'] .ff-star { animation: none; }
+.ff-app[data-motion='reduced'] .ff-slot, .ff-app[data-motion='reduced'] .ff-jar-glow { transition: none; }
+.ff-app[data-motion='reduced'] .ff-jar-open .ff-jar-lid, .ff-app[data-motion='reduced'] .ff-jar-shake { animation: none; }
+
+/* Wide band: the narrow info panel puts coins above the chapter label, and the
+   moon moves off the control column. */
+.ff-app[data-band='wide'] .ff-top { flex-wrap: wrap; }
+.ff-app[data-band='wide'] .ff-coins { order: -1; }
+.ff-app[data-band='wide'] .ff-chapter { flex-basis: 100%; }
+.ff-app[data-band='wide'] .ff-moon { right: 140px; top: 16px; }
+
+.ff-fail { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; text-align: center; }
+.ff-fail h1 { margin: 0; font-family: var(--ff-font-display); color: var(--ff-glow); }
+.ff-fail p { margin: 0; color: var(--ff-ink-quiet); max-width: 32em; }
+
+/* Sheets (hint, settings): design baseline HintDialog and Settings artboards. */
+.ff-backdrop {
+  position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+  background: color-mix(in srgb, var(--ff-night-0) 62%, transparent);
+}
+.ff-backdrop[hidden] { display: none; }
+.ff-sheet {
+  box-sizing: border-box; width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto;
+  background: var(--ff-panel); border-radius: 28px 28px 0 0; box-shadow: inset 0 2px 0 var(--ff-panel-edge);
+  padding: 12px 20px max(28px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 14px;
+}
+.ff-app[data-band='wide'] .ff-sheet { border-radius: 28px; margin-bottom: 16px; }
+.ff-sheet-handle { align-self: center; width: 44px; height: 5px; border-radius: 999px; background: var(--ff-panel-edge); }
+.ff-sheet-head { display: flex; gap: 14px; align-items: center; }
+.ff-sheet-text { display: flex; flex-direction: column; gap: 4px; }
+.ff-sheet-title { margin: 0; font-family: var(--ff-font-display); font-weight: 600; font-size: 24px; color: var(--ff-glow); }
+.ff-sheet-sub, .ff-sheet-note { margin: 0; font-size: 15px; line-height: 1.45; color: var(--ff-ink-quiet); }
+.ff-sheet-line { margin: 0; font-size: 16px; font-weight: 700; color: var(--ff-ink); }
+.ff-sheet-note[hidden] { display: none; }
+.ff-sheet button { min-height: 52px; border-radius: 16px; font-weight: 800; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.ff-sheet-primary { border: 0; background: var(--ff-gold); color: var(--ff-on-gold); }
+.ff-sheet-primary:disabled { opacity: 0.45; cursor: default; }
+.ff-sheet-ad { border: 2px solid var(--ff-gold); background: transparent; color: var(--ff-glow); }
+.ff-sheet-ad[hidden] { display: none; }
+.ff-sheet-quiet { border: 2px solid var(--ff-panel-edge); background: var(--ff-panel-deep); color: var(--ff-ink); }
+.ff-section { display: flex; flex-direction: column; gap: 10px; }
+.ff-section-title { margin: 0; font-size: 16px; font-weight: 800; color: var(--ff-ink); }
+.ff-segments { display: flex; background: var(--ff-panel-deep); border-radius: 14px; padding: 4px; gap: 4px; }
+.ff-sheet .ff-segment { flex: 1; min-height: 44px; border-radius: 11px; border: 0; background: transparent; color: var(--ff-ink); font-size: 14px; }
+.ff-sheet .ff-segment[aria-checked='true'] { background: var(--ff-gold); color: var(--ff-on-gold); }
+
+.ff-gear {
+  width: 44px; height: 44px; flex-shrink: 0; border-radius: 14px; border: 2px solid var(--ff-panel-edge);
+  background: var(--ff-panel); color: var(--ff-ink); display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer;
+}
+.ff-gear .ff-icon { width: 20px; height: 20px; }
+
+/* The status card keeps its height from move to move (room for a one-line title and a two-line
+   sub-line; three on the narrowest phones), so the board above it never jumps when the wording
+   changes. The wording is held to that budget by test/status.test.ts ("fits the card"). */
+.ff-status { container: ff-status / inline-size; }
+.ff-app[data-band='tall'] .ff-status-text, .ff-app[data-band='square'] .ff-status-text {
+  min-height: calc(18px * 1.2 + 2px + 15px * 1.4 * 2);
+}
+@container ff-status (max-width: 289px) {
+  .ff-app:not([data-band='wide']) .ff-status-text { min-height: calc(18px * 1.2 + 2px + 15px * 1.4 * 3); }
+}
+
+/* Garden map (design baseline: Map artboard). A screen over the play screen. */
+.ff-map {
+  position: absolute; inset: 0; z-index: 5; box-sizing: border-box; overflow-y: auto;
+  background: linear-gradient(180deg, var(--ff-night-0) 0%, var(--ff-night-1) 45%, var(--ff-night-2) 100%);
+  padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  display: flex; flex-direction: column; gap: 16px;
+}
+.ff-map[hidden] { display: none; }
+.ff-map > * { width: 100%; max-width: 520px; align-self: center; box-sizing: border-box; }
+.ff-map-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ff-map-top-right { display: flex; align-items: center; gap: 8px; }
+.ff-map-title { margin: 0; font-family: var(--ff-font-display); font-weight: 700; font-size: 30px; color: var(--ff-glow); }
+.ff-map-card { background: color-mix(in srgb, var(--ff-panel) 90%, transparent); border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.ff-map-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.ff-map-area { margin: 0; font-family: var(--ff-font-display); font-weight: 600; font-size: 22px; color: var(--ff-ink); }
+.ff-map-count { font-size: 14px; font-weight: 800; color: var(--ff-glow); }
+.ff-map-bar { height: 8px; border-radius: 999px; background: var(--ff-track); overflow: hidden; }
+.ff-map-fill { height: 100%; width: 0; border-radius: 999px; background: var(--ff-gold); }
+.ff-map-note { margin: 0; font-size: 14px; color: var(--ff-ink-quiet); }
+.ff-map-beds { list-style: none; margin: 0; padding: 4px 8px; display: flex; flex-direction: column-reverse; gap: 14px; flex: 1; justify-content: flex-start; }
+.ff-map-bed { display: flex; align-items: center; gap: 12px; width: 76%; }
+.ff-map-bed:nth-child(even) { align-self: flex-end; flex-direction: row-reverse; text-align: right; }
+.ff-map-patch {
+  width: 96px; height: 66px; flex-shrink: 0; border-radius: 50% 48% 52% 46% / 58% 54% 46% 42%;
+  background: radial-gradient(circle at 40% 35%, var(--ff-tile-dark-hi) 0%, var(--ff-tile-dark) 60%, var(--ff-tile-dark-lo) 100%);
+  box-shadow: 0 7px 0 var(--ff-tile-dark-edge);
+}
+.ff-map-bed[data-state='done'] .ff-map-patch {
+  background:
+    radial-gradient(circle at 26% 34%, var(--ff-petal-pink) 0 6px, transparent 7px),
+    radial-gradient(circle at 58% 26%, var(--ff-petal-cream) 0 5px, transparent 6px),
+    radial-gradient(circle at 72% 60%, var(--ff-petal-pink) 0 6px, transparent 7px),
+    radial-gradient(circle at 40% 66%, var(--ff-petal-cream) 0 5px, transparent 6px),
+    radial-gradient(circle at 40% 35%, var(--ff-moss-hi) 0%, var(--ff-moss) 60%, var(--ff-moss-lo) 100%);
+  box-shadow: 0 7px 0 var(--ff-moss-edge), 0 0 26px color-mix(in srgb, var(--ff-gold) 30%, transparent);
+}
+.ff-map-bed[data-state='now'] .ff-map-patch {
+  background: radial-gradient(circle at 40% 35%, var(--ff-moss-hidden-hi) 0%, var(--ff-moss-hidden) 60%, var(--ff-moss-lo) 100%);
+  box-shadow: 0 7px 0 var(--ff-moss-edge), 0 0 0 3px var(--ff-gold);
+}
+.ff-map-bed-text { display: flex; flex-direction: column; gap: 2px; }
+.ff-map-bed-text strong { font-size: 15px; font-weight: 800; color: var(--ff-ink); }
+.ff-map-bed-text span { font-size: 13px; font-weight: 700; color: var(--ff-label); }
+.ff-map-bed[data-state='now'] .ff-map-bed-text span, .ff-map-bed[data-state='done'] .ff-map-bed-text span { color: var(--ff-glow); }
+.ff-map-teaser { border: 2px dashed var(--ff-panel-edge); border-radius: 14px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; color: var(--ff-ink-quiet); font-size: 14px; }
+.ff-map-teaser strong { color: var(--ff-ink); }
+.ff-map-continue {
+  min-height: 64px; border: 0; border-radius: 18px; background: var(--ff-gold); color: var(--ff-on-gold);
+  font-weight: 800; font-size: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer;
+}
+.ff-map-continue:disabled { opacity: 0.6; cursor: default; }
+.ff-map-continue-sub { font-size: 13px; font-weight: 700; }
+
+/* Level complete (design baseline: Complete artboard). The card takes the place of the status card
+   and the moves; those keep their space (visibility only), so the board never resizes on a solve. */
+.ff-complete { position: relative; z-index: 1; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-end; }
+.ff-complete-panel {
+  box-sizing: border-box; border-radius: 22px; padding: 18px; display: flex; flex-direction: column; gap: 14px;
+  background: color-mix(in srgb, var(--ff-solved-panel) 95%, transparent);
+}
+.ff-complete[hidden], .ff-complete-next[hidden] { display: none; }
+.ff-app[data-complete] .ff-status, .ff-app[data-complete] .ff-controls { visibility: hidden; }
+.ff-app[data-band='tall'] .ff-complete, .ff-app[data-band='square'] .ff-complete {
+  /* Size containment keeps the card out of the rows' sizing: it fills exactly the space the
+     hidden status card and moves keep, so the board can't resize under it. */
+  grid-row: 4 / span 2; grid-column: 1; align-self: stretch; contain: size;
+}
+/* Narrow phones: a smaller title, and the ring alone says the next garden is coming. */
+@media (max-width: 380px) {
+  .ff-app[data-band='tall'] .ff-complete-panel { padding: 14px; gap: 12px; }
+  .ff-app[data-band='tall'] .ff-complete-title { font-size: 20px; }
+  .ff-app[data-band='tall'] .ff-complete-chip { font-size: 15px; padding: 6px 10px 6px 8px; }
+  .ff-app[data-band='tall'] .ff-complete-note { display: none; }
+}
+.ff-app[data-band='tall'] .ff-complete { margin-inline: 8px; }
+.ff-app[data-band='square'] .ff-complete { width: 100%; max-width: 560px; justify-self: center; }
+.ff-app[data-band='wide'][data-complete] .ff-status { display: none; }
+.ff-complete-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ff-complete-title { margin: 0; min-width: 0; font-family: var(--ff-font-display); font-weight: 700; font-size: 26px; line-height: 1.15; color: var(--ff-glow); }
+.ff-app[data-band='tall'] .ff-complete-title { font-size: 22px; }
+.ff-complete-sub { margin: -8px 0 0; font-size: 14px; line-height: 1.4; color: var(--ff-ink-quiet); }
+.ff-complete-chip {
+  flex-shrink: 0; display: flex; align-items: center; gap: 6px; border-radius: 999px; padding: 8px 14px 8px 10px;
+  background: var(--ff-gold); color: var(--ff-on-gold); font-weight: 800; font-size: 17px;
+}
+.ff-complete-chip .ff-coin { width: 18px; height: 18px; background: var(--ff-on-gold); box-shadow: inset 0 0 0 3px var(--ff-on-gold), inset 0 0 0 4.5px var(--ff-gold); }
+.ff-complete-buttons { display: flex; gap: 10px; }
+.ff-complete-buttons button { height: 56px; border-radius: 16px; font-weight: 800; font-size: 15px; cursor: pointer; }
+.ff-complete-map {
+  flex: 1; border: 2px solid var(--ff-panel-edge); background: var(--ff-panel); color: var(--ff-ink);
+  display: flex; align-items: center; justify-content: center;
+}
+.ff-complete-map-icon { display: none; width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.ff-app[data-band='wide'] .ff-complete-map-icon { display: block; }
+.ff-complete-next {
+  flex: 1.6; border: 0; background: var(--ff-gold); color: var(--ff-on-gold); font-size: 16px;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.ff-complete-note { margin: 0; font-size: 13px; text-align: center; color: var(--ff-ink-quiet); }
+/* Wide band: the side panel is short on a landscape phone. The area title goes (the card's line
+   names the garden), the note goes (the ring says it), and the buttons share a row. */
+.ff-app[data-band='wide'][data-complete] .ff-title { display: none; }
+.ff-app[data-band='wide'] .ff-complete { margin-top: auto; }
+.ff-app[data-band='wide'] .ff-complete-panel {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'title title' 'sub chip' 'buttons buttons';
+  align-items: center; gap: 10px 10px; padding: 14px;
+}
+.ff-app[data-band='wide'] .ff-complete-head { display: contents; }
+.ff-app[data-band='wide'] .ff-complete-title { grid-area: title; }
+.ff-app[data-band='wide'] .ff-complete-chip { grid-area: chip; }
+.ff-app[data-band='wide'] .ff-complete-sub { grid-area: sub; margin: 0; font-size: 13px; }
+.ff-app[data-band='wide'] .ff-complete-buttons { grid-area: buttons; }
+.ff-app[data-band='wide'] .ff-complete-map { flex: 0 0 48px; padding: 0; }
+.ff-app[data-band='wide'] .ff-complete-map-label { display: none; }
+.ff-app[data-band='wide'] .ff-complete-title { font-size: 20px; }
+.ff-app[data-band='wide'] .ff-complete-chip { font-size: 15px; padding: 6px 10px 6px 8px; }
+.ff-app[data-band='wide'] .ff-complete-chip .ff-coin { width: 15px; height: 15px; }
+.ff-app[data-band='wide'] .ff-complete-buttons { gap: 8px; }
+.ff-app[data-band='wide'] .ff-complete-buttons button { height: 48px; font-size: 14px; padding: 0 8px; gap: 6px; }
+.ff-app[data-band='wide'] .ff-complete-ring { width: 20px; height: 20px; }
+.ff-app[data-band='wide'] .ff-complete-note { display: none; }
+.ff-complete-ring { width: 24px; height: 24px; transform: rotate(-90deg); flex-shrink: 0; }
+.ff-ring-track, .ff-ring-fill { fill: none; stroke-width: 5; }
+.ff-ring-track { stroke: color-mix(in srgb, var(--ff-on-gold) 18%, transparent); }
+.ff-ring-fill { stroke: var(--ff-on-gold); stroke-linecap: round; stroke-dashoffset: 0; }
+.ff-counting .ff-ring-fill { animation: ff-count var(--ff-countdown, 3000ms) linear both; }
+@keyframes ff-count { from { stroke-dashoffset: 0; } to { stroke-dashoffset: 126; } }
+.ff-enter .ff-complete-chip { animation: ff-coin-up 700ms ease-out 400ms both; }
+@keyframes ff-coin-up { 0% { transform: translateY(16px); opacity: 0; } 30% { transform: translateY(-4px); opacity: 1; } 100% { transform: none; opacity: 1; } }
+
+/* The solve burst: sparks from the board's centre. */
+.ff-burst { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; z-index: 1; }
+.ff-spark {
+  position: absolute; left: -4px; top: -4px; width: var(--size); height: var(--size); border-radius: 999px;
+  background: var(--ff-spark); box-shadow: 0 0 10px 3px var(--ff-spark);
+  animation: ff-burst 1.4s ease-out var(--delay) both;
+}
+.ff-spark-0 { --ff-spark: var(--ff-glow); }
+.ff-spark-1 { --ff-spark: var(--ff-gold); }
+.ff-spark-2 { --ff-spark: var(--ff-petal-pink); }
+.ff-spark-3 { --ff-spark: var(--ff-petal-cream); }
+@keyframes ff-burst { 0% { transform: translate(0, 0) scale(0.4); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) scale(1.1); opacity: 0; } }
+
+.ff-app[data-motion='reduced'] .ff-counting .ff-ring-fill,
+.ff-app[data-motion='reduced'] .ff-enter .ff-complete-chip { animation: none; }
+.ff-app[data-motion='reduced'] .ff-burst { display: none; }

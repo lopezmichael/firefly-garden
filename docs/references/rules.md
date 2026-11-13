@@ -60,12 +60,23 @@ rocks is wanted later, it is a skin for a hidden bush, not a new rule.
 | `bushes` | Yes | `[row, col, clue]`, clue 0 to 8 or `null` (hidden) |
 | `twists` | | `mushrooms`: `[row, col, n]` with n 0 to 4; `moonlit`, `lanterns`: `[row, col]`. Unknown keys are rejected |
 | `solution` | | Every firefly in the answer, **lanterns included** |
-| `tier`, `score`, `techniques` | | Written by the grader |
+| `tier`, `score`, `techniques` | | Written by the grader, count-aware (see below) |
+| `seconds` | | Estimated solve time, whole seconds 1 to 3600 (`measure`); written by the generator, checked against a fresh grade in CI. The game feeds it to the next-level policy |
 
 Validation (`parseLevel`) rejects unknown keys, off-board or outside-mask
 coordinates, two things on one cell (including a lantern on a moonlit tile),
 clues outside 0 to 8 (0 to 4 for mushrooms), and solutions that sit on blockers, repeat a cell, or
 omit a lantern. Coordinates are `[row, col]` with row 0 at the top.
+
+**Grading is count-aware (decided 2026-11-12).** The game shows how many fireflies each
+garden needs (the firefly jar) (the "firefly jar" countdown), so every shipped level is graded as players
+experience it: `gradeLevel(level, board)`, which is `grade` with `knownCount` set to the
+length of `solution` (lanterns included). That enables the count techniques
+(T1 count complete, T3 count bound). The generator (clue removal and tier targeting), the
+stored `tier`/`score`/`techniques`/`seconds`, the ramp builder's inputs, the simulated
+players and the level ratchets all use it. Plain `grade(board)` stays the count-free
+default for other callers. Evidence: `reports/archive/count-experiment-2026-11-12.json`
+(the experiment) and `reports/archive/count-aware-pack-2026-11-12.json` (the regenerated pack).
 
 Levels are stored in one canonical orientation. `transformLevel` gives any of
 the 8 rotations/mirrors; the rules are symmetric, so the solution count never
@@ -91,10 +102,60 @@ because a single firefly is thin pay for a 30 to 60 second video.
 the player cannot remove it, and it looks different from both their own
 fireflies and lanterns (for example a gold ring or a small sparkle), so it is
 always clear which move came from the hint. A "fix a wrong firefly" hint
-animates the removal so the player sees what changed. In the rules engine a
-locked hint firefly behaves like a lantern for that play (fixed, counts, can
-conflict), so `canPlace` must refuse it; this needs a per-play "locked" set
-alongside the level's lanterns when the game is built.
+animates the removal so the player sees what changed.
+
+**As implemented (`packages/core/src/hints.ts`).** `hint(board, solution, placed, locked)`:
+
+1. Any player firefly that is not in the solution is removed first: one that sees another
+   firefly ("This firefly can see another one."), else one that gives a bush too many
+   ("This firefly gives a bush too many."), else the lowest such cell ("This firefly can't
+   be part of the answer.").
+2. Otherwise the grader runs from the current position
+   (`grade(board, { start, stopAtFirefly, knownCount })`, with the count shown on the jar, the
+   solution's size, as the level was rated; every firefly on the board is then part of the
+   answer, so its deductions are sound) and the
+   first step that places a firefly is the hint, with a reason per technique (`HINT_REASONS`),
+   e.g. "That dark tile can only be lit from here." The cell is placed only if it is a
+   solution cell (defense in depth); otherwise step 3 applies.
+   **Ruled-out cells.** Before that firefly the grader often decides cells empty that the
+   player cannot see are empty yet (a satisfied bush's other neighbors, a bush-room, overlap
+   or count step): 55% of place hints in the property test. The count techniques only ever
+   rule cells out, so a count step is never the hinted firefly; it ends up in `ruledOut` and
+   the grader carries on to the next firefly. The hint returns them as `ruledOut`, and the
+   game must draw them as faint "no firefly here" marks while it shows the hint, or the reason
+   can read false ("needs every open spot" while other spots still look open). `because` is the
+   firefly step's own cells first (the bush or dark tile), then the cells behind each ruled-out
+   step. A test checks the reason holds on the visible board plus these marks for every
+   T1-needs-all and T2-one-source hint, and that every count step among the ruled-out cells
+   reads true at its point in the trace (count bound: the bushes and dark tiles behind it need
+   disjoint open cells whose needs add up to exactly the fireflies left on the jar).
+3. If the grader is stuck from that position, a missing solution cell is placed anyway
+   ("Try a firefly here."), so a paid hint always does something. On every chapter 1 to 3
+   and reserve level this never happened in the property test.
+4. A solved board gets `none`.
+
+The player's cells passed to `hint` come from saved progress and must be validated first:
+integers in 0..w*h-1 on path cells, no repeats, at most w*h. If that fails, drop the level's
+placed set and keep only the valid locked cells.
+
+Locked cells: `canPlace(board, cell, locked)` refuses them, `evaluate` counts them like any
+firefly (they count for bushes and can conflict), and `hint` throws if a locked cell is not
+a solution cell (saves are validated before this point). For analytics, `hintStep(grade, cell)`
+is the index in the level's full grader trace (`gradeLevel(level, board)`, the count-aware
+trace the level was rated with) of the step that decides the hinted cell.
+
+**The firefly jar (Phase 2, milestone 3).** The game shows how many fireflies the garden needs:
+the jar holds the answer's count minus its lanterns (which are already on the board). Player and
+locked hint fireflies together never exceed it: a tap with an empty jar places nothing, undo
+brings back only what fits, and a saved board holding more than the jar is dropped on load.
+A full but wrong jar always gets a removal hint first, so hints never overfill it.
+
+**Quitting and parked boards (Phase 2, milestone 3).** Leaving a level for the garden map ends
+the play as a quit, unless the board is untouched (no placement, undo, reset or hint): then it
+just waits behind the map and Continue returns to it. A quit main-path level's board is parked in
+the save (up to five, oldest dropped), validated on load exactly like the current board, and
+resumed when the policy serves that level as a retry; the retry keeps the fireflies but starts
+its own counters. A quit detour is never served again, so its board is not parked.
 
 **Rules for the game build (from the Phase 1 security review):**
 - Saved progress stores the locked hint cells per level and the banked hint count, and
@@ -116,9 +177,20 @@ progress, which is untrusted. Before calling it the game must:
   the `solved` set holds only known level ids.
 - persist compact facts rather than truncating history: the set of reserve levels already
   played (so detours never repeat) and the main levels quit at least once (for "retry").
+  `PolicyInput.playedReserve` and `PolicyInput.quitMain` take them. Validate them like the
+  rest of the save: `playedReserve` holds only known reserve ids, `quitMain` only known
+  main-path ids, both capped at their pool's size.
+- keep at least `POLICY_CONFIG.minHistory` (8) records when capping history: the hint
+  streak and the last hint breather are read from history alone. The warm-up tier is also
+  read from the capped history, i.e. from recent plays.
 - fall back to the next unsolved main-path level if validation fails.
 
 ## Not yet implemented
+
+- **Coloured beams** (candidate twist, from Michael's play feedback 2026-11-12): fireflies of two
+  or more colours whose crossing beams mix (red + blue = purple); some tiles want a specific mix,
+  others must not be mixed. Changes what "lit" means, so it needs new rules, solver propagation and
+  grader techniques before any level uses it.
 
 - **Two-color fireflies** (late twist): needs a color per firefly and per-color
   bush clues. Will be added as a new twist key when its chapter is planned.

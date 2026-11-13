@@ -75,6 +75,11 @@ export interface Difficulty {
   readonly estimatedSeconds: number;
 }
 
+/**
+ * Rate a level from its grader trace. For a shipped level pass
+ * `gradeLevel(level, board)` (the firefly count known, as the game shows it);
+ * the stored tier, score and seconds are measured that way.
+ */
 export function measure(level: Level, board: Board, g: Grade): Difficulty {
   const cfg = DIFFICULTY_CONFIG;
   const steps = g.steps;

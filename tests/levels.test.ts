@@ -1,19 +1,20 @@
 /**
  * Level ratchets: every committed level must parse, re-solve to exactly one
- * solution, and re-grade to its stored tier and score. Chapter 1 may not
- * need anything above T2. Regenerate with `npm run levels`, never hand-edit.
+ * solution, and re-grade to its stored tier, score and estimated seconds. Grading is
+ * count-aware (`gradeLevel`: the game shows how many fireflies each garden needs, lanterns
+ * included). Chapter 1 may not need anything above T2. Regenerate with `npm run levels`, never hand-edit.
  */
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
-  buildBoard, canonicalKey, cellIndex, DIFFICULTY_CONFIG, evaluate, grade, isUnique, measure, parseLevel, type Level,
+  buildBoard, canonicalKey, cellIndex, DIFFICULTY_CONFIG, evaluate, gradeLevel, isUnique, measure, parseLevel, type Level,
 } from '../packages/core/src/index.ts';
 
 const { maxSecondsAnyLevel, maxSecondsMainPath, chapterMaxSeconds } = DIFFICULTY_CONFIG.limits;
 const seconds = (level: Level) => {
   const board = buildBoard(level);
-  return measure(level, board, grade(board)).estimatedSeconds;
+  return measure(level, board, gradeLevel(level, board)).estimatedSeconds;
 };
 
 const DIR = join(import.meta.dirname, '..', 'levels');
@@ -34,7 +35,7 @@ describe('committed levels', () => {
     expect(byId.size).toBe(levels.length);
   });
 
-  it('every level is unique, its solution solves it, and it re-grades to its stored tier and score', () => {
+  it('every level is unique, its solution solves it, and it re-grades to its stored tier, score and seconds', () => {
     const bad: string[] = [];
     for (const level of levels) {
       const board = buildBoard(level);
@@ -42,10 +43,11 @@ describe('committed levels', () => {
       if (!level.solution || !evaluate(board, level.solution.map((c) => cellIndex(board, c))).solved) {
         bad.push(`${level.id}: stored solution does not solve it`);
       }
-      const d = measure(level, board, grade(board));
+      const d = measure(level, board, gradeLevel(level, board));
       if (d.tier !== level.tier || d.score !== level.score) {
         bad.push(`${level.id}: stored tier/score ${level.tier}/${level.score}, re-graded ${d.tier}/${d.score}`);
       }
+      if (level.seconds !== d.estimatedSeconds) bad.push(`${level.id}: stored seconds ${level.seconds}, re-graded ${d.estimatedSeconds}`);
     }
     expect(bad).toEqual([]);
   });

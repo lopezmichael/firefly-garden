@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Firefly Garden · garden map</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&amp;family=Nunito:wght@600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#0C1A22}
+button{font-family:inherit}
+button:focus-visible{outline:3px solid #FFE7A3;outline-offset:2px}
+@keyframes ffStar{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes ffBob{0%,100%{transform:translateY(-4px)}50%{transform:translateY(3px)}}
+@keyframes ffHalo{0%,100%{transform:scale(.85);opacity:.55}50%{transform:scale(1.15);opacity:.95}}
+@media (prefers-reduced-motion: reduce){*{animation:none !important}}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; position: relative; background: linear-gradient(180deg, #0C1A22 0%, #13252C 45%, #2A1B26 100%); color: #F3EEDC; font-family: 'Nunito', system-ui, sans-serif; padding: 20px 16px 24px; display: flex; flex-direction: column; gap: 14px; overflow: hidden">
+
+  <div aria-hidden="true" style="position: absolute; inset: 0; pointer-events: none">
+    <sc-for list="{{stars}}" as="s" hint-placeholder-count="18">
+      <span style="position: absolute; left: {{s.x}}px; top: {{s.y}}px; width: {{s.size}}px; height: {{s.size}}px; border-radius: 999px; background: #FFF0CC; opacity: 0.7; animation: {{s.anim}}"></span>
+    </sc-for>
+    <div style="position: absolute; left: 28px; top: 92px; width: 40px; height: 40px; border-radius: 999px; background: transparent; box-shadow: inset -11px 5px 0 0 #F3E4BD, 6px -2px 26px -6px rgba(243,228,189,0.35); transform: rotate(-18deg)"></div>
+  </div>
+
+  <div style="position: relative; display: flex; align-items: center; justify-content: space-between">
+    <h1 style="margin: 0; font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 32px; line-height: 1; color: #FFE7A3">Firefly Garden</h1>
+    <div style="display: flex; align-items: center; gap: 8px">
+      <div aria-label="80 coins" style="display: flex; align-items: center; gap: 6px; background: rgba(27,44,48,0.85); border-radius: 999px; padding: 6px 12px 6px 8px; font-weight: 800; font-size: 15px">
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="8" fill="#F2C66D"></circle><circle cx="9" cy="9" r="5" fill="none" stroke="#B8862B" stroke-width="1.5"></circle></svg>
+        <span>80</span>
+      </div>
+      <button type="button" aria-label="Settings" style="width: 44px; height: 44px; border-radius: 14px; border: 2px solid #33494B; background: #1B2C30; color: #F3EEDC; display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg>
+      </button>
+    </div>
+  </div>
+
+  <div style="position: relative; background: rgba(27,44,48,0.9); border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; margin-left: 64px">
+    <div style="display: flex; justify-content: space-between; align-items: baseline">
+      <h2 style="margin: 0; font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 22px; color: #F3EEDC">The Rose Bed</h2>
+      <span style="font-size: 13px; font-weight: 800; color: #FFE7A3">15 of 30</span>
+    </div>
+    <div style="height: 8px; border-radius: 999px; background: #0A171B; overflow: hidden">
+      <div style="height: 8px; width: 50%; border-radius: 999px; background: #F2C66D"></div>
+    </div>
+    <span style="font-size: 13px; color: #CDD8CF">Each garden you light brings more roses back.</span>
+  </div>
+
+  <div style="position: relative; flex: 1; min-height: 0">
+    <svg aria-hidden="true" width="358" height="440" viewBox="0 0 358 440" style="position: absolute; left: 0; top: 0">
+      <path d="M180 430 C 60 400, 60 330, 120 300 S 300 250, 250 190 S 90 130, 150 70 S 260 20, 230 0" fill="none" stroke="#2A3A55" stroke-width="22" stroke-linecap="round"></path>
+      <path d="M180 430 C 60 400, 60 330, 120 300 S 300 250, 250 190" fill="none" stroke="#E3AE4E" stroke-width="6" stroke-linecap="round" stroke-dasharray="2 12" opacity="0.9"></path>
+    </svg>
+
+    <div style="position: absolute; left: 34px; top: 284px; width: 150px; display: flex; flex-direction: column; align-items: center; gap: 6px">
+      <div aria-hidden="true" style="position: relative; width: 120px; height: 84px; border-radius: 50% 48% 52% 46% / 58% 54% 46% 42%; background: radial-gradient(circle at 40% 35%, #5BA97A 0%, #33724F 60%, #275B40 100%); box-shadow: 0 8px 0 #1A3E2C, 0 0 28px rgba(242,198,109,0.35)">
+        <sc-for list="{{bloomsDone}}" as="f" hint-placeholder-count="7">
+          <svg width="{{f.s}}" height="{{f.s}}" viewBox="0 0 16 16" style="position: absolute; left: {{f.x}}px; top: {{f.y}}px"><circle cx="8" cy="4" r="3.2" fill="{{f.c}}"></circle><circle cx="12" cy="8" r="3.2" fill="{{f.c}}"></circle><circle cx="8" cy="12" r="3.2" fill="{{f.c}}"></circle><circle cx="4" cy="8" r="3.2" fill="{{f.c}}"></circle><circle cx="8" cy="8" r="2.4" fill="#FFE7A3"></circle></svg>
+        </sc-for>
+      </div>
+      <div style="background: rgba(27,44,48,0.92); border-radius: 12px; padding: 6px 12px; text-align: center">
+        <div style="font-weight: 800; font-size: 14px">Chapter 1</div>
+        <div style="font-size: 12px; color: #FFE7A3; font-weight: 800">10 of 10 glowing</div>
+      </div>
+    </div>
+
+    <div style="position: absolute; left: 186px; top: 150px; width: 150px; display: flex; flex-direction: column; align-items: center; gap: 6px">
+      <div aria-hidden="true" style="position: relative; width: 120px; height: 84px; border-radius: 48% 52% 46% 54% / 54% 58% 42% 46%; background: radial-gradient(circle at 40% 35%, #4A8C66 0%, #2C6446 60%, #224F38 100%); box-shadow: 0 8px 0 #1A3E2C, 0 0 0 3px #F2C66D, 0 0 24px rgba(242,198,109,0.5)">
+        <sc-for list="{{bloomsHalf}}" as="f" hint-placeholder-count="3">
+          <svg width="{{f.s}}" height="{{f.s}}" viewBox="0 0 16 16" style="position: absolute; left: {{f.x}}px; top: {{f.y}}px"><circle cx="8" cy="4" r="3.2" fill="{{f.c}}"></circle><circle cx="12" cy="8" r="3.2" fill="{{f.c}}"></circle><circle cx="8" cy="12" r="3.2" fill="{{f.c}}"></circle><circle cx="4" cy="8" r="3.2" fill="{{f.c}}"></circle><circle cx="8" cy="8" r="2.4" fill="#FFE7A3"></circle></svg>
+        </sc-for>
+        <span style="position: absolute; left: 50%; top: -30px; margin-left: -18px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; animation: {{bob}}">
+          <span style="position: absolute; width: 52px; height: 52px; border-radius: 999px; background: radial-gradient(circle, rgba(255,226,140,0.85) 0%, rgba(255,214,120,0) 70%); animation: {{halo}}"></span>
+          <svg width="30" height="30" viewBox="0 0 36 36" style="position: relative"><ellipse cx="11" cy="13" rx="7.5" ry="5" fill="#FFFFFF" fill-opacity="0.85" transform="rotate(-25 11 13)"></ellipse><ellipse cx="25" cy="13" rx="7.5" ry="5" fill="#FFFFFF" fill-opacity="0.85" transform="rotate(25 25 13)"></ellipse><circle cx="18" cy="21" r="8" fill="#FFF3C4" stroke="#7A5413" stroke-width="1.5"></circle><circle cx="18" cy="12" r="4.2" fill="#3A2E1A"></circle><circle cx="16.5" cy="11" r="1.1" fill="#FFFFFF"></circle><circle cx="19.5" cy="11" r="1.1" fill="#FFFFFF"></circle></svg>
+        </span>
+      </div>
+      <div style="background: rgba(27,44,48,0.92); border-radius: 12px; padding: 6px 12px; text-align: center; box-shadow: inset 0 0 0 2px #F2C66D">
+        <div style="font-weight: 800; font-size: 14px">Chapter 2</div>
+        <div style="font-size: 12px; color: #FFE7A3; font-weight: 800">5 of 10 · you are here</div>
+      </div>
+    </div>
+
+    <div style="position: absolute; left: 70px; top: 30px; width: 150px; display: flex; flex-direction: column; align-items: center; gap: 6px">
+      <div aria-hidden="true" style="position: relative; width: 120px; height: 84px; border-radius: 52% 46% 54% 48% / 46% 54% 46% 54%; background: radial-gradient(circle at 40% 35%, #2E584C 0%, #20403A 60%, #1A352F 100%); box-shadow: 0 8px 0 #11241F"></div>
+      <div style="background: rgba(27,44,48,0.92); border-radius: 12px; padding: 6px 12px; text-align: center">
+        <div style="font-weight: 800; font-size: 14px; color: #CDD8CF">Chapter 3</div>
+        <div style="font-size: 12px; color: #B3C6BD; font-weight: 700">Still dark</div>
+      </div>
+    </div>
+
+    <div style="position: absolute; right: 6px; top: 0; background: rgba(18,33,37,0.92); border: 2px dashed #33494B; border-radius: 14px; padding: 8px 12px; text-align: center">
+      <div style="font-weight: 800; font-size: 13px; color: #CDD8CF">The Orchard</div>
+      <div style="font-size: 12px; color: #B3C6BD">More gardens soon</div>
+    </div>
+  </div>
+
+  <button type="button" style="position: relative; height: 64px; border-radius: 18px; border: 0; background: #F2C66D; color: #2A1E08; font-weight: 800; font-size: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; cursor: pointer">
+    Continue
+    <span style="font-size: 13px; font-weight: 700">Chapter 2 · Garden 6</span>
+  </button>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"reducedMotion":{"editor":"boolean","default":false},"$preview":{"width":390,"height":844}}'>
+var DONE = [[10,14,16,"#F7A8C4"],[34,6,14,"#FBE3C2"],[58,12,16,"#F7A8C4"],[84,20,14,"#FBE3C2"],[20,42,14,"#FBE3C2"],[48,40,16,"#F7A8C4"],[76,48,14,"#F7A8C4"]];
+var HALF = [[14,30,14,"#F7A8C4"],[56,44,16,"#FBE3C2"],[86,24,13,"#F7A8C4"]];
+function fl(a) { return a.map(function (f, i) { return { key: String(i), x: f[0], y: f[1], s: f[2], c: f[3] }; }); }
+class Component extends DCLogic {
+  renderVals() {
+    var rm = !!this.props.reducedMotion, stars = [];
+    for (var i = 0; i < 18; i++) stars.push({ key: String(i), x: (i * 89 + 23) % 390, y: (i * 61 + 17) % 520, size: i % 3 === 0 ? 3 : 2,
+      anim: rm ? "none" : "ffStar " + (2 + (i % 4) * 0.7).toFixed(1) + "s ease-in-out " + ((i * 0.37) % 3).toFixed(2) + "s infinite" });
+    return { stars: stars, bloomsDone: fl(DONE), bloomsHalf: fl(HALF),
+      bob: rm ? "none" : "ffBob 2.6s ease-in-out infinite", halo: rm ? "none" : "ffHalo 2.6s ease-in-out infinite" };
+  }
+}
+</script>
+</body>
+</html>

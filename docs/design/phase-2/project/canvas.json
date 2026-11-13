@@ -1,0 +1,159 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Complete.dc.html": {
+      "h": 844,
+      "title": "Level complete",
+      "w": 390,
+      "x": 470,
+      "y": 1300
+    },
+    "DuoInner.dc.html": {
+      "h": 890,
+      "is_interactive": true,
+      "title": "Play \u00b7 iPhone Duo unfolded, portrait (chapter 3, 8x8)",
+      "w": 626,
+      "x": 1394,
+      "y": 0
+    },
+    "DuoWide.dc.html": {
+      "h": 626,
+      "is_interactive": true,
+      "title": "Play \u00b7 iPhone Duo unfolded, landscape (chapter 3, 7x7)",
+      "w": 890,
+      "x": 2100,
+      "y": 0
+    },
+    "HintDialog.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "title": "Hint sheet (friends build: coins only)",
+      "w": 390,
+      "x": 0,
+      "y": 1300
+    },
+    "Main.dc.html": {
+      "h": 818,
+      "is_interactive": true,
+      "title": "Play \u00b7 phone portrait (chapter 1, level 6)",
+      "w": 255,
+      "x": 135,
+      "y": 26
+    },
+    "Map.dc.html": {
+      "h": 844,
+      "title": "Garden map",
+      "w": 390,
+      "x": 940,
+      "y": 1300
+    },
+    "Settings.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "title": "Settings and play log",
+      "w": 390,
+      "x": 1410,
+      "y": 1300
+    },
+    "States.dc.html": {
+      "h": 900,
+      "title": "Tile states and motion",
+      "w": 1200,
+      "x": 1880,
+      "y": 1300
+    },
+    "Wide.dc.html": {
+      "h": 390,
+      "is_interactive": true,
+      "title": "Play \u00b7 phone landscape (chapter 2, conflict + hint firefly)",
+      "w": 844,
+      "x": 470,
+      "y": 0
+    },
+    "JarPhone.dc.html": {
+      "x": 0,
+      "y": 2620,
+      "w": 390,
+      "h": 844,
+      "title": "Firefly jar \u00b7 play (tap to release, tap a firefly to call it back)",
+      "is_interactive": true
+    },
+    "JarStory.dc.html": {
+      "x": 470,
+      "y": 2620,
+      "w": 1240,
+      "h": 844,
+      "title": "Firefly jar \u00b7 release storyboard, states and decisions"
+    },
+    "JarOptions.dc.html": {
+      "x": 1790,
+      "y": 2620,
+      "w": 1240,
+      "h": 700,
+      "title": "Firefly jar \u00b7 how to show the count (A jar, B jar + slots, C lantern tube)"
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-11-12T06:10:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "noteOrder": [
+    "row1",
+    "row2",
+    "howto",
+    "row3"
+  ],
+  "notes": {
+    "howto": {
+      "fill": "teal",
+      "text": "Every play board is a real level from the launch pack and is playable: tap tiles, Undo, Reset, Hint (costs 30 coins; removes a wrong firefly first, otherwise places a locked hint firefly). Each artboard's Tweaks has a Reduced motion switch to preview the reduced-motion version.",
+      "w": 360,
+      "x": 3080,
+      "y": 0
+    },
+    "row1": {
+      "kind": "title1",
+      "maxW": 2990,
+      "text": "Play screens: phone and iPhone Duo",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "row2": {
+      "kind": "title1",
+      "maxW": 3080,
+      "text": "Moments, screens and the state sheet",
+      "w": 240,
+      "x": 0,
+      "y": 1000
+    },
+    "row3": {
+      "x": 0,
+      "y": 2320,
+      "text": "Firefly jar (proposal)",
+      "kind": "title1",
+      "maxW": 3030
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Wide.dc.html",
+    "DuoInner.dc.html",
+    "DuoWide.dc.html",
+    "HintDialog.dc.html",
+    "Complete.dc.html",
+    "Map.dc.html",
+    "Settings.dc.html",
+    "States.dc.html",
+    "JarPhone.dc.html",
+    "JarStory.dc.html",
+    "JarOptions.dc.html"
+  ],
+  "pages": [],
+  "title": "Firefly Garden Phase 2 Design"
+}
