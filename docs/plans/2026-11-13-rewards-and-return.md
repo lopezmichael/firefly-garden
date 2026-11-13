@@ -1,6 +1,7 @@
 # Rewards, small delights and reasons to return
 
-Status: **proposed** (2026-11-13). Ideas for Michael to pick from; nothing is built.
+Status: **agreed in principle** (Michael, 2026-11-13: build all of it, in the phase order of
+section 4). Nothing is built yet.
 
 This plan builds on the project plan's meta layer and monetization sections, which already name
 these pieces:
@@ -120,6 +121,49 @@ The Phase 4 gate already watches two numbers: day-1 return and session length. A
 - the share of players who take each rewarded offer (healthy: 10 to 30%)
 - days played per week
 - how often the welcome-back gift is claimed
+
+## 6. Scores, leaderboards and failing
+
+**Failing.** Today a garden can't be failed. The jar caps placements at the garden's count.
+Conflicts and overfull bushes show at once. Fireflies can be called back without limit. The only
+"stuck" messages ("The jar is empty", "The garden isn't glowing yet") point to calling one back.
+**Keep it that way on the main path.**
+- It is the cozy promise.
+- Portals pay on session length, and a fail screen is where sessions end.
+- The difficulty lives in the deduction, which the grader measures. A fail state would add luck,
+  not challenge.
+
+One option for later, recorded but not planned: an opt-in **Lantern mode** for experts (Phase 4).
+Conflicts stay hidden until the jar is empty, and a garden solved that way earns a special leaf.
+Showing conflicts at once allows trial and error, so this would reward pure deduction for the
+players who want it.
+
+**Scores.** No points on regular gardens.
+- Every garden has one answer, so a score could only measure time, hints and undos.
+- Docking points for hints would punish the rewarded-ad path we rely on.
+- Use the private, gentle versions instead:
+  - "faster than last time" on a retry
+  - the "no hints" mastery leaf
+  - totals in the journal (gardens grown, time spent)
+
+**Leaderboards.** Not global, and not per garden.
+- The game has no server, and any score a client sends can be faked.
+- A global board for a cozy puzzle mostly shows newcomers how far behind they are.
+
+The one place comparison helps is the **daily garden**, in three steps:
+1. **At the daily's launch (no server):** a share card after the daily solve, Wordle style. It
+   carries the garden's name, the day number, the time, whether hints were used, and a small
+   emoji or glyph sketch of the board's shape that never gives away the answer. This is the free
+   growth loop for the game's own domain.
+2. **Later (a small server, per the project plan's "when a database would make sense"):**
+   anonymous "you solved today's garden faster than 62% of players" and "4,812 gardens lit today".
+   - A percentile, not a ranked list, so a faked time spoils little.
+   - Built on the DigiLab stack (Neon behind a few Vercel functions), with the same hardening.
+3. **Never:** names on a public board (moderation, children on portals), or scores attached to
+   ads.
+
+If a portal offers its own leaderboard service when we launch there, revisit step 2 through
+`platform/`.
 
 ## Open questions for Michael
 
