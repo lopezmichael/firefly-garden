@@ -5,40 +5,25 @@
  */
 import '../src/fonts.css';
 import '../src/theme.css';
-import { bakeChromePaper, CHROME_PAPER_PX, pooledEdge, texturize, wash } from '../src/view/art/textures.ts';
+import { drawBush, drawDarkTile, drawLitTile, drawRose } from '../src/view/art/pieces.ts';
+import { bakeChromePaper, CHROME_PAPER_PX } from '../src/view/art/textures.ts';
 import { readPalette } from '../src/view/theme.ts';
 
 const pal = readPalette();
 const c = pal.css;
 
-/** Draw one tile kind into a fresh canvas the way the board's texture cache does. */
-function tile(kind: 'dark' | 'lit', cell: number, res: number): HTMLCanvasElement {
-  const edge = Math.max(3, Math.round(cell * 0.1));
-  const size = cell + edge;
+/** Draw one piece into a fresh canvas the way the board's texture cache does. */
+function piece(draw: (ctx: CanvasRenderingContext2D) => void, cell: number, res: number): HTMLCanvasElement {
   const cv = document.createElement('canvas');
-  cv.width = cv.height = Math.ceil(size * res);
+  cv.width = cv.height = Math.ceil(cell * res);
   const ctx = cv.getContext('2d')!;
   ctx.scale(res, res);
-  const r = cell * 0.08;
-  if (kind === 'dark') {
-    ctx.fillStyle = c.tileDarkEdge;
-    ctx.fillRect(0, edge, cell, cell);
-    ctx.fillStyle = c.tileDark;
-    ctx.fillRect(0, 0, cell, cell);
-    texturize(ctx, 'fibre', c.wing, 26, 11, 0, 0, size, size);
-    ctx.globalAlpha = 0.5;
-    wash(ctx, c.tileDarkHi, cell * 0.08, cell * 0.08, cell * 0.84, cell * 0.84, r, cell * 0.025, 7);
-    ctx.globalAlpha = 1;
-  } else {
-    ctx.fillStyle = c.tileLitEdge;
-    ctx.fillRect(0, edge, cell, cell);
-    ctx.fillStyle = c.ink;
-    ctx.fillRect(0, 0, cell, cell);
-    wash(ctx, c.gold, cell * 0.07, cell * 0.07, cell * 0.86, cell * 0.86, r, cell * 0.025, 7);
-    pooledEdge(ctx, c.tileLitLo, cell * 0.07, cell * 0.07, cell * 0.86, cell * 0.86, r, Math.max(1.5, cell * 0.035), cell * 0.025, 7);
-    texturize(ctx, 'grain', c.paperGrain, 70, 31, 0, 0, size, size);
-  }
+  draw(ctx);
   return cv;
+}
+
+function tile(kind: 'dark' | 'lit', cell: number, res: number): HTMLCanvasElement {
+  return piece((ctx) => (kind === 'dark' ? drawDarkTile : drawLitTile)(ctx, c, cell), cell, res);
 }
 
 /** Bake the full set a board needs for one cell size; milliseconds. */
@@ -46,6 +31,9 @@ function bakeSet(cell: number, res: number): number {
   const t0 = performance.now();
   tile('dark', cell, res);
   tile('lit', cell, res);
+  for (const kind of ['numbered', 'plain', 'wilted'] as const) piece((ctx) => drawBush(ctx, c, cell, kind), cell, res);
+  const rose = Math.round((cell * 15) / 84);
+  for (let v = 0; v < 4; v++) piece((ctx) => drawRose(ctx, c, rose, v), rose, res);
   return performance.now() - t0;
 }
 

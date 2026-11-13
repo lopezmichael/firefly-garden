@@ -18,14 +18,18 @@ export function bandFor(width: number, height: number): Band {
   return 'square';
 }
 
-/** Proportions of the board drawing, in cells. */
+/**
+ * Proportions of the board drawing, in cells. Ink and wash: tiles sit straight
+ * on the night (no tray) with their front edge inside the cell, 6 units apart on
+ * the canvas's 84-unit tile.
+ */
 export const BOARD_GEOMETRY = {
   /** Gap between tiles, as a fraction of a cell. */
-  gap: 0.14,
-  /** Tray padding on each side, as a fraction of a cell. */
-  pad: 0.22,
-  /** Extra room below for tile front edges and the tray's lip. */
-  lip: 0.14,
+  gap: 0.07,
+  /** Room on each side for hint outlines and halos that reach past the outer tiles. */
+  pad: 0.06,
+  /** Extra room below the last row (none: the front edge is inside the cell). */
+  lip: 0,
 } as const;
 
 export interface BoardFit {

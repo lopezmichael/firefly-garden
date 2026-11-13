@@ -112,15 +112,21 @@ milestone that changes what's on screen.
 
 ### 3. Board: tiles, bushes, roses, numbers
 
-- [ ] Dark tile (fibre card, front edge, dusk wash) and lit tile (paper rim, gold wash, pooled
-      edge, warm centre); a tile lit twice looks the same as lit once
-- [ ] Bushes: numbered, no-number, wants-none, wilted (too many); numbers in Young Serif; dots
-      fill gold one by one; happy number turns gold
-- [ ] Roses: one drawing, three per happy bush, variant chosen from the cell index so a garden
+- [x] Dark tile (fibre card, front edge, dusk wash) and lit tile (paper rim, gold wash, pooled
+      edge, warm centre); a tile lit twice looks the same as lit once. Drawn in `view/art/pieces.ts`
+      in the canvas's 84-unit tile space (face 82×76, front edge inside the cell); placement maths
+      in `view/art/geometry.ts`, unit-tested
+- [x] Bushes: numbered, no-number, wants-none, wilted (too many); numbers in Young Serif; dots
+      fill gold one by one; happy number turns gold. Too many swaps in the wilted drawing and shows
+      the extra dots in warn; more than five dots wrap to two rows (a bush can want 8)
+- [x] Roses: one drawing, three per happy bush, variant chosen from the cell index so a garden
       always looks the same; placed inside the leaf mass, clear of number and dots
-- [ ] Remove the tray and the tilt
-- [ ] Evidence: the state sheet reproduced in the real build (a dev-only route or test page that
-      renders every state), compared side by side with the Components board
+- [x] Remove the tray and the tilt (tiles now sit 0.07 of a cell apart, the canvas's spacing,
+      so cells grow a little in every band)
+- [x] Evidence: the state sheet reproduced in the real build (a dev-only route or test page that
+      renders every state), compared side by side with the Components board: `/dev/states.html`
+      (real `BoardView`, real core evaluations); `?level=<id>` shows a launch level at phone width,
+      checked on the 10×10 boards (still readable at 34 px cells)
 
 ### 4. Fireflies and board states
 

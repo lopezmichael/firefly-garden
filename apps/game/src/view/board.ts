@@ -5,7 +5,9 @@ import type { Board, Evaluation, Transform } from '@firefly/core';
 import { fitBoard } from './layout.ts';
 import type { BoardFit } from './layout.ts';
 import type { Palette } from './theme.ts';
-import { pooledEdge, texturize } from './art/textures.ts';
+import { bushLayout, dotPositions, FACE_CENTER_Y, ROSE_SLOTS, roseVariants, UNIT } from './art/geometry.ts';
+import type { BushKind } from './art/geometry.ts';
+import { drawBush, drawDarkTile, drawLitTile, drawRose } from './art/pieces.ts';
 
 /**
  * The PixiJS board: tiles, bushes, fireflies and hint marks, drawn in the
@@ -27,8 +29,6 @@ export interface BoardState {
 type FlyKind = 'player' | 'hint' | 'conflict';
 
 const TAU = Math.PI * 2;
-/** Vertical squash standing in for the mockup's rotateX tilt. */
-const TILT = 0.94;
 const easeOutBack = (t: number) => 1 + 2.7 * (t - 1) ** 3 + 1.7 * (t - 1) ** 2;
 
 class FlyView {
@@ -60,7 +60,7 @@ class FlyView {
     this.wingR.ellipse(0, 0, 7.5 * s, 5 * s).fill({ color: pal.wing, alpha: 0.85 });
     this.wingR.position.set(7 * s, -5 * s);
     this.wingR.rotation = 0.44;
-    this.shadow.ellipse(0, size * 0.33, size * 0.18, size * 0.045).fill({ color: pal.shadow, alpha: 0.55 });
+    this.shadow.ellipse(0, size * 0.33, size * 0.18, size * 0.045).fill({ color: pal.nightDeep, alpha: 0.55 });
     this.body.addChild(this.halo, this.wingL, this.wingR, this.core);
     this.root.addChild(this.ring, this.shadow, this.body, this.sparkle);
   }
@@ -69,11 +69,11 @@ class FlyView {
     if (kind === this.kind) return;
     this.kind = kind;
     const p = this.pal, s = this.size * 0.78 / 36;
-    const [fill, edge, halo] = kind === 'hint' ? [p.hintFirefly, p.hintFireflyEdge, p.gold]
-      : kind === 'conflict' ? [p.conflict, p.conflictEdge, p.conflict] : [p.firefly, p.fireflyEdge, p.glow];
+    const [fill, edge, halo] = kind === 'hint' ? [p.gold, p.goldEdge, p.gold]
+      : kind === 'conflict' ? [p.warn, p.sumi, p.warn] : [p.glow, p.sumi, p.glowSoft];
     this.core.clear()
       .circle(0, 3 * s, 8 * s).fill(fill).stroke({ width: 1.5 * s, color: edge })
-      .circle(0, -6 * s, 4.2 * s).fill(p.head)
+      .circle(0, -6 * s, 4.2 * s).fill(p.sumi)
       .circle(-1.5 * s, -7 * s, 1.1 * s).fill(p.wing)
       .circle(1.5 * s, -7 * s, 1.1 * s).fill(p.wing);
     this.halo.tint = halo;
@@ -81,9 +81,9 @@ class FlyView {
     this.sparkle.clear();
     if (kind === 'hint') {
       const r = this.size * 0.44;
-      this.ring.circle(0, 0, r).stroke({ width: Math.max(2, this.size * 0.045), color: p.glow });
-      this.ring.circle(0, 0, r).stroke({ width: Math.max(4, this.size * 0.12), color: p.glow, alpha: 0.18 });
-      mark(this.sparkle, 0, 0, this.size * 0.055, p.star);
+      this.ring.circle(0, 0, r).stroke({ width: Math.max(2, this.size * 0.045), color: p.glowSoft });
+      this.ring.circle(0, 0, r).stroke({ width: Math.max(4, this.size * 0.12), color: p.glowSoft, alpha: 0.18 });
+      mark(this.sparkle, 0, 0, this.size * 0.055, p.glow);
       this.sparkle.position.set(r * 0.72, -r * 0.72);
     }
   }
@@ -155,7 +155,11 @@ interface CellView {
   outline?: Graphics;
   clue?: Text;
   pips?: Graphics;
-  extras?: Graphics;
+  /** The bush drawing (swapped for the wilted one when it has too many). */
+  bush?: Sprite;
+  bushKind?: BushKind;
+  /** The three roses a happy bush shows. */
+  roses?: Container;
   bushKey?: string;
 }
 
@@ -176,7 +180,6 @@ export class BoardView {
   private readonly onTap: (cell: number) => void;
   private motion: boolean;
   private readonly stage = new Container();
-  private readonly tray = new Graphics();
   private readonly cellsLayer = new Container();
   private readonly ghostLayer = new Container();
   private board: Board | null = null;
@@ -194,7 +197,7 @@ export class BoardView {
     this.pal = opts.palette;
     this.onTap = opts.onTap;
     this.motion = !opts.reducedMotion;
-    this.stage.addChild(this.tray, this.cellsLayer, this.ghostLayer);
+    this.stage.addChild(this.cellsLayer, this.ghostLayer);
     app.stage.addChild(this.stage);
     app.ticker.add((ticker) => this.tick(ticker.deltaMS));
   }
@@ -274,9 +277,9 @@ export class BoardView {
 
   /** Free textures drawn for other cell sizes (resizes and folds would otherwise pile them up). */
   private pruneTextures(cell: number): void {
-    const keep = `:${cell + Math.max(3, Math.round(cell * 0.1))}:`;
+    const keep = new Set([`:${cell}:`, `:${this.roseSize(cell)}:`]);
     for (const [k, t] of this.textures) {
-      if (k.startsWith('halo:') || k.includes(keep)) continue;
+      if (k.startsWith('halo:') || [...keep].some((tag) => k.includes(tag))) continue;
       t.destroy(true);
       this.textures.delete(k);
     }
@@ -284,55 +287,21 @@ export class BoardView {
 
   private tileTexture(cell: number, lit: boolean): Texture {
     const c = this.pal.css;
-    const edge = Math.max(3, Math.round(cell * 0.1));
-    return this.texture(lit ? 'tile-lit' : 'tile-dark', cell + edge, (ctx, px) => {
-      const r = cell * 0.24;
-      ctx.fillStyle = lit ? c.tileLitEdge : c.tileDarkEdge;
-      roundRect(ctx, 0, edge, cell, cell, r);
-      ctx.fill();
-      const g = lit
-        ? ctx.createRadialGradient(cell * 0.5, cell * 0.42, 0, cell * 0.5, cell * 0.42, cell * 0.72)
-        : ctx.createRadialGradient(cell * 0.3, cell * 0.25, 0, cell * 0.3, cell * 0.25, cell * 0.95);
-      g.addColorStop(0, lit ? c.tileLitHi : c.tileDarkHi);
-      g.addColorStop(0.6, lit ? c.tileLit : c.tileDark);
-      g.addColorStop(1, lit ? c.tileLitLo : c.tileDarkLo);
-      ctx.fillStyle = g;
-      roundRect(ctx, 0, 0, cell, cell, r);
-      ctx.fill();
-      // Ink and wash texture kit (theme plan, milestone 2); the full tile drawings land in milestone 3.
-      if (lit) {
-        pooledEdge(ctx, c.tileLitLo, cell * 0.07, cell * 0.07, cell * 0.86, cell * 0.86, r * 0.7, Math.max(1.5, cell * 0.035), cell * 0.02, 17);
-        texturize(ctx, 'grain', c.paperGrain, 70, 31, 0, 0, px, px);
-      } else {
-        texturize(ctx, 'fibre', c.wing, 26, 11, 0, 0, px, px);
-      }
-    });
+    return this.texture(lit ? 'tile-lit' : 'tile-dark', cell, (ctx) => (lit ? drawLitTile : drawDarkTile)(ctx, c, cell));
   }
 
-  private bushTexture(cell: number, hidden: boolean): Texture {
-    const c = this.pal.css;
-    const edge = Math.max(3, Math.round(cell * 0.1));
-    return this.texture(hidden ? 'bush-hidden' : 'bush', cell + edge, (ctx) => {
-      const blob = (y: number) => {
-        ctx.beginPath();
-        ctx.moveTo(cell * 0.5, y);
-        ctx.bezierCurveTo(cell * 0.85, y, cell, y + cell * 0.18, cell, y + cell * 0.48);
-        ctx.bezierCurveTo(cell, y + cell * 0.84, cell * 0.8, y + cell, cell * 0.48, y + cell);
-        ctx.bezierCurveTo(cell * 0.14, y + cell, 0, y + cell * 0.8, 0, y + cell * 0.52);
-        ctx.bezierCurveTo(0, y + cell * 0.2, cell * 0.18, y, cell * 0.5, y);
-        ctx.closePath();
-      };
-      ctx.fillStyle = c.mossEdge;
-      blob(edge);
-      ctx.fill();
-      const g = ctx.createRadialGradient(cell * 0.34, cell * 0.28, 0, cell * 0.34, cell * 0.28, cell * 0.9);
-      g.addColorStop(0, hidden ? c.mossHiddenHi : c.mossHi);
-      g.addColorStop(0.55, hidden ? c.mossHidden : c.moss);
-      g.addColorStop(1, c.mossLo);
-      ctx.fillStyle = g;
-      blob(0);
-      ctx.fill();
-    });
+  private bushTexture(cell: number, kind: BushKind): Texture {
+    return this.texture(`bush-${kind}`, cell, (ctx) => drawBush(ctx, this.pal.css, cell, kind));
+  }
+
+  /** Roses are drawn once at the largest slot size and scaled down for the smaller slots. */
+  private roseSize(cell: number): number {
+    return Math.max(6, Math.round((cell * Math.max(...ROSE_SLOTS.map((r) => r.size))) / UNIT));
+  }
+
+  private roseTexture(cell: number, variant: number): Texture {
+    const px = this.roseSize(cell);
+    return this.texture(`rose${variant}`, px, (ctx) => drawRose(ctx, this.pal.css, px, variant));
   }
 
   private haloTexture(): Texture {
@@ -349,18 +318,15 @@ export class BoardView {
   private build(): void {
     this.cellsLayer.removeChildren().forEach((c) => c.destroy({ children: true }));
     this.cells = [];
-    this.tray.clear();
     if (!this.board || this.area.w < 10 || this.area.h < 10) return;
     const b = this.board;
     const [cols, rows] = this.dims();
-    const fit = fitBoard(cols, rows, this.area.w, this.area.h / TILT);
+    const fit = fitBoard(cols, rows, this.area.w, this.area.h);
     this.fit = fit;
     this.pruneTextures(fit.cell);
     const { cell, gap, pad } = fit;
-    this.stage.scale.set(1, TILT);
-    this.stage.position.set(Math.round((this.area.w - fit.width) / 2), Math.round((this.area.h - fit.height * TILT) / 2));
-    this.tray.roundRect(0, 0, fit.width, fit.height, cell * 0.4).fill(this.pal.tray)
-      .roundRect(1, 1, fit.width - 2, fit.height - 2, cell * 0.4).stroke({ width: 2, color: this.pal.trayEdge });
+    const u = cell / UNIT;
+    this.stage.position.set(Math.round((this.area.w - fit.width) / 2), Math.round((this.area.h - fit.height) / 2));
     const halo = this.haloTexture();
     for (let dr = 0; dr < rows; dr++) {
       for (let dc = 0; dc < cols; dc++) {
@@ -371,12 +337,12 @@ export class BoardView {
         const v: CellView = { cell: i, root, kind: kind === 'path' ? 'path' : kind === 'void' ? 'void' : 'bush' };
         if (v.kind === 'path') {
           v.tile = new Sprite(this.tileTexture(cell, false));
-          v.tile.width = v.tile.height = cell + Math.max(3, Math.round(cell * 0.1));
+          v.tile.width = v.tile.height = cell;
           v.lit = false;
           v.ruled = new Graphics();
           v.outline = new Graphics();
           v.fly = new FlyView(cell, this.pal, halo, ((dr * 7 + dc * 5) % 8) * 0.8);
-          v.fly.root.position.set(cell / 2, cell / 2);
+          v.fly.root.position.set(cell / 2, FACE_CENTER_Y * u);
           v.fly.root.visible = false;
           root.addChild(v.tile, v.ruled, v.fly.root, v.outline);
           root.eventMode = 'static';
@@ -384,31 +350,33 @@ export class BoardView {
           root.hitArea = new Rectangle(-gap / 2, -gap / 2, cell + gap, cell + gap);
           root.on('pointertap', () => this.onTap(i));
         } else if (v.kind === 'bush') {
-          const hidden = b.clue[i] === null;
-          const sprite = new Sprite(this.bushTexture(cell, hidden));
-          sprite.width = sprite.height = cell + Math.max(3, Math.round(cell * 0.1));
+          const numbered = b.clue[i] !== null;
+          v.bushKind = numbered ? 'numbered' : 'plain';
+          v.bush = new Sprite(this.bushTexture(cell, v.bushKind));
+          v.bush.width = v.bush.height = cell;
           v.outline = new Graphics();
-          v.extras = new Graphics();
-          root.addChild(sprite, v.extras, v.outline);
-          if (hidden) {
-            const leaf = new Graphics();
-            const s = cell * 0.38 / 24, ox = cell / 2 - 12 * s, oy = cell / 2 - 12 * s;
-            leaf.moveTo(ox + 5 * s, oy + 19 * s).bezierCurveTo(ox + 5 * s, oy + 10 * s, ox + 11 * s, oy + 5 * s, ox + 20 * s, oy + 4 * s)
-              .bezierCurveTo(ox + 19 * s, oy + 13 * s, ox + 14 * s, oy + 19 * s, ox + 5 * s, oy + 19 * s).closePath()
-              .fill(this.pal.leaf).stroke({ width: 1.5 * s, color: this.pal.mossEdge })
-              .moveTo(ox + 5 * s, oy + 19 * s).lineTo(ox + 14 * s, oy + 10 * s).stroke({ width: 1.5 * s, color: this.pal.mossEdge });
-            root.addChild(leaf);
-          } else {
+          root.addChild(v.bush);
+          if (numbered) {
+            v.roses = new Container();
+            v.roses.visible = false;
+            roseVariants(i).forEach((variant, k) => {
+              const slot = ROSE_SLOTS[k]!;
+              const rose = new Sprite(this.roseTexture(cell, variant));
+              rose.position.set(slot.x * u, slot.y * u);
+              rose.width = rose.height = slot.size * u;
+              v.roses!.addChild(rose);
+            });
             v.clue = new Text({
               text: String(b.clue[i]),
-              style: { fontFamily: this.pal.fontDisplay, fontWeight: '400', fontSize: Math.round(cell * 0.44), fill: this.pal.ink },
+              style: { fontFamily: this.pal.fontDisplay, fontWeight: '400', fontSize: Math.round(30 * u), fill: this.pal.paper },
               resolution: Math.min(3, (window.devicePixelRatio || 1) * 1.5),
             });
             v.clue.anchor.set(0.5);
-            v.clue.position.set(cell / 2, cell * (b.kind[i] === 'mushroom' ? 0.5 : 0.42));
+            v.clue.position.set(cell / 2, bushLayout('numbered').numberY * u);
             v.pips = new Graphics();
-            root.addChild(v.clue, v.pips);
+            root.addChild(v.roses, v.clue, v.pips);
           }
+          root.addChild(v.outline);
         }
         this.cellsLayer.addChild(root);
         this.cells.push(v);
@@ -426,6 +394,7 @@ export class BoardView {
     this.state = state;
     if (!this.board || !this.fit) return;
     const { cell } = this.fit;
+    const u = cell / UNIT;
     const ev = state.evaluation;
     const flies = new Set(ev.fireflies);
     const conflicts = new Set(ev.conflicts);
@@ -452,42 +421,42 @@ export class BoardView {
         }
         v.ruled!.clear();
         if (state.ruledOut.has(v.cell) && !has) {
-          const r = cell * 0.18, cx = cell / 2, cy = cell / 2;
+          const r = cell * 0.18, cx = cell / 2, cy = FACE_CENTER_Y * u;
           v.ruled!.circle(cx, cy, r).stroke({ width: Math.max(2, cell * 0.035), color: this.pal.ruled, alpha: 0.9 })
             .moveTo(cx - r * 0.7, cy + r * 0.7).lineTo(cx + r * 0.7, cy - r * 0.7).stroke({ width: Math.max(2, cell * 0.035), color: this.pal.ruled, cap: 'round' });
         }
-      } else if (v.kind === 'bush' && v.clue && v.pips) {
+      } else if (v.kind === 'bush' && v.clue && v.pips && v.bush && v.roses) {
         const s = bushes.get(v.cell);
         const want = s?.want ?? 0, have = s?.have ?? 0, st = s?.state ?? 'under';
-        const key = `${have}:${st}:${state.solved}`;
+        const key = `${have}:${st}`;
         if (key !== v.bushKey) {
           v.bushKey = key;
-          // A satisfied number turns a full gold: the status card says "all its dots are gold", and pale glow on cream was invisible.
-          v.clue.style.fill = st === 'over' ? this.pal.warn : st === 'met' ? this.pal.gold : this.pal.ink;
-          const pip = Math.max(5, Math.round(cell * 0.12)), gap = Math.max(2, Math.round(cell * 0.05));
-          const total = want * pip + (want - 1) * gap;
+          // Too many: the bush wilts (shape) as well as turning the number and the extra dot warn (colour).
+          const kind: BushKind = st === 'over' ? 'wilted' : 'numbered';
+          if (kind !== v.bushKind) {
+            v.bushKind = kind;
+            v.bush.texture = this.bushTexture(cell, kind);
+          }
+          const { numberY, dotsY } = bushLayout(kind);
+          v.clue.position.y = numberY * u;
+          // Happy: the number turns gold and three roses open. A bush that wants none shows neither.
+          v.clue.style.fill = st === 'over' ? this.pal.warn : st === 'met' && want > 0 ? this.pal.gold : this.pal.paper;
+          v.roses.visible = st === 'met' && want > 0;
+          // One dot per firefly wanted, filling gold one by one; with too many, the extras show in warn.
           v.pips.clear();
-          for (let k = 0; k < want; k++) {
-            const x = cell / 2 - total / 2 + k * (pip + gap) + pip / 2, y = cell * 0.72;
-            const on = k < have;
-            const color = st === 'over' ? this.pal.warn : this.pal.glow;
-            v.pips.circle(x, y, pip / 2 - 0.75).stroke({ width: 1.5, color });
-            if (on || st === 'over') v.pips.circle(x, y, pip / 2 - 0.75).fill(color);
-          }
-          v.extras!.clear();
-          if (st === 'met' && want > 0) mark(v.extras!, cell * 0.9, cell * 0.06, cell * 0.06, this.pal.glow);
-          if (state.solved) {
-            flower(v.extras!, cell * 0.18, cell * 0.16, cell * 0.12, this.pal.petalPink, this.pal.glow);
-            flower(v.extras!, cell * 0.8, cell * 0.8, cell * 0.1, this.pal.petalCream, this.pal.star);
-          }
+          dotPositions(Math.max(want, have), dotsY).forEach((d, k) => {
+            const x = d.x * u, y = d.y * u;
+            if (k < have) {
+              v.pips!.circle(x, y, 3.6 * u).fill(k < want ? this.pal.gold : this.pal.warn).stroke({ width: Math.max(1, u), color: this.pal.sumi });
+            } else {
+              v.pips!.circle(x, y, 3.4 * u).stroke({ width: Math.max(1, 1.6 * u), color: this.pal.paper });
+            }
+          });
         }
-      } else if (v.kind === 'bush' && v.extras) {
-        v.extras.clear();
-        if (state.solved) flower(v.extras, cell * 0.18, cell * 0.16, cell * 0.12, this.pal.petalPink, this.pal.glow);
       }
       if (v.outline) {
         v.outline.clear();
-        if (state.because.has(v.cell)) dashedRect(v.outline, -3, -3, cell + 6, cell + 6, Math.max(4, cell * 0.08), this.pal.glow, 2);
+        if (state.because.has(v.cell)) dashedRect(v.outline, -3, -3, cell + 6, cell + 6, Math.max(4, cell * 0.08), this.pal.gold, 2);
       }
     }
     if (opts.removed !== undefined && opts.removed !== null) this.liftAway(opts.removed);
@@ -499,7 +468,7 @@ export class BoardView {
     if (!v || !this.fit) return null;
     const r = this.app.canvas.getBoundingClientRect();
     const half = this.fit.cell / 2;
-    return { x: r.left + this.stage.x + v.root.x + half, y: r.top + this.stage.y + (v.root.y + half) * TILT };
+    return { x: r.left + this.stage.x + v.root.x + half, y: r.top + this.stage.y + v.root.y + FACE_CENTER_Y * (this.fit.cell / UNIT) };
   }
 
   private liftAway(cell: number): void {
@@ -507,7 +476,7 @@ export class BoardView {
     if (!v || !this.fit || !this.motion) return;
     const fly = new FlyView(this.fit.cell, this.pal, this.haloTexture(), 0);
     fly.setKind('conflict');
-    fly.root.position.set(v.root.x + this.fit.cell / 2, v.root.y + this.fit.cell / 2);
+    fly.root.position.set(v.root.x + this.fit.cell / 2, v.root.y + FACE_CENTER_Y * (this.fit.cell / UNIT));
     this.ghostLayer.addChild(fly.root);
     this.ghosts.push({ fly, age: 0 });
   }
@@ -540,22 +509,4 @@ export class BoardView {
     for (const t of this.textures.values()) t.destroy(true);
     this.textures.clear();
   }
-}
-
-function flower(g: Graphics, x: number, y: number, r: number, petal: number, center: number): void {
-  for (let k = 0; k < 4; k++) {
-    const a = (k / 4) * TAU;
-    g.circle(x + Math.cos(a) * r * 0.5, y + Math.sin(a) * r * 0.5, r * 0.4).fill(petal);
-  }
-  g.circle(x, y, r * 0.3).fill(center);
-}
-
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
 }

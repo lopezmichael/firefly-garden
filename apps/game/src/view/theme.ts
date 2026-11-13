@@ -1,31 +1,16 @@
 /**
  * The board renderer's palette, read once from the CSS tokens in theme.css so
  * colors live in exactly one place (a ratchet forbids color literals in code).
+ * Every color token is listed here by its own name and read as `pal.<camelCase>`
+ * (`--ff-gold-pool` → `pal.goldPool`), with no renaming in between;
+ * `apps/game/test/theme.test.ts` fails if this list and theme.css disagree.
  */
 
-const TOKENS = {
-  // Until the board is redrawn in the ink and wash shapes (theme plan, milestones 3 and 4),
-  // its existing parts read the nearest ink and wash token.
-  tray: '--ff-night', trayEdge: '--ff-night',
-  tileDarkHi: '--ff-dusk-wash', tileDark: '--ff-dusk', tileDarkLo: '--ff-dusk', tileDarkEdge: '--ff-dusk-edge',
-  tileLitHi: '--ff-glow-warm', tileLit: '--ff-gold', tileLitLo: '--ff-gold-pool', tileLitEdge: '--ff-gold-edge',
-  ruled: '--ff-ruled',
-  mossHi: '--ff-moss-hi', moss: '--ff-moss', mossLo: '--ff-moss-lo', mossEdge: '--ff-sumi',
-  mossHiddenHi: '--ff-moss-plain', mossHidden: '--ff-moss-plain-lo', leaf: '--ff-leaf',
-  firefly: '--ff-glow', fireflyEdge: '--ff-sumi',
-  hintFirefly: '--ff-gold', hintFireflyEdge: '--ff-gold-edge',
-  conflict: '--ff-warn', conflictEdge: '--ff-sumi',
-  head: '--ff-sumi', wing: '--ff-wing', shadow: '--ff-night-deep',
-  glow: '--ff-glow-soft', gold: '--ff-gold', warn: '--ff-warn', ink: '--ff-paper', star: '--ff-glow',
-  petalPink: '--ff-rose', petalCream: '--ff-rose-pale',
-  paperGrain: '--ff-paper-grain',
-  fontDisplay: '--ff-font-display',
-} as const;
-
-type ColorKey = Exclude<keyof typeof TOKENS, 'fontDisplay'>;
+import { camel, COLOR_TOKENS } from './tokens.ts';
+import type { ColorKey } from './tokens.ts';
 
 export type Palette = { readonly [K in ColorKey]: number } & {
-  /** The same colors as CSS strings, for canvas gradients. */
+  /** The same colors as CSS strings, for canvas drawing. */
   readonly css: { readonly [K in ColorKey]: string };
   readonly fontDisplay: string;
 };
@@ -43,12 +28,11 @@ export function readPalette(root: Element = document.documentElement): Palette {
   const style = getComputedStyle(root);
   const nums: Record<string, number> = {};
   const css: Record<string, string> = {};
-  for (const [key, token] of Object.entries(TOKENS)) {
-    if (key === 'fontDisplay') continue;
-    const v = normalizeHex(token, style.getPropertyValue(token));
-    nums[key] = parseInt(v.slice(1), 16);
-    css[key] = v;
+  for (const token of COLOR_TOKENS) {
+    const v = normalizeHex(`--ff-${token}`, style.getPropertyValue(`--ff-${token}`));
+    nums[camel(token)] = parseInt(v.slice(1), 16);
+    css[camel(token)] = v;
   }
-  const fontDisplay = style.getPropertyValue(TOKENS.fontDisplay).trim() || 'sans-serif';
+  const fontDisplay = style.getPropertyValue('--ff-font-display').trim() || 'serif';
   return { ...(nums as { [K in ColorKey]: number }), css: css as { [K in ColorKey]: string }, fontDisplay };
 }

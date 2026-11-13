@@ -135,6 +135,22 @@ export function wobblePath(
   ctx.closePath();
 }
 
+/** Trace an ellipse whose edge wanders by up to `amp`, for washed leaf masses and roses. */
+export function wobbleEllipse(
+  ctx: CanvasRenderingContext2D, cx: number, cy: number, rx: number, ry: number, amp: number, seed: number,
+): void {
+  const count = Math.max(24, Math.round((rx + ry) * 2));
+  const off = wobble(count, seed, Math.max(5, Math.round((rx + ry) / 4)));
+  ctx.beginPath();
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * 2 * Math.PI, o = off[i]! * amp;
+    const x = cx + Math.cos(a) * (rx + o), y = cy + Math.sin(a) * (ry + o);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+}
+
 /** Fill a wobbled wash. */
 export function wash(
   ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number, r: number, amp: number, seed: number,
