@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bushLayout, dotPositions, FACE_CENTER_Y, ROSE_SLOTS, ROSE_VARIANTS, roseVariants, UNIT } from '../src/view/art/geometry.ts';
+import { bushLayout, dotPositions, FACE_CENTER_Y, outlinePolylines, ROSE_SLOTS, ROSE_VARIANTS, roseVariants, UNIT } from '../src/view/art/geometry.ts';
 
 const DOT_R = 3.6;
 
@@ -70,5 +70,38 @@ describe('roses', () => {
 
   it('fireflies sit on the middle of the face, above the front edge', () => {
     expect(FACE_CENTER_Y).toBe((1 + 77) / 2);
+  });
+});
+
+describe('hint reason outline', () => {
+  const g = { cell: 84, gap: 6, pad: 5 };
+  const lines = (p: number[][]) => p.filter((l) => l.length === 4);
+  const arcs = (p: number[][]) => p.filter((l) => l.length > 4);
+
+  it('rounds a single cell on all four corners, half a gap outside it', () => {
+    const p = outlinePolylines([{ r: 0, c: 0 }], g, 8);
+    expect(lines(p)).toHaveLength(4);
+    expect(arcs(p)).toHaveLength(4);
+    const xs = p.flat().filter((_, i) => i % 2 === 0);
+    expect(Math.min(...xs)).toBeCloseTo(g.pad - g.gap / 2, 6);
+    expect(Math.max(...xs)).toBeCloseTo(g.pad + g.cell + g.gap / 2, 6);
+  });
+
+  it('draws two neighbours as one shape: no line between them, four outer corners only', () => {
+    const p = outlinePolylines([{ r: 0, c: 1 }, { r: 0, c: 2 }], g, 8);
+    expect(arcs(p)).toHaveLength(4);
+    // Top and bottom are split per cell (2 + 2), plus the two ends: no edge down the middle.
+    expect(lines(p)).toHaveLength(6);
+    const midX = g.pad + 2 * (g.cell + g.gap) - g.gap / 2;
+    expect(lines(p).some((l) => l[0] === midX && l[2] === midX)).toBe(false);
+  });
+
+  it('closes: every line end meets another line or an arc end', () => {
+    const p = outlinePolylines([{ r: 0, c: 0 }, { r: 0, c: 1 }, { r: 1, c: 1 }], g, 8);
+    const ends = p.flatMap((l) => [[l[0]!, l[1]!], [l[l.length - 2]!, l[l.length - 1]!]]);
+    for (const [x, y] of ends) {
+      const meets = ends.filter(([a, b]) => Math.hypot(a! - x!, b! - y!) < 1e-6).length;
+      expect(meets).toBeGreaterThanOrEqual(2);
+    }
   });
 });

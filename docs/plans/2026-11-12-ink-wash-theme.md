@@ -130,15 +130,20 @@ milestone that changes what's on screen.
 
 ### 4. Fireflies and board states
 
-- [ ] `FlyView` redrawn as firefly C: glowing tail with lantern ribs, head, curled antennae,
+- [x] `FlyView` redrawn as firefly C: glowing tail with lantern ribs, head, curled antennae,
       wings as separate graphics for the flap (about twice a second), a 3 px bob over 2.4 s,
       breathing shadow and glow
-- [ ] Hint firefly: gold tail, dashed seal-red halo at body height, small seal with a plus
-- [ ] Conflict: rose tail and glow, sumi shiver lines, soft rose hatching on the tile, slow
+- [x] Hint firefly: gold tail, dashed seal-red halo at body height, small seal with a plus
+- [x] Conflict: rose tail and glow, sumi shiver lines, soft rose hatching on the tile, slow
       sway (still under reduced motion, marks stay)
-- [ ] Ruled-out brush cross and the dashed gold hint reason outline
-- [ ] `ui/flight.ts`: the DOM flier redrawn to match firefly C (classes only, no hex)
-- [ ] Evidence: clips of place, call back, hint and conflict, motion on and off
+- [x] Ruled-out brush cross and the dashed gold hint reason outline (one rounded outline around
+      each touching group of named cells, `outlinePolylines` in `view/art/geometry.ts`, tested)
+- [x] `ui/flight.ts`: the DOM flier redrawn to match firefly C (classes only, no hex)
+- [x] Evidence: clips of place, call back, hint and conflict, motion on and off. Found on the way:
+      the flight from the jar was being cancelled on the first move, because Young Serif's taller
+      line box let the status card change height (a resize cancels flights). The status title now
+      has an explicit line height, and `apps/game/test/status-css.test.ts` keeps the card's
+      reserved height in step with it
 
 ### 5. Chrome and sheets
 

@@ -89,7 +89,7 @@
 .ff-status[data-tone='solved'] { background: color-mix(in srgb, var(--ff-moss-lo) 95%, transparent); }
 .ff-status-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .ff-status-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.ff-status-title { font-family: var(--ff-font-display); font-weight: 400; font-size: 18px; color: var(--ff-paper); }
+.ff-status-title { font-family: var(--ff-font-display); font-weight: 400; font-size: 18px; line-height: 1.2; color: var(--ff-paper); }
 .ff-status[data-tone='warn'] .ff-status-title { color: var(--ff-warn); }
 .ff-status[data-tone='glow'] .ff-status-title, .ff-status[data-tone='solved'] .ff-status-title { color: var(--ff-glow); }
 .ff-status-sub { font-size: 15px; line-height: 1.4; color: var(--ff-paper-quiet); }
@@ -117,13 +117,24 @@
 .ff-status-row { align-items: center; }
 
 /* A firefly in flight between the jar and the board. */
-.ff-flier { position: fixed; left: 0; top: 0; width: 30px; height: 30px; margin: -15px 0 0 -15px; pointer-events: none; z-index: 20; }
+.ff-flier {
+  position: fixed; left: 0; top: 0; width: 34px; height: 34px; margin: -17px 0 0 -17px; pointer-events: none; z-index: 20;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--ff-glow) 0, color-mix(in srgb, var(--ff-glow-soft) 70%, transparent) 30%, transparent 70%);
+}
 .ff-flier svg { width: 100%; height: 100%; overflow: visible; }
-.ff-flier-halo { fill: var(--ff-glow); opacity: 0.35; }
-.ff-flier-wing { fill: var(--ff-wing); opacity: 0.85; }
-.ff-flier-body { fill: var(--ff-glow); stroke: var(--ff-sumi); stroke-width: 1.5; }
-.ff-flier[data-gold='true'] .ff-flier-body { fill: var(--ff-gold); stroke: var(--ff-gold-edge); }
+.ff-flier-wing { fill: color-mix(in srgb, var(--ff-wing) 70%, transparent); stroke: var(--ff-sumi); stroke-width: 0.8; }
+/* Fliers exist only with motion on, so their flap needs no reduced-motion guard of its own. */
+.ff-flier-wing-l { transform-box: fill-box; transform-origin: 100% 100%; animation: ff-flap-l 0.42s ease-in-out infinite; }
+.ff-flier-wing-r { transform-box: fill-box; transform-origin: 0% 100%; animation: ff-flap-r 0.42s ease-in-out infinite; }
+.ff-flier-tail { fill: var(--ff-glow); stroke: var(--ff-sumi); stroke-width: 1; }
+.ff-flier-ribs { fill: none; stroke: var(--ff-firefly-rib); stroke-width: 0.8; }
+.ff-flier[data-gold='true'] .ff-flier-tail { fill: var(--ff-gold); }
+.ff-flier[data-gold='true'] .ff-flier-ribs { stroke: var(--ff-gold-edge); }
 .ff-flier-head { fill: var(--ff-sumi); }
+.ff-flier-feelers { fill: none; stroke: var(--ff-sumi); stroke-width: 0.8; stroke-linecap: round; }
+@keyframes ff-flap-l { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-28deg); } }
+@keyframes ff-flap-r { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(28deg); } }
 
 /* Hint is a secondary action: outlined, so the paid move is never the loudest thing on screen. */
 .ff-hint { border: 2px solid var(--ff-gold); background: var(--ff-dusk); color: var(--ff-glow); font-weight: 700; cursor: pointer; }

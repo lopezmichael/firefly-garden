@@ -195,3 +195,130 @@ export function drawRose(ctx: CanvasRenderingContext2D, c: Css, px: number, vari
   ctx.restore();
 }
 
+
+export type FlyKind = 'player' | 'hint' | 'conflict';
+
+const WING_L = new Path2D('M39 39 C30 28 24 34 28 40 C31 44 36 43 39 41 Z');
+const WING_R = new Path2D('M45 39 C54 28 60 34 56 40 C53 44 48 43 45 41 Z');
+const WING_VEINS = { left: new Path2D('M37 39 q-4 -4 -7 -3'), right: new Path2D('M47 39 q4 -4 7 -3') } as const;
+const RIBS = new Path2D('M35.5 46 q6.5 3 13 0 M35.5 50.5 q6.5 3 13 0');
+const ANTENNAE_CURLED = new Path2D('M40.8 35.6 q-1.4 -5 -5 -5.6 q-1.6 0 -1 1.4 M43.2 35.6 q1.4 -5 5 -5.6 q1.6 0 1 1.4');
+const ANTENNAE_STRAIGHT = new Path2D('M40.8 35.6 q-1.4 -5 -5 -5.6 M43.2 35.6 q1.4 -5 5 -5.6');
+const SHIVER = new Path2D('M23 38 q-4 7 0 14 M17 35 q-6 10 0 20 M61 38 q4 7 0 14 M67 35 q6 10 0 20');
+
+/** The light around a firefly: warm for yours and the hint's, rose for a conflict. */
+export function drawFlyGlow(ctx: CanvasRenderingContext2D, c: Css, cell: number, kind: FlyKind): void {
+  inUnits(ctx, cell, () => {
+    const r = kind === 'hint' ? 22 : kind === 'conflict' ? 24 : 26;
+    const g = ctx.createRadialGradient(42, 46, 0, 42, 46, r);
+    if (kind === 'conflict') {
+      g.addColorStop(0, c.warnGlow);
+      g.addColorStop(0.4, `${c.warn}8c`);
+      g.addColorStop(1, `${c.warn}00`);
+    } else {
+      g.addColorStop(0, c.glow);
+      g.addColorStop(0.35, `${c.glowSoft}b3`);
+      g.addColorStop(1, `${c.gold}00`);
+    }
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(42, 46, r, 0, 2 * Math.PI);
+    ctx.fill();
+  });
+}
+
+/** The soft shadow under a firefly. */
+export function drawFlyShadow(ctx: CanvasRenderingContext2D, c: Css, cell: number): void {
+  inUnits(ctx, cell, () => {
+    ctx.globalAlpha = 0.45;
+    ctx.fillStyle = c.nightDeep;
+    ctx.beginPath();
+    ctx.ellipse(45, 68, 7, 2.2, 0, 0, 2 * Math.PI);
+    ctx.fill();
+  });
+}
+
+/** One wing, a separate drawing so it can flap about its root. */
+export function drawFlyWing(ctx: CanvasRenderingContext2D, c: Css, cell: number, side: 'left' | 'right'): void {
+  inUnits(ctx, cell, () => {
+    const wing = side === 'left' ? WING_L : WING_R;
+    ctx.globalAlpha = 0.65;
+    ctx.fillStyle = c.wing;
+    ctx.fill(wing);
+    ctx.globalAlpha = 1;
+    stroke(ctx, wing, c.sumi, 1);
+    ctx.globalAlpha = 0.7;
+    stroke(ctx, WING_VEINS[side], c.sumi, 0.7);
+  });
+}
+
+/**
+ * Firefly C's body: the glowing tail with lantern ribs, the head and the
+ * antennae. Hint: a gold tail. Conflict: a rose tail, straight antennae, and
+ * sumi shiver lines either side (shape, so the state never rests on colour).
+ */
+export function drawFlyBody(ctx: CanvasRenderingContext2D, c: Css, cell: number, kind: FlyKind): void {
+  inUnits(ctx, cell, () => {
+    const [tail, ribs] = kind === 'hint' ? [c.gold, c.goldEdge] : kind === 'conflict' ? [c.warn, c.roseSpiral] : [c.glow, c.fireflyRib];
+    ctx.beginPath();
+    ctx.arc(42, 48, 7.5, 0, 2 * Math.PI);
+    ctx.fillStyle = tail;
+    ctx.fill();
+    ctx.strokeStyle = c.sumi;
+    ctx.lineWidth = 1.3;
+    ctx.stroke();
+    stroke(ctx, RIBS, ribs, 1);
+    ctx.beginPath();
+    ctx.arc(42, 38.5, 3.6, 0, 2 * Math.PI);
+    ctx.fillStyle = c.sumi;
+    ctx.fill();
+    stroke(ctx, kind === 'conflict' ? ANTENNAE_STRAIGHT : ANTENNAE_CURLED, c.sumi, 1);
+    if (kind === 'conflict') stroke(ctx, SHIVER, c.sumi, 1.6);
+  });
+}
+
+/** The hint firefly's marks: a dashed seal-red halo at body height and a small seal with a plus. */
+export function drawHintHalo(ctx: CanvasRenderingContext2D, c: Css, cell: number): void {
+  inUnits(ctx, cell, () => {
+    ctx.save();
+    ctx.setLineDash([5, 4]);
+    ctx.strokeStyle = c.seal;
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.arc(42, 44, 25, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = c.seal;
+    roundRect(ctx, 63, 6, 15, 15, 2);
+    ctx.fill();
+    stroke(ctx, new Path2D('M66.5 13.5 h8 M70.5 9.5 v8'), c.onSeal, 2);
+  });
+}
+
+/** Ruled out: a small pale brush cross on the dark tile. */
+export function drawRuledCross(ctx: CanvasRenderingContext2D, c: Css, cell: number): void {
+  inUnits(ctx, cell, () => {
+    // Two passes, the second thinner and nudged, so the stroke reads as a brush, not a vector line.
+    stroke(ctx, new Path2D('M34 31 q4 4 16 16 M50 31 q-5 5 -16 16'), c.ruled, 3);
+    ctx.globalAlpha = 0.5;
+    stroke(ctx, new Path2D('M34.6 30.4 q4 4.4 16 16.4 M50.4 31.6 q-5.4 4.8 -16.2 15.6'), c.ruled, 1.4);
+  });
+}
+
+/** A lit tile under fireflies that see each other: no warm centre, soft rose hatching. */
+export function drawConflictTile(ctx: CanvasRenderingContext2D, c: Css, cell: number): void {
+  inUnits(ctx, cell, () => {
+    card(ctx, c.paper, c.goldEdge);
+    wash(ctx, c.gold, 6, 6, 72, 66, 5, 1.6, 7);
+    ctx.save();
+    wobblePath(ctx, 6, 6, 72, 66, 5, 1.6, 7);
+    ctx.clip();
+    ctx.globalAlpha = 0.45;
+    stroke(ctx, new Path2D('M6 22 L22 6 M6 40 L40 6 M6 58 L58 6 M12 70 L76 6 M30 70 L76 24 M48 70 L76 42 M66 70 L76 60'), c.warnHatch, 1.6);
+    ctx.restore();
+    ctx.strokeStyle = c.sumi;
+    ctx.lineWidth = 2;
+    roundRect(ctx, 1, 1, 82, 76, 6);
+    ctx.stroke();
+  });
+}

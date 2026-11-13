@@ -5,9 +5,10 @@ import type { Board, Evaluation, Transform } from '@firefly/core';
 import { fitBoard } from './layout.ts';
 import type { BoardFit } from './layout.ts';
 import type { Palette } from './theme.ts';
-import { bushLayout, dotPositions, FACE_CENTER_Y, ROSE_SLOTS, roseVariants, UNIT } from './art/geometry.ts';
+import { bushLayout, dotPositions, FACE_CENTER_Y, FLY_MOTION, outlinePolylines, pulse, ROSE_SLOTS, roseVariants, SWAY_ORIGIN, UNIT, WING_ROOT } from './art/geometry.ts';
 import type { BushKind } from './art/geometry.ts';
-import { drawBush, drawDarkTile, drawLitTile, drawRose } from './art/pieces.ts';
+import { drawBush, drawConflictTile, drawDarkTile, drawFlyBody, drawFlyGlow, drawFlyShadow, drawFlyWing, drawHintHalo, drawLitTile, drawRose, drawRuledCross } from './art/pieces.ts';
+import type { FlyKind } from './art/pieces.ts';
 
 /**
  * The PixiJS board: tiles, bushes, fireflies and hint marks, drawn in the
@@ -26,66 +27,77 @@ export interface BoardState {
   readonly solved: boolean;
 }
 
-type FlyKind = 'player' | 'hint' | 'conflict';
-
 const TAU = Math.PI * 2;
 const easeOutBack = (t: number) => 1 + 2.7 * (t - 1) ** 3 + 1.7 * (t - 1) ** 2;
 
+/** One cell size's firefly drawings, baked into the board's texture cache. */
+interface FlyArt {
+  readonly glow: Readonly<Record<FlyKind, Texture>>;
+  readonly body: Readonly<Record<FlyKind, Texture>>;
+  readonly wingL: Texture;
+  readonly wingR: Texture;
+  readonly shadow: Texture;
+  readonly halo: Texture;
+}
+
+/**
+ * Firefly C on a tile. Every part is a cell-sized sprite drawn in the canvas's
+ * 84-unit tile space, so the root sits at the cell's top-left corner. Motion (all
+ * dropped under reduced motion, the state stays): wings flap about their roots,
+ * the body bobs, glow and shadow breathe, a conflict sways. The hint's halo and
+ * seal stay still on the tile.
+ */
 class FlyView {
   readonly root = new Container();
-  private readonly shadow = new Graphics();
+  private readonly shadow: Sprite;
   private readonly halo: Sprite;
   private readonly body = new Container();
-  private readonly wingL = new Graphics();
-  private readonly wingR = new Graphics();
-  private readonly core = new Graphics();
-  private readonly ring = new Graphics();
-  private readonly sparkle = new Graphics();
+  private readonly glow: Sprite;
+  private readonly wingL: Sprite;
+  private readonly wingR: Sprite;
+  private readonly core: Sprite;
+  private readonly u: number;
   kind: FlyKind | null = null;
   phase: number;
   drop = 1;
   /** Milliseconds to stay invisible before dropping in (a firefly still flying from the jar). */
   wait = 0;
 
-  constructor(private readonly size: number, private readonly pal: Palette, haloTex: Texture, phase: number) {
+  constructor(private readonly size: number, private readonly art: FlyArt, phase: number) {
     this.phase = phase;
-    this.halo = new Sprite(haloTex);
-    this.halo.anchor.set(0.5);
-    this.halo.blendMode = 'add';
-    this.halo.width = this.halo.height = size * 1.25;
-    const s = size * 0.78 / 36; // the mockup's firefly is drawn on a 36-unit grid
-    this.wingL.ellipse(0, 0, 7.5 * s, 5 * s).fill({ color: pal.wing, alpha: 0.85 });
-    this.wingL.position.set(-7 * s, -5 * s);
-    this.wingL.rotation = -0.44;
-    this.wingR.ellipse(0, 0, 7.5 * s, 5 * s).fill({ color: pal.wing, alpha: 0.85 });
-    this.wingR.position.set(7 * s, -5 * s);
-    this.wingR.rotation = 0.44;
-    this.shadow.ellipse(0, size * 0.33, size * 0.18, size * 0.045).fill({ color: pal.nightDeep, alpha: 0.55 });
-    this.body.addChild(this.halo, this.wingL, this.wingR, this.core);
-    this.root.addChild(this.ring, this.shadow, this.body, this.sparkle);
+    this.u = size / UNIT;
+    const full = (t: Texture) => {
+      const sp = new Sprite(t);
+      sp.width = sp.height = size;
+      return sp;
+    };
+    /** A part that turns about `p` (units): anchored there, placed there. */
+    const pivoted = (t: Texture, p: { x: number; y: number }) => {
+      const sp = full(t);
+      sp.anchor.set(p.x / UNIT, p.y / UNIT);
+      sp.position.set(p.x * this.u, p.y * this.u);
+      return sp;
+    };
+    this.shadow = pivoted(art.shadow, { x: 45, y: 68 });
+    this.halo = full(art.halo);
+    this.halo.visible = false;
+    this.glow = full(art.glow.player);
+    this.wingL = pivoted(art.wingL, WING_ROOT.left);
+    this.wingR = pivoted(art.wingR, WING_ROOT.right);
+    this.core = full(art.body.player);
+    // The body turns about the sway origin, so its children are placed relative to it.
+    this.body.pivot.set(SWAY_ORIGIN.x * this.u, SWAY_ORIGIN.y * this.u);
+    this.body.position.set(SWAY_ORIGIN.x * this.u, SWAY_ORIGIN.y * this.u);
+    this.body.addChild(this.glow, this.wingL, this.wingR, this.core);
+    this.root.addChild(this.halo, this.shadow, this.body);
   }
 
   setKind(kind: FlyKind): void {
     if (kind === this.kind) return;
     this.kind = kind;
-    const p = this.pal, s = this.size * 0.78 / 36;
-    const [fill, edge, halo] = kind === 'hint' ? [p.gold, p.goldEdge, p.gold]
-      : kind === 'conflict' ? [p.warn, p.sumi, p.warn] : [p.glow, p.sumi, p.glowSoft];
-    this.core.clear()
-      .circle(0, 3 * s, 8 * s).fill(fill).stroke({ width: 1.5 * s, color: edge })
-      .circle(0, -6 * s, 4.2 * s).fill(p.sumi)
-      .circle(-1.5 * s, -7 * s, 1.1 * s).fill(p.wing)
-      .circle(1.5 * s, -7 * s, 1.1 * s).fill(p.wing);
-    this.halo.tint = halo;
-    this.ring.clear();
-    this.sparkle.clear();
-    if (kind === 'hint') {
-      const r = this.size * 0.44;
-      this.ring.circle(0, 0, r).stroke({ width: Math.max(2, this.size * 0.045), color: p.glowSoft });
-      this.ring.circle(0, 0, r).stroke({ width: Math.max(4, this.size * 0.12), color: p.glowSoft, alpha: 0.18 });
-      mark(this.sparkle, 0, 0, this.size * 0.055, p.glow);
-      this.sparkle.position.set(r * 0.72, -r * 0.72);
-    }
+    this.glow.texture = this.art.glow[kind];
+    this.core.texture = this.art.body[kind];
+    this.halo.visible = kind === 'hint';
   }
 
   tick(t: number, motion: boolean, dt: number): void {
@@ -96,63 +108,47 @@ class FlyView {
     }
     if (this.drop < 1) this.drop = motion ? Math.min(1, this.drop + dt / 480) : 1;
     const drop = (1 - easeOutBack(this.drop)) * -this.size * 0.8;
+    const sway = SWAY_ORIGIN.y * this.u;
     if (!motion) {
-      this.body.y = drop;
-      this.body.alpha = 1;
-      this.wingL.scale.y = this.wingR.scale.y = 1;
-      this.halo.alpha = 0.8;
-      this.shadow.scale.set(1);
-      this.sparkle.rotation = 0;
+      this.body.y = sway + drop;
+      this.body.rotation = 0;
       this.body.scale.set(1);
+      this.wingL.rotation = this.wingR.rotation = 0;
+      this.glow.alpha = 1;
+      this.shadow.scale.set(this.size / this.shadow.texture.width);
+      this.shadow.alpha = 1;
       return;
     }
-    const bob = Math.sin((t / 2600) * TAU + this.phase);
-    this.body.y = drop + bob * this.size * 0.06;
-    const flutter = 0.725 + 0.275 * Math.cos((t / 160) * TAU);
-    this.wingL.scale.y = this.wingR.scale.y = flutter;
-    this.halo.alpha = 0.55 + 0.4 * (0.5 + 0.5 * Math.sin((t / 2600) * TAU + this.phase));
-    this.halo.scale.set((this.size * 1.25 / this.halo.texture.width) * (0.85 + 0.3 * (0.5 + 0.5 * Math.sin((t / 2600) * TAU))));
-    this.shadow.scale.set(0.75 + 0.25 * (0.5 - 0.5 * bob));
-    this.body.alpha = this.kind === 'conflict' ? 0.65 + 0.35 * Math.abs(Math.sin((t / 900) * TAU * 1.5)) : 1;
-    this.sparkle.rotation = (t / 6000) * TAU;
-    if (this.drop < 1) this.body.scale.set(0.55 + 0.45 * Math.min(1, this.drop * 1.6));
-    else this.body.scale.set(1);
+    const m = FLY_MOTION;
+    const up = pulse(t, m.bobMs, this.phase);
+    this.body.y = sway + drop - up * m.bobUnits * this.u;
+    const flap = (pulse(t, m.flapMs, this.phase * 3) * m.flapDeg * Math.PI) / 180;
+    this.wingL.rotation = -flap;
+    this.wingR.rotation = flap;
+    this.glow.alpha = 1 - 0.22 * up;
+    const base = this.size / this.shadow.texture.width;
+    this.shadow.scale.set(base * (1 - 0.2 * up));
+    this.shadow.alpha = 1 - 0.33 * up;
+    this.body.rotation = this.kind === 'conflict'
+      ? (-Math.cos((2 * Math.PI * t) / m.swayMs + this.phase) * m.swayDeg * Math.PI) / 180 : 0;
+    this.body.scale.set(this.drop < 1 ? 0.55 + 0.45 * Math.min(1, this.drop * 1.6) : 1);
   }
 }
 
-/**
- * The game's own "something good happened" mark: a firefly's light with a
- * short fading trail behind it (replacing a generic four-point sparkle).
- * Used on satisfied bushes and as the second shape on hint fireflies.
- */
-function mark(g: Graphics, x: number, y: number, r: number, color: number): void {
-  g.circle(x - r * 2.6, y + r * 1.9, r * 0.32).fill({ color, alpha: 0.35 });
-  g.circle(x - r * 1.5, y + r * 1.1, r * 0.5).fill({ color, alpha: 0.6 });
-  g.circle(x, y, r * 1.6).fill({ color, alpha: 0.25 });
-  g.circle(x, y, r).fill(color);
-}
-
-function dashedRect(g: Graphics, x: number, y: number, w: number, h: number, dash: number, color: number, width: number): void {
-  const edges: [number, number, number, number][] = [[x, y, x + w, y], [x + w, y, x + w, y + h], [x + w, y + h, x, y + h], [x, y + h, x, y]];
-  for (const [x1, y1, x2, y2] of edges) {
-    const len = Math.hypot(x2 - x1, y2 - y1);
-    for (let d = 0; d < len; d += dash * 2) {
-      const a = d / len, b = Math.min(len, d + dash) / len;
-      g.moveTo(x1 + (x2 - x1) * a, y1 + (y2 - y1) * a).lineTo(x1 + (x2 - x1) * b, y1 + (y2 - y1) * b);
-    }
-  }
-  g.stroke({ width, color, cap: 'round' });
-}
+/** How a path tile is drawn: dark, lit, or lit under fireflies that see each other. */
+type TileLook = 'dark' | 'lit' | 'conflict';
 
 interface CellView {
   readonly cell: number;
   readonly root: Container;
   readonly kind: 'path' | 'bush' | 'void';
+  /** Display row and column (after the level's on-screen rotation). */
+  readonly dr: number;
+  readonly dc: number;
   tile?: Sprite;
-  lit?: boolean;
+  look?: TileLook;
   fly?: FlyView;
-  ruled?: Graphics;
-  outline?: Graphics;
+  ruled?: Sprite;
   clue?: Text;
   pips?: Graphics;
   /** The bush drawing (swapped for the wilted one when it has too many). */
@@ -182,9 +178,12 @@ export class BoardView {
   private readonly stage = new Container();
   private readonly cellsLayer = new Container();
   private readonly ghostLayer = new Container();
+  /** The hint reason outline, one shape around every cell a hint names. */
+  private readonly outline = new Graphics();
   private board: Board | null = null;
   private transform: Transform = 'identity';
   private fit: BoardFit | null = null;
+  private art: FlyArt | null = null;
   private cells: CellView[] = [];
   private ghosts: Ghost[] = [];
   private textures = new Map<string, Texture>();
@@ -197,7 +196,7 @@ export class BoardView {
     this.pal = opts.palette;
     this.onTap = opts.onTap;
     this.motion = !opts.reducedMotion;
-    this.stage.addChild(this.cellsLayer, this.ghostLayer);
+    this.stage.addChild(this.cellsLayer, this.outline, this.ghostLayer);
     app.stage.addChild(this.stage);
     app.ticker.add((ticker) => this.tick(ticker.deltaMS));
   }
@@ -279,15 +278,15 @@ export class BoardView {
   private pruneTextures(cell: number): void {
     const keep = new Set([`:${cell}:`, `:${this.roseSize(cell)}:`]);
     for (const [k, t] of this.textures) {
-      if (k.startsWith('halo:') || [...keep].some((tag) => k.includes(tag))) continue;
+      if ([...keep].some((tag) => k.includes(tag))) continue;
       t.destroy(true);
       this.textures.delete(k);
     }
   }
 
-  private tileTexture(cell: number, lit: boolean): Texture {
-    const c = this.pal.css;
-    return this.texture(lit ? 'tile-lit' : 'tile-dark', cell, (ctx) => (lit ? drawLitTile : drawDarkTile)(ctx, c, cell));
+  private tileTexture(cell: number, look: TileLook): Texture {
+    const draw = look === 'lit' ? drawLitTile : look === 'conflict' ? drawConflictTile : drawDarkTile;
+    return this.texture(`tile-${look}`, cell, (ctx) => draw(ctx, this.pal.css, cell));
   }
 
   private bushTexture(cell: number, kind: BushKind): Texture {
@@ -304,20 +303,29 @@ export class BoardView {
     return this.texture(`rose${variant}`, px, (ctx) => drawRose(ctx, this.pal.css, px, variant));
   }
 
-  private haloTexture(): Texture {
-    return this.texture('halo', 64, (ctx, px) => {
-      const g = ctx.createRadialGradient(px / 2, px / 2, 0, px / 2, px / 2, px / 2);
-      // White (tinted per firefly at draw time), fading out: token plus alpha digits.
-      g.addColorStop(0, `${this.pal.css.wing}d9`);
-      g.addColorStop(0.7, `${this.pal.css.wing}00`);
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, px, px);
-    });
+  /** Every firefly part for one cell size (drawn once, then shared by all the cells). */
+  private flyArt(cell: number): FlyArt {
+    const c = this.pal.css;
+    const kinds = ['player', 'hint', 'conflict'] as const;
+    const per = (name: string, draw: (ctx: CanvasRenderingContext2D, kind: FlyKind) => void) =>
+      Object.fromEntries(kinds.map((k) => [k, this.texture(`fly-${name}-${k}`, cell, (ctx) => draw(ctx, k))])) as Record<FlyKind, Texture>;
+    return {
+      glow: per('glow', (ctx, k) => drawFlyGlow(ctx, c, cell, k)),
+      body: per('body', (ctx, k) => drawFlyBody(ctx, c, cell, k)),
+      wingL: this.texture('fly-wing-l', cell, (ctx) => drawFlyWing(ctx, c, cell, 'left')),
+      wingR: this.texture('fly-wing-r', cell, (ctx) => drawFlyWing(ctx, c, cell, 'right')),
+      shadow: this.texture('fly-shadow', cell, (ctx) => drawFlyShadow(ctx, c, cell)),
+      halo: this.texture('fly-halo', cell, (ctx) => drawHintHalo(ctx, c, cell)),
+    };
   }
 
   private build(): void {
     this.cellsLayer.removeChildren().forEach((c) => c.destroy({ children: true }));
     this.cells = [];
+    this.outline.clear();
+    // Ghosts share the old size's textures, which the prune below frees: end them first.
+    for (const g of this.ghosts) g.fly.root.destroy({ children: true });
+    this.ghosts = [];
     if (!this.board || this.area.w < 10 || this.area.h < 10) return;
     const b = this.board;
     const [cols, rows] = this.dims();
@@ -327,24 +335,25 @@ export class BoardView {
     const { cell, gap, pad } = fit;
     const u = cell / UNIT;
     this.stage.position.set(Math.round((this.area.w - fit.width) / 2), Math.round((this.area.h - fit.height) / 2));
-    const halo = this.haloTexture();
+    const art = this.flyArt(cell);
+    this.art = art;
     for (let dr = 0; dr < rows; dr++) {
       for (let dc = 0; dc < cols; dc++) {
         const i = this.canonical(dr, dc);
         const kind = b.kind[i]!;
         const root = new Container();
         root.position.set(pad + dc * (cell + gap), pad + dr * (cell + gap));
-        const v: CellView = { cell: i, root, kind: kind === 'path' ? 'path' : kind === 'void' ? 'void' : 'bush' };
+        const v: CellView = { cell: i, dr, dc, root, kind: kind === 'path' ? 'path' : kind === 'void' ? 'void' : 'bush' };
         if (v.kind === 'path') {
-          v.tile = new Sprite(this.tileTexture(cell, false));
+          v.tile = new Sprite(this.tileTexture(cell, 'dark'));
           v.tile.width = v.tile.height = cell;
-          v.lit = false;
-          v.ruled = new Graphics();
-          v.outline = new Graphics();
-          v.fly = new FlyView(cell, this.pal, halo, ((dr * 7 + dc * 5) % 8) * 0.8);
-          v.fly.root.position.set(cell / 2, FACE_CENTER_Y * u);
+          v.look = 'dark';
+          v.ruled = new Sprite(this.texture('ruled', cell, (ctx) => drawRuledCross(ctx, this.pal.css, cell)));
+          v.ruled.width = v.ruled.height = cell;
+          v.ruled.visible = false;
+          v.fly = new FlyView(cell, art, ((dr * 7 + dc * 5) % 8) * 0.8);
           v.fly.root.visible = false;
-          root.addChild(v.tile, v.ruled, v.fly.root, v.outline);
+          root.addChild(v.tile, v.ruled, v.fly.root);
           root.eventMode = 'static';
           root.cursor = 'pointer';
           root.hitArea = new Rectangle(-gap / 2, -gap / 2, cell + gap, cell + gap);
@@ -354,7 +363,6 @@ export class BoardView {
           v.bushKind = numbered ? 'numbered' : 'plain';
           v.bush = new Sprite(this.bushTexture(cell, v.bushKind));
           v.bush.width = v.bush.height = cell;
-          v.outline = new Graphics();
           root.addChild(v.bush);
           if (numbered) {
             v.roses = new Container();
@@ -376,7 +384,6 @@ export class BoardView {
             v.pips = new Graphics();
             root.addChild(v.roses, v.clue, v.pips);
           }
-          root.addChild(v.outline);
         }
         this.cellsLayer.addChild(root);
         this.cells.push(v);
@@ -402,12 +409,12 @@ export class BoardView {
     const prevFlies = prev ? new Set(prev.evaluation.fireflies) : flies;
     for (const v of this.cells) {
       if (v.kind === 'path') {
-        const lit = ev.lit[v.cell] ?? false;
-        if (lit !== v.lit) {
-          v.tile!.texture = this.tileTexture(cell, lit);
-          v.lit = lit;
-        }
         const has = flies.has(v.cell);
+        const look: TileLook = has && conflicts.has(v.cell) ? 'conflict' : (ev.lit[v.cell] ?? false) ? 'lit' : 'dark';
+        if (look !== v.look) {
+          v.tile!.texture = this.tileTexture(cell, look);
+          v.look = look;
+        }
         if (has) {
           v.fly!.setKind(conflicts.has(v.cell) ? 'conflict' : state.locked.has(v.cell) ? 'hint' : 'player');
           if (!v.fly!.root.visible) {
@@ -419,12 +426,7 @@ export class BoardView {
         } else {
           v.fly!.root.visible = false;
         }
-        v.ruled!.clear();
-        if (state.ruledOut.has(v.cell) && !has) {
-          const r = cell * 0.18, cx = cell / 2, cy = FACE_CENTER_Y * u;
-          v.ruled!.circle(cx, cy, r).stroke({ width: Math.max(2, cell * 0.035), color: this.pal.ruled, alpha: 0.9 })
-            .moveTo(cx - r * 0.7, cy + r * 0.7).lineTo(cx + r * 0.7, cy - r * 0.7).stroke({ width: Math.max(2, cell * 0.035), color: this.pal.ruled, cap: 'round' });
-        }
+        v.ruled!.visible = state.ruledOut.has(v.cell) && !has;
       } else if (v.kind === 'bush' && v.clue && v.pips && v.bush && v.roses) {
         const s = bushes.get(v.cell);
         const want = s?.want ?? 0, have = s?.have ?? 0, st = s?.state ?? 'under';
@@ -454,12 +456,21 @@ export class BoardView {
           });
         }
       }
-      if (v.outline) {
-        v.outline.clear();
-        if (state.because.has(v.cell)) dashedRect(v.outline, -3, -3, cell + 6, cell + 6, Math.max(4, cell * 0.08), this.pal.gold, 2);
-      }
     }
+    this.drawOutline(state.because);
     if (opts.removed !== undefined && opts.removed !== null) this.liftAway(opts.removed);
+  }
+
+  /** The dashed gold outline around the cells a hint names (one shape per touching group). */
+  private drawOutline(because: ReadonlySet<number>): void {
+    this.outline.clear();
+    if (!this.fit || because.size === 0) return;
+    const { cell } = this.fit;
+    const u = cell / UNIT;
+    const named = this.cells.filter((v) => because.has(v.cell)).map((v) => ({ r: v.dr, c: v.dc }));
+    const dash = 6 * u, space = 4 * u;
+    for (const line of outlinePolylines(named, this.fit, 8 * u)) dashed(this.outline, line, dash, space);
+    this.outline.stroke({ width: Math.max(1.5, 2.6 * u), color: this.pal.gold, cap: 'round' });
   }
 
   /** A cell's centre in viewport pixels (for flights between the jar and the board). */
@@ -474,9 +485,10 @@ export class BoardView {
   private liftAway(cell: number): void {
     const v = this.cells.find((c) => c.cell === cell);
     if (!v || !this.fit || !this.motion) return;
-    const fly = new FlyView(this.fit.cell, this.pal, this.haloTexture(), 0);
+    if (!this.art) return;
+    const fly = new FlyView(this.fit.cell, this.art, 0);
     fly.setKind('conflict');
-    fly.root.position.set(v.root.x + this.fit.cell / 2, v.root.y + FACE_CENTER_Y * (this.fit.cell / UNIT));
+    fly.root.position.set(v.root.x, v.root.y);
     this.ghostLayer.addChild(fly.root);
     this.ghosts.push({ fly, age: 0 });
   }
@@ -485,10 +497,9 @@ export class BoardView {
     this.time += dt;
     for (const v of this.cells) {
       if (v.fly?.root.visible) v.fly.tick(this.time, this.motion, dt);
-      if (v.outline && this.state?.because.has(v.cell)) {
-        v.outline.alpha = this.motion ? 0.45 + 0.55 * (0.5 + 0.5 * Math.sin((this.time / 1200) * TAU)) : 1;
-      }
     }
+    // The reason outline breathes gently with motion on; still and full strength without.
+    this.outline.alpha = this.motion ? 0.45 + 0.55 * (0.5 + 0.5 * Math.sin((this.time / 1200) * TAU)) : 1;
     this.ghosts = this.ghosts.filter((g) => {
       g.age += dt;
       const t = Math.min(1, g.age / 1100);
@@ -508,5 +519,22 @@ export class BoardView {
     this.app.destroy(true, { children: true });
     for (const t of this.textures.values()) t.destroy(true);
     this.textures.clear();
+  }
+}
+
+/** Dash a flat [x0, y0, x1, y1, …] polyline into `g` (stroked by the caller). */
+function dashed(g: Graphics, pts: readonly number[], dash: number, space: number): void {
+  let on = true, left = dash;
+  for (let i = 0; i + 3 < pts.length; i += 2) {
+    let x = pts[i]!, y = pts[i + 1]!;
+    const x2 = pts[i + 2]!, y2 = pts[i + 3]!;
+    let len = Math.hypot(x2 - x, y2 - y);
+    while (len > 0) {
+      const step = Math.min(left, len), t = step / len;
+      const nx = x + (x2 - x) * t, ny = y + (y2 - y) * t;
+      if (on) g.moveTo(x, y).lineTo(nx, ny);
+      x = nx; y = ny; len -= step; left -= step;
+      if (left <= 1e-9) { on = !on; left = on ? dash : space; }
+    }
   }
 }
