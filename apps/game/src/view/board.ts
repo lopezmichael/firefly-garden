@@ -5,6 +5,7 @@ import type { Board, Evaluation, Transform } from '@firefly/core';
 import { fitBoard } from './layout.ts';
 import type { BoardFit } from './layout.ts';
 import type { Palette } from './theme.ts';
+import { pooledEdge, texturize } from './art/textures.ts';
 
 /**
  * The PixiJS board: tiles, bushes, fireflies and hint marks, drawn in the
@@ -298,7 +299,13 @@ export class BoardView {
       ctx.fillStyle = g;
       roundRect(ctx, 0, 0, cell, cell, r);
       ctx.fill();
-      void px;
+      // Ink and wash texture kit (theme plan, milestone 2); the full tile drawings land in milestone 3.
+      if (lit) {
+        pooledEdge(ctx, c.tileLitLo, cell * 0.07, cell * 0.07, cell * 0.86, cell * 0.86, r * 0.7, Math.max(1.5, cell * 0.035), cell * 0.02, 17);
+        texturize(ctx, 'grain', c.paperGrain, 70, 31, 0, 0, px, px);
+      } else {
+        texturize(ctx, 'fibre', c.wing, 26, 11, 0, 0, px, px);
+      }
     });
   }
 

@@ -18,6 +18,7 @@ const TOKENS = {
   head: '--ff-sumi', wing: '--ff-wing', shadow: '--ff-night-deep',
   glow: '--ff-glow-soft', gold: '--ff-gold', warn: '--ff-warn', ink: '--ff-paper', star: '--ff-glow',
   petalPink: '--ff-rose', petalCream: '--ff-rose-pale',
+  paperGrain: '--ff-paper-grain',
   fontDisplay: '--ff-font-display',
 } as const;
 

@@ -93,15 +93,22 @@ milestone that changes what's on screen.
 
 ### 2. Procedural texture kit
 
-- [ ] `apps/game/src/view/art/noise.ts`: seeded value noise (pure, no DOM), with unit tests for
-      determinism and range in `apps/game/test/`
-- [ ] `apps/game/src/view/art/textures.ts`: paper grain, card fibre (the same noise stretched),
+- [x] `apps/game/src/view/art/noise.ts`: seeded value noise (pure, no DOM), with unit tests for
+      determinism and range in `apps/game/test/` (also continuity, seamless tiling with a control
+      that sees a seam, fibre direction, and the fast lattice path matching `fbm()` pixel by pixel)
+- [x] `apps/game/src/view/art/textures.ts`: paper grain, card fibre (the same noise stretched),
       wobbled wash edge and pooled edge, drawn into the board's existing `texture(key, size, draw)`
-      cache so they're baked once per tile size and pruned on resize
-- [ ] One small paper texture baked at startup for the DOM chrome (status card, sheets,
-      buttons), applied as a CSS background image
-- [ ] Evidence: generation time measured on a 4× CPU-throttled profile; target under 30 ms for
-      a 7×7 board's full set
+      cache so they're baked once per tile size and pruned on resize. Grain and fibre are baked
+      once as small tileable squares (grain 64 px, fibre 64×128) and laid as canvas patterns, so a
+      resize only redraws. Grain uses two octaves, not the canvas's three (the third is finer than
+      a pixel). The current tiles already use them; milestone 3 draws the real tiles
+- [x] One small paper texture baked at startup for the DOM chrome (status card, sheets,
+      buttons), applied as a CSS background image: `--ff-paper-texture`, a 128 px tileable
+      `blob:` URL encoded off the main thread; milestone 5 puts it on the chrome
+- [x] Evidence: generation time measured on a 4× CPU-throttled profile; target under 30 ms for
+      a 7×7 board's full set (2026-11-13, 45 px cells at 3×: 7 to 18 ms cold, about 3 ms warm,
+      also about 3 ms at 60 px; the startup chrome paper costs 16 to 29 ms of main thread once,
+      including the shared grain tile). Dev specimen and bench: `/dev/textures.html`
 
 ### 3. Board: tiles, bushes, roses, numbers
 
