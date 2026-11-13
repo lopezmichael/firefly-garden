@@ -91,7 +91,14 @@ async function showLevel(id: string, placed: number | null, width: number): Prom
   const view = await BoardView.create(host, { palette: pal, reducedMotion: reduced, onTap: () => undefined });
   view.setLevel(board, 'identity');
   view.resize(width, width);
-  view.render({ evaluation: evaluate(board, sol), locked: new Set(), because: new Set(), ruledOut: new Set(), solved: false }, { quiet: true });
+  const at = (flies: number[]) => ({ evaluation: evaluate(board, flies), locked: new Set<number>(), because: new Set<number>(), ruledOut: new Set<number>(), solved: evaluate(board, flies).solved });
+  if (!new URLSearchParams(location.search).has('solve')) {
+    view.render(at(sol), { quiet: true });
+    return;
+  }
+  // `&solve`: all but the last firefly, then the last one lands and the garden blooms (window.ffSolve).
+  view.render(at(sol.slice(0, -1)), { quiet: true });
+  (window as unknown as { ffSolve: () => void }).ffSolve = () => view.render(at(sol));
 }
 
 await document.fonts.load('400 30px "Young Serif"').catch(() => undefined);
@@ -99,7 +106,8 @@ const params = new URLSearchParams(location.search);
 const levelId = params.get('level');
 if (levelId) {
   const placed = params.get('placed');
-  for (const w of [374, 560]) await showLevel(levelId, placed === null ? null : Number(placed), w);
+  const widths = new URLSearchParams(location.search).has('solve') ? [374] : [374, 560];
+  for (const w of widths) await showLevel(levelId, placed === null ? null : Number(placed), w);
 } else {
   for (const s of SPECIMENS) await show(s);
 }

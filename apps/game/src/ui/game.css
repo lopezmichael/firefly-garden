@@ -404,22 +404,9 @@
 .ff-enter .ff-complete-chip { animation: ff-coin-up 700ms ease-out 400ms both; }
 @keyframes ff-coin-up { 0% { transform: translateY(16px); opacity: 0; } 30% { transform: translateY(-4px); opacity: 1; } 100% { transform: none; opacity: 1; } }
 
-/* The solve burst: sparks from the board's centre. */
-.ff-burst { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; z-index: 1; }
-.ff-spark {
-  position: absolute; left: -4px; top: -4px; width: var(--size); height: var(--size); border-radius: 999px;
-  background: var(--ff-spark); box-shadow: 0 0 10px 3px var(--ff-spark);
-  animation: ff-burst 1.4s ease-out var(--delay) both;
-}
-.ff-spark-0 { --ff-spark: var(--ff-glow); }
-.ff-spark-1 { --ff-spark: var(--ff-gold); }
-.ff-spark-2 { --ff-spark: var(--ff-rose); }
-.ff-spark-3 { --ff-spark: var(--ff-rose-pale); }
-@keyframes ff-burst { 0% { transform: translate(0, 0) scale(0.4); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) scale(1.1); opacity: 0; } }
 
 .ff-app[data-motion='reduced'] .ff-counting .ff-ring-fill,
 .ff-app[data-motion='reduced'] .ff-enter .ff-complete-chip { animation: none; }
-.ff-app[data-motion='reduced'] .ff-burst { display: none; }
 
 /* Focus on paper: the glow ring (theme.css) vanishes against paper, so inside a sheet the ring is ink. */
 .ff-sheet :focus-visible { outline-color: var(--ff-sumi); }

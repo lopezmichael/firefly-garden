@@ -603,7 +603,7 @@ export class GameApp {
     const coins = this.wallet.coins - before;
     // The policy is pure: peek whether another garden follows (none after the last one).
     const more = this.session.next(Date.now()) !== null;
-    this.screen.showComplete({ sub, coins, more }, true);
+    this.screen.showComplete({ sub, coins, more });
     this.screen.announce(`Solved! The garden is glowing. ${sub} ${coins} coins earned.`);
     this.screen.focusNext();
     if (more) this.scheduleAdvance();

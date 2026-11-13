@@ -107,3 +107,57 @@ export function outlinePolylines(cells: readonly { r: number; c: number }[], g: 
   }
   return out;
 }
+
+/**
+ * Motion timing (the motion table in docs/design/assets.md), all in milliseconds.
+ * `spreadPerCell`: the light's wash travels along the firefly's row and column.
+ * `bloomPerCell`: the solve ripple spreads out from the last firefly placed.
+ */
+export const MOTION_TIMING = {
+  spreadPerCell: 55, spreadFade: 160,
+  roseOpen: 380, roseStagger: 70,
+  slump: 420,
+  bloomStart: 260, bloomPerCell: 110,
+  particle: 1400,
+} as const;
+
+/**
+ * When each cell's moment starts: `perCell` ms per step of distance from `origin`
+ * (cell indices on a `width`-wide board). `manhattan` follows rows and columns, as
+ * light does; otherwise the ripple spreads in rings. Without motion (`motion`
+ * false) everything starts at once: the state lands, only the movement goes.
+ */
+export function rippleDelays(
+  cells: readonly number[], origin: number, width: number, perCell: number, motion: boolean, manhattan = false,
+): Map<number, number> {
+  const out = new Map<number, number>();
+  const or = Math.floor(origin / width), oc = origin % width;
+  for (const cell of cells) {
+    const dr = Math.abs(Math.floor(cell / width) - or), dc = Math.abs((cell % width) - oc);
+    const d = manhattan ? dr + dc : Math.hypot(dr, dc);
+    out.set(cell, motion ? Math.round(d * perCell) : 0);
+  }
+  return out;
+}
+
+export interface UnitBox {
+  readonly x: number;
+  readonly y: number;
+  readonly w: number;
+  readonly h: number;
+}
+
+/**
+ * The tight box (in units) each firefly part is drawn in, so each part is baked into a
+ * texture just its own size instead of a whole cell: about a tenth of the pixels to fill
+ * per firefly, which is what a low-end GPU pays for every frame. Each box holds its
+ * drawing plus stroke (`drawFly*` in pieces.ts).
+ */
+export const FLY_BOXES = {
+  glow: { x: 15, y: 19, w: 54, h: 54 },
+  shadow: { x: 37, y: 65, w: 16, h: 6 },
+  wingL: { x: 22, y: 26, w: 19, h: 20 },
+  wingR: { x: 43, y: 26, w: 19, h: 20 },
+  body: { x: 13, y: 27, w: 58, h: 31 },
+  halo: { x: 14, y: 4, w: 66, h: 69 },
+} as const satisfies Record<string, UnitBox>;

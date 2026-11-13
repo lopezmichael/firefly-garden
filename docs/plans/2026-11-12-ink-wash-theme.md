@@ -178,12 +178,23 @@ milestone that changes what's on screen.
 
 ### 7. Solve moment and motion pass
 
-- [ ] Solve: bushes bloom in a ripple from the last firefly placed, petals and motes rise, then
-      the existing auto-advance
-- [ ] Walk the motion table in `docs/design/assets.md` row by row with motion on and off; add
+- [x] Solve: bushes bloom in a ripple from the last firefly placed, petals and motes rise, then
+      the existing auto-advance (every bush re-opens its roses, plain ones too; the old spark burst
+      over the board is gone)
+- [x] Walk the motion table in `docs/design/assets.md` row by row with motion on and off; add
       tests where the state layer can show it (e.g. reduced motion skips flights and blooms but
-      every state change still lands)
-- [ ] Performance: 60 fps check on a throttled profile with the largest launch board
+      every state change still lands). New moments: the light's wash spreads tile by tile, roses
+      open when a bush is satisfied, an overfull bush slumps and drops petals. Timing is pure and
+      tested (`rippleDelays`: without motion every moment lands at once); turning motion off
+      mid-moment finishes them all; `apps/game/test/motion-css.test.ts` fails if any CSS
+      animation or transition lacks a reduced-motion rule (caught two deliberate removals)
+- [x] Performance: 60 fps check on a throttled profile with the largest launch board (c17-28,
+      10×10, 4× CPU throttle: 60 fps idle and 59.6 during the solve moment at 1×). The container's
+      WebGL is SwiftShader (software), so 2× runs at 28 to 33 fps here; the board's own script is
+      about 0.3% of the frame, the rest is rasterising. That led to baking each firefly part tight
+      (`FLY_BOXES`): fireflies' share of the frame fell from 38% to 13%
+- [ ] Real-device check: 60 fps on a 4 GB Chromebook or a mid-range phone at 2× and 3× (this
+      container has no GPU)
 
 ### 7b. Level complete (restyle `ui/complete.ts`)
 

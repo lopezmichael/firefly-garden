@@ -39,7 +39,6 @@ export class CompleteCard {
   private readonly chipText = el('span');
   private readonly chipSr = el('span', 'ff-sr');
   private readonly mapButton = el('button', 'ff-complete-map');
-  private layer: HTMLElement | null = null;
   private readonly ring: SVGSVGElement;
   private readonly nextButton = el('button', 'ff-complete-next');
   private readonly note = el('p', 'ff-complete-note');
@@ -104,14 +103,6 @@ export class CompleteCard {
   hide(): void {
     this.root.hidden = true;
     this.ring.classList.remove('ff-counting');
-    this.layer?.remove();
-    this.layer = null;
-  }
-
-  /** Throw the solve burst over `host`; it goes by itself, or with the card. */
-  burst(host: HTMLElement): void {
-    this.layer?.remove();
-    this.layer = burst(host);
   }
 
   /** Run the ring down over `ms` (restarted from full each time the auto-advance is armed). */
@@ -131,26 +122,4 @@ export class CompleteCard {
   focus(): void {
     (this.nextButton.hidden ? this.mapButton : this.nextButton).focus({ preventScroll: true });
   }
-}
-
-/** Sparks thrown from the board's centre when a garden is solved. Purely decorative. */
-function burst(host: HTMLElement): HTMLElement {
-  const layer = el('div', 'ff-burst');
-  layer.setAttribute('aria-hidden', 'true');
-  const count = 18;
-  for (let i = 0; i < count; i++) {
-    const angle = (i / count) * Math.PI * 2;
-    const radius = 70 + (i % 4) * 22;
-    const s = el('span', `ff-spark ff-spark-${i % 4}`);
-    s.style.setProperty('--dx', `${Math.round(Math.cos(angle) * radius)}px`);
-    s.style.setProperty('--dy', `${Math.round(Math.sin(angle) * radius - 40)}px`);
-    s.style.setProperty('--size', `${5 + (i % 3) * 2}px`);
-    s.style.setProperty('--delay', `${(i % 5) * 60}ms`);
-    layer.append(s);
-  }
-  host.append(layer);
-  // The longest spark is 1.4 s plus its 240 ms delay; a timer (not animationend) so the layer
-  // goes even if animations never run (a hidden tab).
-  setTimeout(() => layer.remove(), 1800);
-  return layer;
 }

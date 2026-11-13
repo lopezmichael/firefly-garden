@@ -229,11 +229,13 @@ export class PlayScreen {
     this.statusSub.textContent = s.sub;
   }
 
-  /** Swap the status card and moves for the level-complete card; `burst` throws sparks. */
-  showComplete(view: CompleteView, withBurst: boolean): void {
+  /**
+   * Swap the status card and moves for the level-complete card. The celebration itself is the
+   * board's solve moment (the bloom ripple), so the card only slides in.
+   */
+  showComplete(view: CompleteView): void {
     this.root.dataset.complete = 'true';
     this.complete.show(view);
-    if (withBurst && !this.reduced()) this.complete.burst(this.boardHost);
   }
 
   hideComplete(): void {

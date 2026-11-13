@@ -322,3 +322,28 @@ export function drawConflictTile(ctx: CanvasRenderingContext2D, c: Css, cell: nu
     ctx.stroke();
   });
 }
+
+/** A fallen or rising rose petal, `px` CSS pixels wide (a soft rose ellipse with an ink edge). */
+export function drawPetal(ctx: CanvasRenderingContext2D, c: Css, px: number): void {
+  ctx.save();
+  ctx.scale(px / 10, px / 10);
+  ctx.beginPath();
+  ctx.ellipse(5, 5, 4, 2.4, -0.5, 0, 2 * Math.PI);
+  ctx.fillStyle = c.rose;
+  ctx.fill();
+  ctx.strokeStyle = c.roseSpiral;
+  ctx.lineWidth = 0.6;
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** A firefly mote: a small warm light that fades out at its edge. */
+export function drawMote(ctx: CanvasRenderingContext2D, c: Css, px: number): void {
+  const r = px / 2;
+  const g = ctx.createRadialGradient(r, r, 0, r, r, r);
+  g.addColorStop(0, c.glow);
+  g.addColorStop(0.4, `${c.glowSoft}99`);
+  g.addColorStop(1, `${c.glowSoft}00`);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, px, px);
+}

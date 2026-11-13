@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bushLayout, dotPositions, FACE_CENTER_Y, outlinePolylines, ROSE_SLOTS, ROSE_VARIANTS, roseVariants, UNIT } from '../src/view/art/geometry.ts';
+import { bushLayout, dotPositions, FACE_CENTER_Y, FLY_BOXES, MOTION_TIMING, outlinePolylines, rippleDelays, ROSE_SLOTS, ROSE_VARIANTS, roseVariants, UNIT } from '../src/view/art/geometry.ts';
 
 const DOT_R = 3.6;
 
@@ -103,5 +103,65 @@ describe('hint reason outline', () => {
       const meets = ends.filter(([a, b]) => Math.hypot(a! - x!, b! - y!) < 1e-6).length;
       expect(meets).toBeGreaterThanOrEqual(2);
     }
+  });
+});
+
+describe('motion timing', () => {
+  // A 5-wide board; the firefly or last placement at the centre, cell 12 (row 2, col 2).
+  const W = 5, CENTER = 12;
+
+  it('spreads light outward along the row and column, nearest first', () => {
+    const d = rippleDelays([13, 14, 7, 2], CENTER, W, MOTION_TIMING.spreadPerCell, true, true);
+    expect(d.get(13)).toBe(MOTION_TIMING.spreadPerCell);
+    expect(d.get(14)).toBe(2 * MOTION_TIMING.spreadPerCell);
+    expect(d.get(7)).toBe(MOTION_TIMING.spreadPerCell);
+    expect(d.get(2)).toBe(2 * MOTION_TIMING.spreadPerCell);
+  });
+
+  it('ripples the solve bloom out in rings from the last firefly', () => {
+    const d = rippleDelays([12, 13, 18, 0, 24], CENTER, W, MOTION_TIMING.bloomPerCell, true);
+    expect(d.get(12)).toBe(0);
+    expect(d.get(13)!).toBeLessThan(d.get(18)!);
+    expect(d.get(0)).toBe(d.get(24));
+    expect(d.get(0)!).toBeGreaterThan(d.get(18)!);
+  });
+
+  it('under reduced motion, every moment lands at once (state stays, movement goes)', () => {
+    const cells = Array.from({ length: 25 }, (_, i) => i);
+    for (const manhattan of [true, false]) {
+      const d = rippleDelays(cells, CENTER, W, 100, false, manhattan);
+      expect(d.size).toBe(25);
+      expect([...d.values()].every((ms) => ms === 0)).toBe(true);
+    }
+  });
+});
+
+describe('firefly parts are baked tight but whole', () => {
+  // The extents of each drawing in pieces.ts (centre ± radius, path bounds), stroke included.
+  const EXTENTS = {
+    glow: { x0: 42 - 26, y0: 46 - 26, x1: 42 + 26, y1: 46 + 26 },
+    shadow: { x0: 45 - 7, y0: 68 - 2.2, x1: 45 + 7, y1: 68 + 2.2 },
+    wingL: { x0: 24 - 1, y0: 28 - 1, x1: 39 + 1, y1: 44 + 1 },
+    wingR: { x0: 45 - 1, y0: 28 - 1, x1: 60 + 1, y1: 44 + 1 },
+    // Tail, head, curled antennae, and the conflict's shiver lines: the outer curves
+    // (M17 35 q-6 10 0 20 and its mirror) peak at x 14 and 70, plus half their 1.6 stroke.
+    body: { x0: 14 - 0.8, y0: 29 - 0.8, x1: 70 + 0.8, y1: 55.5 + 0.8 },
+    // Dashed halo (r 25, stroke 2.6) and the seal (63..78, 6..21).
+    halo: { x0: 42 - 26.3, y0: 6, x1: 78, y1: 44 + 26.3 },
+  } as const;
+
+  it.each(Object.keys(EXTENTS) as (keyof typeof EXTENTS)[])('%s fits its box', (name) => {
+    const b = FLY_BOXES[name], e = EXTENTS[name];
+    expect(b.x).toBeLessThanOrEqual(e.x0);
+    expect(b.y).toBeLessThanOrEqual(e.y0);
+    expect(b.x + b.w).toBeGreaterThanOrEqual(e.x1);
+    expect(b.y + b.h).toBeGreaterThanOrEqual(e.y1);
+  });
+
+  it('together they fill far less than one cell per part', () => {
+    const area = (b: { w: number; h: number }) => b.w * b.h;
+    const perFly = area(FLY_BOXES.glow) + area(FLY_BOXES.shadow) + area(FLY_BOXES.wingL) + area(FLY_BOXES.wingR) + area(FLY_BOXES.body);
+    // Five full-cell parts would be 5 × 84²; tight boxes stay under a cell's worth in all.
+    expect(perFly).toBeLessThan(UNIT * UNIT);
   });
 });

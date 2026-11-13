@@ -5,9 +5,9 @@ import type { Board, Evaluation, Transform } from '@firefly/core';
 import { fitBoard } from './layout.ts';
 import type { BoardFit } from './layout.ts';
 import type { Palette } from './theme.ts';
-import { bushLayout, dotPositions, FACE_CENTER_Y, FLY_MOTION, outlinePolylines, pulse, ROSE_SLOTS, roseVariants, SWAY_ORIGIN, UNIT, WING_ROOT } from './art/geometry.ts';
-import type { BushKind } from './art/geometry.ts';
-import { drawBush, drawConflictTile, drawDarkTile, drawFlyBody, drawFlyGlow, drawFlyShadow, drawFlyWing, drawHintHalo, drawLitTile, drawRose, drawRuledCross } from './art/pieces.ts';
+import { bushLayout, dotPositions, FACE_CENTER_Y, FLY_BOXES, FLY_MOTION, MOTION_TIMING, outlinePolylines, pulse, rippleDelays, ROSE_SLOTS, roseVariants, SWAY_ORIGIN, UNIT, WING_ROOT } from './art/geometry.ts';
+import type { BushKind, UnitBox } from './art/geometry.ts';
+import { drawBush, drawConflictTile, drawMote, drawPetal, drawDarkTile, drawFlyBody, drawFlyGlow, drawFlyShadow, drawFlyWing, drawHintHalo, drawLitTile, drawRose, drawRuledCross } from './art/pieces.ts';
 import type { FlyKind } from './art/pieces.ts';
 
 /**
@@ -57,6 +57,8 @@ class FlyView {
   private readonly wingR: Sprite;
   private readonly core: Sprite;
   private readonly u: number;
+  /** The shadow's resting scale (the breath shrinks it from here). */
+  private readonly shadowScale: number;
   kind: FlyKind | null = null;
   phase: number;
   drop = 1;
@@ -66,25 +68,23 @@ class FlyView {
   constructor(private readonly size: number, private readonly art: FlyArt, phase: number) {
     this.phase = phase;
     this.u = size / UNIT;
-    const full = (t: Texture) => {
+    /** A part baked in `b` (units), turning about `p` (defaults to its corner): anchored and placed there. */
+    const part = (t: Texture, b: UnitBox, p: { x: number; y: number } = { x: b.x, y: b.y }) => {
       const sp = new Sprite(t);
-      sp.width = sp.height = size;
-      return sp;
-    };
-    /** A part that turns about `p` (units): anchored there, placed there. */
-    const pivoted = (t: Texture, p: { x: number; y: number }) => {
-      const sp = full(t);
-      sp.anchor.set(p.x / UNIT, p.y / UNIT);
+      sp.width = b.w * this.u;
+      sp.height = b.h * this.u;
+      sp.anchor.set((p.x - b.x) / b.w, (p.y - b.y) / b.h);
       sp.position.set(p.x * this.u, p.y * this.u);
       return sp;
     };
-    this.shadow = pivoted(art.shadow, { x: 45, y: 68 });
-    this.halo = full(art.halo);
+    this.shadow = part(art.shadow, FLY_BOXES.shadow, { x: 45, y: 68 });
+    this.shadowScale = this.shadow.scale.x;
+    this.halo = part(art.halo, FLY_BOXES.halo);
     this.halo.visible = false;
-    this.glow = full(art.glow.player);
-    this.wingL = pivoted(art.wingL, WING_ROOT.left);
-    this.wingR = pivoted(art.wingR, WING_ROOT.right);
-    this.core = full(art.body.player);
+    this.glow = part(art.glow.player, FLY_BOXES.glow);
+    this.wingL = part(art.wingL, FLY_BOXES.wingL, WING_ROOT.left);
+    this.wingR = part(art.wingR, FLY_BOXES.wingR, WING_ROOT.right);
+    this.core = part(art.body.player, FLY_BOXES.body);
     // The body turns about the sway origin, so its children are placed relative to it.
     this.body.pivot.set(SWAY_ORIGIN.x * this.u, SWAY_ORIGIN.y * this.u);
     this.body.position.set(SWAY_ORIGIN.x * this.u, SWAY_ORIGIN.y * this.u);
@@ -115,7 +115,7 @@ class FlyView {
       this.body.scale.set(1);
       this.wingL.rotation = this.wingR.rotation = 0;
       this.glow.alpha = 1;
-      this.shadow.scale.set(this.size / this.shadow.texture.width);
+      this.shadow.scale.set(this.shadowScale);
       this.shadow.alpha = 1;
       return;
     }
@@ -126,8 +126,7 @@ class FlyView {
     this.wingL.rotation = -flap;
     this.wingR.rotation = flap;
     this.glow.alpha = 1 - 0.22 * up;
-    const base = this.size / this.shadow.texture.width;
-    this.shadow.scale.set(base * (1 - 0.2 * up));
+    this.shadow.scale.set(this.shadowScale * (1 - 0.2 * up));
     this.shadow.alpha = 1 - 0.33 * up;
     this.body.rotation = this.kind === 'conflict'
       ? (-Math.cos((2 * Math.PI * t) / m.swayMs + this.phase) * m.swayDeg * Math.PI) / 180 : 0;
@@ -154,9 +153,19 @@ interface CellView {
   /** The bush drawing (swapped for the wilted one when it has too many). */
   bush?: Sprite;
   bushKind?: BushKind;
-  /** The three roses a happy bush shows. */
+  /** The three roses a happy bush shows (and every bush, plain ones too, once the garden is solved). */
   roses?: Container;
+  /** A tile look still on its way (the light's wash travelling from the firefly), and its move. */
+  pendingLook?: TileLook;
+  pendingToken?: object;
   bushKey?: string;
+}
+
+/** A moment on the board's clock: `step` gets 0..1 from `start` (ms) over `dur`, and 1 last. */
+interface Tween {
+  readonly start: number;
+  readonly dur: number;
+  readonly step: (t: number) => void;
 }
 
 interface Ghost {
@@ -186,6 +195,9 @@ export class BoardView {
   private art: FlyArt | null = null;
   private cells: CellView[] = [];
   private ghosts: Ghost[] = [];
+  /** Running moments (light spreading, roses opening, a slump, the bloom); never filled without motion. */
+  private tweens: Tween[] = [];
+  private readonly particleLayer = new Container();
   private textures = new Map<string, Texture>();
   private state: BoardState | null = null;
   private time = 0;
@@ -196,7 +208,7 @@ export class BoardView {
     this.pal = opts.palette;
     this.onTap = opts.onTap;
     this.motion = !opts.reducedMotion;
-    this.stage.addChild(this.cellsLayer, this.outline, this.ghostLayer);
+    this.stage.addChild(this.cellsLayer, this.outline, this.particleLayer, this.ghostLayer);
     app.stage.addChild(this.stage);
     app.ticker.add((ticker) => this.tick(ticker.deltaMS));
   }
@@ -221,6 +233,14 @@ export class BoardView {
 
   setReducedMotion(reduced: boolean): void {
     this.motion = !reduced;
+    // Turning motion off mid-moment: every running moment lands now.
+    if (reduced) this.finishMoments();
+  }
+
+  private finishMoments(): void {
+    const running = this.tweens;
+    this.tweens = [];
+    for (const tw of running) tw.step(1);
   }
 
   setLevel(board: Board, transform: Transform): void {
@@ -257,13 +277,18 @@ export class BoardView {
     return this.transform === 'rot90' ? (b.h - 1 - dc) * b.w + dr : dr * b.w + dc;
   }
 
-  private texture(key: string, size: number, draw: (ctx: CanvasRenderingContext2D, px: number) => void): Texture {
+  /**
+   * A baked texture, cached by key, size and resolution. `size` is also what a resize prunes
+   * by; `box` (CSS pixels) gives a canvas other than size × size, for parts drawn tight.
+   */
+  private texture(key: string, size: number, draw: (ctx: CanvasRenderingContext2D, px: number) => void, box?: { w: number; h: number }): Texture {
     const res = Math.min(3, window.devicePixelRatio || 1);
     const k = `${key}:${size}:${res}`;
     let t = this.textures.get(k);
     if (!t) {
       const canvas = document.createElement('canvas');
-      canvas.width = canvas.height = Math.ceil(size * res);
+      canvas.width = Math.ceil((box?.w ?? size) * res);
+      canvas.height = Math.ceil((box?.h ?? size) * res);
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('2D canvas unavailable');
       ctx.scale(res, res);
@@ -303,19 +328,24 @@ export class BoardView {
     return this.texture(`rose${variant}`, px, (ctx) => drawRose(ctx, this.pal.css, px, variant));
   }
 
-  /** Every firefly part for one cell size (drawn once, then shared by all the cells). */
+  /** Every firefly part for one cell size, each baked tight around its drawing (FLY_BOXES). */
   private flyArt(cell: number): FlyArt {
-    const c = this.pal.css;
+    const c = this.pal.css, u = cell / UNIT;
+    const tight = (key: string, b: UnitBox, draw: (ctx: CanvasRenderingContext2D) => void) =>
+      this.texture(key, cell, (ctx) => {
+        ctx.translate(-b.x * u, -b.y * u);
+        draw(ctx);
+      }, { w: b.w * u, h: b.h * u });
     const kinds = ['player', 'hint', 'conflict'] as const;
-    const per = (name: string, draw: (ctx: CanvasRenderingContext2D, kind: FlyKind) => void) =>
-      Object.fromEntries(kinds.map((k) => [k, this.texture(`fly-${name}-${k}`, cell, (ctx) => draw(ctx, k))])) as Record<FlyKind, Texture>;
+    const per = (name: string, b: UnitBox, draw: (ctx: CanvasRenderingContext2D, kind: FlyKind) => void) =>
+      Object.fromEntries(kinds.map((k) => [k, tight(`fly-${name}-${k}`, b, (ctx) => draw(ctx, k))])) as Record<FlyKind, Texture>;
     return {
-      glow: per('glow', (ctx, k) => drawFlyGlow(ctx, c, cell, k)),
-      body: per('body', (ctx, k) => drawFlyBody(ctx, c, cell, k)),
-      wingL: this.texture('fly-wing-l', cell, (ctx) => drawFlyWing(ctx, c, cell, 'left')),
-      wingR: this.texture('fly-wing-r', cell, (ctx) => drawFlyWing(ctx, c, cell, 'right')),
-      shadow: this.texture('fly-shadow', cell, (ctx) => drawFlyShadow(ctx, c, cell)),
-      halo: this.texture('fly-halo', cell, (ctx) => drawHintHalo(ctx, c, cell)),
+      glow: per('glow', FLY_BOXES.glow, (ctx, k) => drawFlyGlow(ctx, c, cell, k)),
+      body: per('body', FLY_BOXES.body, (ctx, k) => drawFlyBody(ctx, c, cell, k)),
+      wingL: tight('fly-wing-l', FLY_BOXES.wingL, (ctx) => drawFlyWing(ctx, c, cell, 'left')),
+      wingR: tight('fly-wing-r', FLY_BOXES.wingR, (ctx) => drawFlyWing(ctx, c, cell, 'right')),
+      shadow: tight('fly-shadow', FLY_BOXES.shadow, (ctx) => drawFlyShadow(ctx, c, cell)),
+      halo: tight('fly-halo', FLY_BOXES.halo, (ctx) => drawHintHalo(ctx, c, cell)),
     };
   }
 
@@ -323,9 +353,12 @@ export class BoardView {
     this.cellsLayer.removeChildren().forEach((c) => c.destroy({ children: true }));
     this.cells = [];
     this.outline.clear();
-    // Ghosts share the old size's textures, which the prune below frees: end them first.
+    // Ghosts, moments and particles use the old size's sprites and textures, which the
+    // prune below frees: end them first (a rebuild redraws the position at rest).
     for (const g of this.ghosts) g.fly.root.destroy({ children: true });
     this.ghosts = [];
+    this.tweens = [];
+    this.particleLayer.removeChildren().forEach((p) => p.destroy());
     if (!this.board || this.area.w < 10 || this.area.h < 10) return;
     const b = this.board;
     const [cols, rows] = this.dims();
@@ -364,16 +397,19 @@ export class BoardView {
           v.bush = new Sprite(this.bushTexture(cell, v.bushKind));
           v.bush.width = v.bush.height = cell;
           root.addChild(v.bush);
+          v.roses = new Container();
+          v.roses.visible = false;
+          roseVariants(i).forEach((variant, k) => {
+            const slot = ROSE_SLOTS[k]!;
+            const rose = new Sprite(this.roseTexture(cell, variant));
+            // Anchored at its centre, so opening scales it from the middle.
+            rose.anchor.set(0.5);
+            rose.position.set((slot.x + slot.size / 2) * u, (slot.y + slot.size / 2) * u);
+            rose.width = rose.height = slot.size * u;
+            v.roses!.addChild(rose);
+          });
+          root.addChild(v.roses);
           if (numbered) {
-            v.roses = new Container();
-            v.roses.visible = false;
-            roseVariants(i).forEach((variant, k) => {
-              const slot = ROSE_SLOTS[k]!;
-              const rose = new Sprite(this.roseTexture(cell, variant));
-              rose.position.set(slot.x * u, slot.y * u);
-              rose.width = rose.height = slot.size * u;
-              v.roses!.addChild(rose);
-            });
             v.clue = new Text({
               text: String(b.clue[i]),
               style: { fontFamily: this.pal.fontDisplay, fontWeight: '400', fontSize: Math.round(30 * u), fill: this.pal.paper },
@@ -382,7 +418,7 @@ export class BoardView {
             v.clue.anchor.set(0.5);
             v.clue.position.set(cell / 2, bushLayout('numbered').numberY * u);
             v.pips = new Graphics();
-            root.addChild(v.roses, v.clue, v.pips);
+            root.addChild(v.clue, v.pips);
           }
         }
         this.cellsLayer.addChild(root);
@@ -395,6 +431,9 @@ export class BoardView {
   /**
    * Draw a position. `quiet` skips placement animations (resize, level load); `arriving`
    * is a cell whose firefly is still flying in from the jar, so it lands `arrivalMs` later.
+   * With motion on, a new firefly's light spreads tile by tile, roses open as a bush is
+   * satisfied, an overfull bush slumps, and a solve blooms every bush in a ripple. Without
+   * motion, or `quiet`, every change lands at once: the state is always the same.
    */
   render(state: BoardState, opts: { quiet?: boolean; removed?: number | null; arriving?: number | null; arrivalMs?: number } = {}): void {
     const prev = this.state;
@@ -407,13 +446,22 @@ export class BoardView {
     const conflicts = new Set(ev.conflicts);
     const bushes = new Map(ev.bushes.map((s) => [s.cell, s]));
     const prevFlies = prev ? new Set(prev.evaluation.fireflies) : flies;
+    const animate = this.motion && !opts.quiet && prev !== null;
+    // The firefly that just landed: where the light and the solve ripple start, and when.
+    const origin = animate ? ev.fireflies.find((f) => !prevFlies.has(f)) : undefined;
+    const landAt = this.time + (origin !== undefined && opts.arriving === origin ? (opts.arrivalMs ?? 0) : 0);
+    const w = this.board.w;
+    const spread = origin === undefined ? null
+      : rippleDelays(this.cells.filter((v) => v.kind === 'path').map((v) => v.cell), origin, w, MOTION_TIMING.spreadPerCell, true, true);
     for (const v of this.cells) {
       if (v.kind === 'path') {
         const has = flies.has(v.cell);
         const look: TileLook = has && conflicts.has(v.cell) ? 'conflict' : (ev.lit[v.cell] ?? false) ? 'lit' : 'dark';
-        if (look !== v.look) {
-          v.tile!.texture = this.tileTexture(cell, look);
-          v.look = look;
+        const target = v.pendingLook ?? v.look;
+        if (look !== target) {
+          // Light arriving travels from the firefly; light leaving (or no motion) is instant.
+          if (spread && look === 'lit' && v.look === 'dark') this.spreadTo(v, look, landAt + (spread.get(v.cell) ?? 0));
+          else this.setLook(v, look);
         }
         if (has) {
           v.fly!.setKind(conflicts.has(v.cell) ? 'conflict' : state.locked.has(v.cell) ? 'hint' : 'player');
@@ -427,38 +475,144 @@ export class BoardView {
           v.fly!.root.visible = false;
         }
         v.ruled!.visible = state.ruledOut.has(v.cell) && !has;
-      } else if (v.kind === 'bush' && v.clue && v.pips && v.bush && v.roses) {
+      } else if (v.kind === 'bush' && v.bush && v.roses) {
         const s = bushes.get(v.cell);
         const want = s?.want ?? 0, have = s?.have ?? 0, st = s?.state ?? 'under';
-        const key = `${have}:${st}`;
-        if (key !== v.bushKey) {
-          v.bushKey = key;
-          // Too many: the bush wilts (shape) as well as turning the number and the extra dot warn (colour).
-          const kind: BushKind = st === 'over' ? 'wilted' : 'numbered';
-          if (kind !== v.bushKind) {
-            v.bushKind = kind;
-            v.bush.texture = this.bushTexture(cell, kind);
+        const numbered = v.clue !== undefined;
+        // Roses: a happy numbered bush, and every bush once the garden is solved.
+        const bloom = state.solved || (numbered && st === 'met' && want > 0);
+        const key = `${have}:${st}:${state.solved}`;
+        if (key === v.bushKey) continue;
+        const was = v.bushKey;
+        v.bushKey = key;
+        // The solve re-opens every bush's roses, happy ones too, in one ripple from the last firefly.
+        const solving = state.solved && !(prev?.solved ?? false);
+        if (bloom && (!v.roses.visible || solving)) {
+          v.roses.visible = true;
+          if (animate && was !== undefined) {
+            const delay = solving && origin !== undefined
+              ? MOTION_TIMING.bloomStart + (rippleDelays([v.cell], origin, w, MOTION_TIMING.bloomPerCell, true).get(v.cell) ?? 0)
+              : 0;
+            this.openRoses(v, landAt + delay, solving);
           }
-          const { numberY, dotsY } = bushLayout(kind);
-          v.clue.position.y = numberY * u;
-          // Happy: the number turns gold and three roses open. A bush that wants none shows neither.
-          v.clue.style.fill = st === 'over' ? this.pal.warn : st === 'met' && want > 0 ? this.pal.gold : this.pal.paper;
-          v.roses.visible = st === 'met' && want > 0;
-          // One dot per firefly wanted, filling gold one by one; with too many, the extras show in warn.
-          v.pips.clear();
-          dotPositions(Math.max(want, have), dotsY).forEach((d, k) => {
-            const x = d.x * u, y = d.y * u;
-            if (k < have) {
-              v.pips!.circle(x, y, 3.6 * u).fill(k < want ? this.pal.gold : this.pal.warn).stroke({ width: Math.max(1, u), color: this.pal.sumi });
-            } else {
-              v.pips!.circle(x, y, 3.4 * u).stroke({ width: Math.max(1, 1.6 * u), color: this.pal.paper });
-            }
-          });
+        } else if (!bloom) {
+          v.roses.visible = false;
         }
+        if (!numbered || !v.clue || !v.pips) continue;
+        // Too many: the bush wilts (shape) as well as turning the number and the extra dot warn (colour).
+        const kind: BushKind = st === 'over' ? 'wilted' : 'numbered';
+        if (kind !== v.bushKind) {
+          v.bushKind = kind;
+          v.bush.texture = this.bushTexture(cell, kind);
+          if (kind === 'wilted' && animate) this.slump(v, landAt);
+        }
+        const { numberY, dotsY } = bushLayout(kind);
+        v.clue.position.y = numberY * u;
+        // Happy: the number turns gold. A bush that wants none shows neither gold nor roses.
+        v.clue.style.fill = st === 'over' ? this.pal.warn : st === 'met' && want > 0 ? this.pal.gold : this.pal.paper;
+        // One dot per firefly wanted, filling gold one by one; with too many, the extras show in warn.
+        v.pips.clear();
+        dotPositions(Math.max(want, have), dotsY).forEach((d, k) => {
+          const x = d.x * u, y = d.y * u;
+          if (k < have) {
+            v.pips!.circle(x, y, 3.6 * u).fill(k < want ? this.pal.gold : this.pal.warn).stroke({ width: Math.max(1, u), color: this.pal.sumi });
+          } else {
+            v.pips!.circle(x, y, 3.4 * u).stroke({ width: Math.max(1, 1.6 * u), color: this.pal.paper });
+          }
+        });
       }
     }
     this.drawOutline(state.because);
     if (opts.removed !== undefined && opts.removed !== null) this.liftAway(opts.removed);
+  }
+
+  private setLook(v: CellView, look: TileLook): void {
+    delete v.pendingLook;
+    delete v.pendingToken;
+    v.look = look;
+    v.tile!.texture = this.tileTexture(this.fit!.cell, look);
+    v.tile!.alpha = 1;
+  }
+
+  /** The light's wash reaches this tile at `at`: it brightens in over a short fade. */
+  private spreadTo(v: CellView, look: TileLook, at: number): void {
+    const token = {};
+    v.pendingLook = look;
+    v.pendingToken = token;
+    this.tweens.push({
+      start: at, dur: MOTION_TIMING.spreadFade,
+      step: (t) => {
+        if (v.pendingToken !== token) return; // superseded by a later move
+        if (v.look !== look) {
+          v.look = look;
+          v.tile!.texture = this.tileTexture(this.fit!.cell, look);
+        }
+        v.tile!.alpha = 0.55 + 0.45 * t;
+        if (t >= 1) {
+          delete v.pendingLook;
+          delete v.pendingToken;
+        }
+      },
+    });
+  }
+
+  /** Roses open one after another; at the solve, petals and motes rise from the bush. */
+  private openRoses(v: CellView, at: number, solving: boolean): void {
+    const roses = v.roses!.children as Sprite[];
+    const u = this.fit!.cell / UNIT;
+    roses.forEach((rose, k) => {
+      const base = (ROSE_SLOTS[k]!.size * u) / rose.texture.width;
+      rose.scale.set(0);
+      this.tweens.push({
+        start: at + k * MOTION_TIMING.roseStagger, dur: MOTION_TIMING.roseOpen,
+        step: (t) => rose.scale.set(base * easeOutBack(t)),
+      });
+    });
+    if (solving) this.particles(v, at, 3, 2, -1);
+  }
+
+  /** Too many: the bush sinks a little and springs back, and two petals fall. */
+  private slump(v: CellView, at: number): void {
+    const bush = v.bush!, size = this.fit!.cell;
+    this.tweens.push({
+      start: at, dur: MOTION_TIMING.slump,
+      step: (t) => {
+        const k = Math.sin(t * Math.PI) * 0.08;
+        bush.scale.y = (size / bush.texture.height) * (1 - k);
+        bush.y = size * k;
+      },
+    });
+    this.particles(v, at, 2, 0, 1);
+  }
+
+  /** Petals (and motes) leaving a bush: `dir` -1 rises, 1 falls. Purely decorative. */
+  private particles(v: CellView, at: number, petals: number, motes: number, dir: 1 | -1): void {
+    const size = this.fit!.cell, c = this.pal.css;
+    const petalPx = Math.max(4, Math.round(size * 0.14)), motePx = Math.max(6, Math.round(size * 0.22));
+    const petalTex = this.texture('petal', petalPx, (ctx) => drawPetal(ctx, c, petalPx));
+    const moteTex = this.texture('mote', motePx, (ctx) => drawMote(ctx, c, motePx));
+    for (let k = 0; k < petals + motes; k++) {
+      const mote = k >= petals;
+      const sp = new Sprite(mote ? moteTex : petalTex);
+      sp.anchor.set(0.5);
+      sp.width = sp.height = mote ? motePx : petalPx;
+      sp.visible = false;
+      const x0 = v.root.x + size * (0.25 + 0.5 * (((v.cell * 7 + k * 13) % 10) / 10));
+      const y0 = v.root.y + size * 0.4;
+      const drift = (((v.cell + k * 5) % 7) - 3) * size * 0.03;
+      this.particleLayer.addChild(sp);
+      this.tweens.push({
+        start: at + k * 90, dur: MOTION_TIMING.particle,
+        step: (t) => {
+          sp.visible = t < 1;
+          sp.x = x0 + drift * t + Math.sin(t * 6 + k) * size * 0.04;
+          sp.y = y0 + dir * t * size * (mote ? 0.9 : 0.6);
+          sp.alpha = mote ? Math.sin(t * Math.PI) : 1 - t;
+          sp.rotation = mote ? 0 : t * 2 * dir;
+          if (t >= 1) sp.destroy();
+        },
+      });
+    }
   }
 
   /** The dashed gold outline around the cells a hint names (one shape per touching group). */
@@ -495,6 +649,14 @@ export class BoardView {
 
   private tick(dt: number): void {
     this.time += dt;
+    if (this.tweens.length > 0) {
+      this.tweens = this.tweens.filter((tw) => {
+        if (this.time < tw.start) return true;
+        const t = Math.min(1, (this.time - tw.start) / tw.dur);
+        tw.step(t);
+        return t < 1;
+      });
+    }
     for (const v of this.cells) {
       if (v.fly?.root.visible) v.fly.tick(this.time, this.motion, dt);
     }
