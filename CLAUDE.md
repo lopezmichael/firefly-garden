@@ -14,6 +14,7 @@ about the code today.
 | `npm test` | Vitest: core unit tests plus architecture ratchets |
 | `npm run build` | Production build of `apps/game` to `apps/game/dist` |
 | `npm run check:bundle` | Fails if the build is over the 8 MB Poki budget |
+| `npm run e2e` | Playwright smoke test against the e2e build (own CI job; locally uses the preinstalled Chromium) |
 | `npm run check` | All of the above, in order. The pre-commit hook runs this |
 | `npm run dev` | Vite dev server for the game |
 | `npm run levels` | Regenerate `levels/` (launch + reserve packs) and `reports/` (deterministic, ~30 s). Never hand-edit packs; change `scripts/launch-plan.ts` |
@@ -42,7 +43,13 @@ about the code today.
   tests and, later, by the game.
 - Every SDK (portal, ads, purchases, Capacitor) is called only from
   `apps/game/src/platform/`. Ratchet-enforced.
-- Colors and fonts come from tokens in `apps/game/src/theme.css`; never hardcode them.
+- Colors and fonts come from tokens in `apps/game/src/theme.css`; never hardcode them. The board
+  reads each colour token by its own name (`view/tokens.ts`); add a token there and in theme.css.
+- The look is ink and wash (`docs/design/assets.md`). Art is drawn with 2D canvas and baked per
+  size (`view/art/`); never put a live SVG filter on screen. Every animation needs a reduced-motion
+  path that still lands the state (`apps/game/test/motion-css.test.ts` checks the CSS).
+- Anything that changes the status card's or complete card's height resizes the board, which
+  cancels a firefly in flight: measure wording and fonts against the reserved space.
 - Rules and level format: `docs/references/rules.md`. Layers and data flow: `ARCHITECTURE.md`.
 
 ## How we work
@@ -55,7 +62,7 @@ about the code today.
   Conventional commits that explain why.
 - **Commit or push only when asked.**
 - **CI** (`.github/workflows/ci.yml`) on PRs and pushes to `main`/`develop`: typecheck,
-  tests, build, bundle budget, `npm audit`.
+  tests, build, bundle budget, `npm audit`; a separate `e2e` job runs the Playwright smoke test.
 - **Reviews before every substantive commit:** two parallel reviewer subagents
   (correctness, security) given the diff and untracked files. `/security-review` for
   anything touching ad SDKs, purchases, storage or external input.
@@ -81,6 +88,8 @@ about the code today.
 - Hint economy (simulated, `tests/economy.test.ts`): at most 5% of hint requests refused,
   at least 95% of players clear chapter 1, breathers under 5% hint use on average, no level
   above 40% hint use
+- Browser smoke test (`apps/game/e2e`): the status card keeps one height for every message at
+  320 and 360 px; a still board draws no frames; ad, hint, reload, fold and keyboard paths work
 - No committed level is estimated over 5:00; main-path levels stay under 4:00 and chapter 1
   under 1:00 (`DIFFICULTY_CONFIG.limits`)
 

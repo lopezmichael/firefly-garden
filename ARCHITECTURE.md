@@ -38,7 +38,7 @@ line is swappable.
 | `types.ts` | The on-disk `Level` format (see `docs/references/rules.md`) |
 | `level.ts` | `parseLevel` (untrusted JSON → `Level`, all problems reported at once) and `validateLevel` |
 | `board.ts` | `buildBoard`: compiles a `Level` into a `Board` with precomputed rays (what each tile sees) and bush neighborhoods |
-| `rules.ts` | `evaluate`: lit tiles, conflicts, bush states, solved. `canPlace` (refuses lanterns and locked hint cells) |
+| `rules.ts` | `evaluate`: lit tiles, conflicts, bush states, solved. `canPlace` (refuses lanterns and locked hint cells). For teaching: `conflictPairs` (which two fireflies see each other, nearest neighbours), `lightCounts` and `crossings` (tiles where a row beam and a column beam meet, which is allowed) |
 | `solver.ts` | `solve` / `isUnique`: exact search with propagation, stops at a solution limit |
 | `transform.ts` | The 8 rotations/mirrors, so one stored orientation serves portrait and landscape; `canonicalKey` spots disguised duplicates |
 | `grader.ts` | Human-style technique solver: one deduction at a time, simplest first, records the trace (tier, width, reason); can start from a position. `gradeLevel` grades a shipped level as players see it (firefly count known); every difficulty decision goes through it |
@@ -75,13 +75,16 @@ a naive enumerator on 300 random boards with every twist
 ## apps/game
 
 Plain DOM for the screens, PixiJS for the board, one controller between them.
-The look follows the Phase 2 design baseline (`docs/design/phase-2/`).
+The look is ink and wash (`docs/design/assets.md`, plan `docs/plans/2026-11-12-ink-wash-theme.md`)
+over the Phase 2 baseline's structure (`docs/design/phase-2/`).
 
 | Folder | Holds | May import |
 | --- | --- | --- |
-| `src/state/` | Level catalog (`catalog.ts`), one play with undo, reset, hints and active time (`play.ts`), coins and hint bank (`wallet.ts`), progress and the next-level policy (`session.ts`), status-card wording (`status.ts`), saved progress and its validation (`save.ts`), the local analytics log (`events.ts`) | `@firefly/core` only, no browser globals (ratchet) |
-| `src/view/` | Pure layout math: bands, board fit, orientation (`layout.ts`); the PixiJS board (`board.ts`); CSS tokens read into a Pixi palette (`theme.ts`) | `state/`, `pixi.js` |
-| `src/ui/` | The play screen's DOM (`screen.ts`, `game.css`) including the firefly jar, the hint and settings sheets (`sheets.ts`), the garden map (`map.ts`), the level-complete card and solve burst (`complete.ts`), jar-to-tile flights (`flight.ts`) and the controller (`app.ts`) | `state/`, `view/`, `platform/` |
+| `src/state/` | Level catalog (`catalog.ts`), one play with undo, reset, hints and active time (`play.ts`), coins and hint bank (`wallet.ts`), progress and the next-level policy (`session.ts`), status-card wording (`status.ts`), saved progress and its validation (`save.ts`), the local analytics log (`events.ts`), sound cues from a change of position (`cues.ts`), one-time tips and conflict words (`teach.ts`), cell words for screen readers (`describe.ts`) | `@firefly/core` only, no browser globals (ratchet) |
+| `src/view/` | Pure layout math: bands, board fit, orientation, display ↔ canonical cells, keyboard focus steps and the key map, hills and map placement (`layout.ts`); the PixiJS board (`board.ts`); colour token names (`tokens.ts`) read into a palette (`theme.ts`) | `state/`, `pixi.js` |
+| `src/view/art/` | The ink and wash art, drawn with 2D canvas, no live filters: seeded noise (`noise.ts`, pure), the texture kit (`textures.ts`: grain, fibre, wash edges, the chrome's paper), board pieces and fireflies (`pieces.ts`), their placement and motion timing (`geometry.ts`, pure), the scenery (`scenery.ts`) | `view/` |
+| `src/ui/` | The play screen's DOM (`screen.ts`, `game.css`) including the lantern jar and the scenery layer, the icon set (`icons.ts`), the hint and settings sheets (`sheets.ts`), the garden map (`map.ts`), the level-complete card (`complete.ts`), jar-to-tile flights (`flight.ts`) and the controller (`app.ts`) | `state/`, `view/`, `platform/` |
+| `src/audio/` | Web Audio synth (`engine.ts`: placeholder voices, no audio files; no context before the first gesture; suspended while muted) and the mute rules (`gate.ts`: setting, hidden tab, ad) | nothing game-specific |
 | `src/platform/` | The `Platform` interface and adapters; the only door to SDKs (ratchet) | |
 
 - **Layout follows the screen's shape** (`bandFor`): tall (phones in portrait), square
@@ -93,9 +96,28 @@ The look follows the Phase 2 design baseline (`docs/design/phase-2/`).
 - **Saved progress is untrusted.** One versioned document (`state/save.ts`) under one key, read
   through `parseSave`, which validates field by field and never throws; the game writes the
   validated copy straight back. Cells are stored as canonical `[row, col]`.
-- **Colors live only in `src/theme.css`.** The board reads them through `readPalette`; a
-  ratchet rejects color literals anywhere else in `apps/game/src`.
-- `src/platform/local.ts`: development adapter (no ads, localStorage saves).
+- **Colors live only in `src/theme.css`.** The board reads every colour token by its own name
+  through `readPalette` (`--ff-gold-pool` is `pal.goldPool`); a ratchet rejects color literals
+  anywhere else in `apps/game/src`, and another holds the contrast of the pairs that carry text.
+- **Art is baked, never filtered live.** Textures and pieces are drawn once per cell size into
+  the board's texture cache (pruned on resize); the scenery is one canvas behind the DOM,
+  redrawn only when the layout changes; the chrome's paper is one tile baked at startup.
+- **Motion is optional.** Every moment (flights, the light spreading, roses, the bloom, the map's
+  orbits and unlock flight) is skipped under reduced motion with the state change kept; the
+  board's moments run on one tween list (`board.ts`), CSS ones are ratchet-checked.
+- `src/platform/local.ts`: development adapter (no ads, localStorage saves). `src/platform/test.ts`:
+  scriptable adapter for the browser smoke test (rewarded ads that complete or cancel on cue), built
+  only with `vite build --mode e2e`, together with the `window.__ff` hooks (`GameApp.e2eHooks`);
+  the mode is a build-time constant, so production bundles carry neither.
+- **The board draws only while something moves.** A still board (every board in reduced motion,
+  an empty one otherwise) draws once per change and stops its ticker (moments on the tween list keep it running until they land); the browser smoke test
+  holds this.
+- **Keyboard:** arrows move a focus ring in screen space (rotation-aware), space or enter toggles
+  the focused tile, Z undoes, H asks for a hint; the board announces the focused cell to screen
+  readers.
+- **Browser smoke test:** `apps/game/e2e/` (Playwright, its own CI job) plays the e2e build: a
+  solve by real taps, a hint, a cancelled and a finished ad, reload, rotation and fold, keyboard,
+  sound muting, the status card's height at 320 and 360 px for every message, idle frames.
 - **Hosting:** Vercel (team Lopez Studio, project `firefly-garden`) builds from the repo root
   (`vercel.json`: `npm ci`, `npm run build`, output `apps/game/dist`). Production deploys from
   `main` (each `develop` → `main` release); `develop` is the testing build at its branch link;

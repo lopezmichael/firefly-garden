@@ -19,7 +19,9 @@ export type Notice =
   | { readonly kind: 'locked' }
   | { readonly kind: 'no-coins'; readonly coinsPerSolve: number }
   | { readonly kind: 'reset' }
-  | { readonly kind: 'jar-empty' };
+  | { readonly kind: 'jar-empty' }
+  /** One-time tip: beams crossed for the first time (state/teach.ts). */
+  | { readonly kind: 'tip-cross' };
 
 /** `jarLeft`: fireflies still in the jar (an empty jar on an unsolved board gets its own line). */
 export function boardStatus(ev: Evaluation, firstMove: boolean, coinsPerSolve: number, jarLeft = 1): StatusText {
@@ -38,7 +40,7 @@ export function boardStatus(ev: Evaluation, firstMove: boolean, coinsPerSolve: n
       title: `${ev.unlit} path ${ev.unlit === 1 ? 'tile' : 'tiles'} still dark`,
       sub: firstMove
         ? 'Tap a tile to send out a firefly. Bush dots fill as fireflies land.'
-        : 'A bush is done when all its dots are gold.',
+        : 'A bush blooms when all its dots are gold.',
       tone: 'plain',
     };
   }
@@ -57,6 +59,8 @@ export function noticeStatus(n: Notice, ev: Evaluation): StatusText {
       return { title: 'The jar is empty', sub: 'Tap a firefly on the board to call it back, then try another spot.', tone: 'plain' };
     case 'reset':
       return { title: 'Board cleared', sub: 'Your hint fireflies stay.', tone: 'plain' };
+    case 'tip-cross':
+      return { title: 'Light can cross', sub: "Only fireflies can't see each other.", tone: 'glow' };
     case 'hint': {
       // A short one-line heading per kind; the reason goes in the sub-line, so a long reason
       // never grows the card (see the status-length test).

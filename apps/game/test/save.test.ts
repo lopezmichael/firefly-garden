@@ -5,6 +5,7 @@ import { cellCoord, createRng } from '@firefly/core';
 import { createCatalog } from '../src/state/catalog.ts';
 import { DEFAULT_SETTINGS, MAX_COINS, MAX_PARKED, MAX_SAVE_CHARS, newInstallId, parseSave, SAVE_VERSION, serializeSave } from '../src/state/save.ts';
 import type { SaveData } from '../src/state/save.ts';
+import { TIP_IDS } from '../src/state/teach.ts';
 import { HISTORY_CAP } from '../src/state/session.ts';
 import { MAX_BANKED_HINTS } from '../src/state/wallet.ts';
 
@@ -29,6 +30,8 @@ function good(): SaveData {
     current: { levelId: id, key: catalog.levelKey(id), reason: 'main', placed: [solution[1]!], locked: [solution[0]!], seconds: 12, placements: 3, undos: 1, restarts: 0, hints: 1 },
     parked: [],
     settings: { sound: false, motion: 'off' },
+    tips: new Set(['cross']),
+    mapSeen: new Set(),
   };
 }
 
@@ -38,6 +41,19 @@ function tamper(edit: (o: Record<string, unknown>) => void): string {
   edit(o);
   return JSON.stringify(o);
 }
+
+describe('one-time tips', () => {
+  it('keep known tip ids and drop anything else', () => {
+    const { data, problems } = parseSave(tamper((o) => { o.tips = ['cross', 'cross', '__proto__', 7, 'free-coins']; }), catalog, NOW, fresh);
+    expect([...data!.tips]).toEqual(['cross']);
+    expect(problems.some((p) => p.startsWith('tips'))).toBe(true);
+  });
+
+  it('default to none when missing or malformed (older saves have no tips)', () => {
+    expect(parseSave(tamper((o) => { delete o.tips; }), catalog, NOW, fresh).data!.tips.size).toBe(0);
+    expect(parseSave(tamper((o) => { o.tips = 'cross'; }), catalog, NOW, fresh).data!.tips.size).toBe(0);
+  });
+});
 
 describe('save round trip', () => {
   it('reads back exactly what was written, with no problems', () => {
@@ -184,6 +200,37 @@ describe('save validation (rules.md)', () => {
   });
 });
 
+describe('map seen chapters (the unlock flight plays once)', () => {
+  const c1 = catalog.chapters[0]!;
+  const finishedC1 = (): SaveData => ({ ...good(), current: null, solved: new Set(c1.levels), mapSeen: new Set([c1.id]) });
+
+  it('round-trips the chapters the map has shown finished', () => {
+    const back = parseSave(serializeSave(finishedC1(), catalog), catalog, NOW, fresh);
+    expect(back.problems).toEqual([]);
+    expect([...back.data!.mapSeen]).toEqual([c1.id]);
+  });
+
+  it('reads an older save with no mapSeen as nothing seen', () => {
+    const raw = JSON.parse(serializeSave(finishedC1(), catalog)) as Record<string, unknown>;
+    delete raw.mapSeen;
+    const back = parseSave(JSON.stringify(raw), catalog, NOW, fresh);
+    expect(back.problems).toEqual([]);
+    expect(back.data!.mapSeen.size).toBe(0);
+  });
+
+  it('drops unknown chapters, chapters this save has not finished, and non-lists', () => {
+    const raw = JSON.parse(serializeSave(finishedC1(), catalog)) as Record<string, unknown>;
+    raw.mapSeen = [c1.id, catalog.chapters[1]!.id, 'c99', 7, '__proto__'];
+    const back = parseSave(JSON.stringify(raw), catalog, NOW, fresh);
+    expect([...back.data!.mapSeen]).toEqual([c1.id]);
+    expect(back.problems.some((p) => p.includes('mapSeen'))).toBe(true);
+    raw.mapSeen = 'c1';
+    const bad = parseSave(JSON.stringify(raw), catalog, NOW, fresh);
+    expect(bad.data!.mapSeen.size).toBe(0);
+    expect(bad.problems).toContain('mapSeen is not a list');
+  });
+});
+
 describe('parked boards (quit levels kept for their retry)', () => {
   const quitId = catalog.mainPath[6]!;
   const qb = catalog.board(quitId);
@@ -236,7 +283,7 @@ describe('save fuzz', () => {
     for (let i = 0; i < 5; i++) o[pick(['levelId', 'reason', 'placed', 'locked', 'coins', 'bank', 'x', '__proto__', 'constructor', 'seconds'])] = junk(depth + 1);
     return o;
   };
-  const FIELDS = ['session', 'coins', 'bank', 'solved', 'history', 'playedReserve', 'quitMain', 'current', 'parked', 'settings'];
+  const FIELDS = ['session', 'coins', 'bank', 'solved', 'history', 'playedReserve', 'quitMain', 'current', 'parked', 'settings', 'mapSeen', 'tips'];
 
   it('never throws, never locks a wrong cell, never exceeds a cap, over 3000 hostile saves', () => {
     for (let i = 0; i < 3000; i++) {
@@ -250,6 +297,10 @@ describe('save fuzz', () => {
               placed: junk(1), locked: Array.from({ length: Math.floor(rng.next() * 3) }, () => [Math.floor(rng.next() * 9), Math.floor(rng.next() * 9)]) };
           });
         }
+        // Real chapter ids too (finished or not, repeated, in long lists), so the finished check is reached.
+        if (rng.next() < 0.3) o.mapSeen = Array.from({ length: Math.floor(rng.next() * 40) }, () => pick([...catalog.chapters.map((c) => c.id), 'c99', 7, '__proto__']));
+        if (rng.next() < 0.3) o.tips = Array.from({ length: Math.floor(rng.next() * 40) }, () => pick(['cross', 'nope', 7, '__proto__', null]));
+        if (rng.next() < 0.3) o.solved = rng.next() < 0.5 ? [...catalog.chapters[0]!.levels] : catalog.mainPath.slice(0, Math.floor(rng.next() * 30));
         if (rng.next() < 0.3 && o.current && typeof o.current === 'object') {
           const cur = o.current as Record<string, unknown>;
           cur.levelId = pick([...catalog.mainPath, catalog.reserve[0]!.id, 'nope']);
@@ -271,6 +322,14 @@ describe('save fuzz', () => {
         const sol = catalog.solution(pk.levelId);
         expect(pk.locked.every((c) => sol.has(c))).toBe(true);
       }
+      // The map's seen chapters are always real chapters this save has finished.
+      for (const c of data.mapSeen) {
+        const ch = catalog.chapters.find((x) => x.id === c);
+        expect(ch, `mapSeen holds unknown ${c}`).toBeDefined();
+        expect(ch!.levels.every((l) => data.solved.has(l))).toBe(true);
+      }
+      // Tips are only known tip ids.
+      for (const t of data.tips) expect(TIP_IDS.has(t), `tips holds unknown ${String(t)}`).toBe(true);
       const cur = data.current;
       if (cur) {
         const sol = catalog.solution(cur.levelId);

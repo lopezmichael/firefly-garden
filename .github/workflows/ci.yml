@@ -32,3 +32,29 @@ jobs:
         run: npm run check:bundle
       - name: Dependency audit
         run: npm audit
+
+  e2e:
+    # Browser smoke test (Phase 2 plan, decision 6): its own job so a slow or failing
+    # browser run never hides the unit checks, and the browser install stays out of them.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Smoke test
+        run: npm run e2e
+      - name: Upload report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

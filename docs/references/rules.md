@@ -184,6 +184,13 @@ progress, which is untrusted. Before calling it the game must:
   streak and the last hint breather are read from history alone. The warm-up tier is also
   read from the capped history, i.e. from recent plays.
 - fall back to the next unsolved main-path level if validation fails.
+- `tips` (one-time tips already shown, e.g. `cross` for "Light can cross") holds only known tip
+  ids; anything else is dropped, and a missing field means none were shown.
+
+Light crossing light is allowed: a path tile lit by a row beam and a column beam is fine (only
+fireflies may not see each other). `crossings` (core) finds those tiles and `conflictPairs` the
+pairs of fireflies that do see each other, nearest neighbours only, so the game can show the
+broken rule itself rather than only the fireflies breaking it.
 
 ## Not yet implemented
 

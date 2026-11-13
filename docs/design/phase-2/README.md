@@ -26,6 +26,16 @@ behaviour are locked, the look is not.
 artboard). They are reference only; the game does not load them. If the canvas changes,
 re-read it and refresh these copies in the same commit.
 
+## Look pass 2: ink and wash (2026-11-13)
+
+The open half is now the ink and wash look, chosen in the character exploration
+(`docs/plans/2026-11-12-character-exploration.md`) and built in
+`docs/plans/2026-11-12-ink-wash-theme.md`; tokens, fonts, assets and the motion table are in
+`docs/design/assets.md`, the source of truth is the "Firefly Garden · Character" canvas. The
+locked half holds, with three decided changes: the board's tilt and tray are gone (tiles sit on
+the night with a front edge), and the copy reads "A bush blooms when all its dots are gold."
+Look pass 1 below is superseded.
+
 ## Look pass 1 (2026-11-12)
 
 The first iteration on the open half, from an Impeccable and a Taste Skill critique (both

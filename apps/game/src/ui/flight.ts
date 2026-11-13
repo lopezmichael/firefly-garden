@@ -11,13 +11,17 @@ import type { Point } from '../view/layout.ts';
 /** Flight length in milliseconds; the board delays the landing by about this much. */
 export const FLIGHT_MS = 560;
 
-// Constant markup, never game or player data. Colors come from CSS classes (theme tokens).
-const FIREFLY_SVG = '<svg viewBox="-18 -18 36 36">'
-  + '<circle class="ff-flier-halo" r="15"></circle>'
-  + '<ellipse class="ff-flier-wing" cx="-7" cy="-5" rx="7.5" ry="5" transform="rotate(-25 -7 -5)"></ellipse>'
-  + '<ellipse class="ff-flier-wing" cx="7" cy="-5" rx="7.5" ry="5" transform="rotate(25 7 -5)"></ellipse>'
-  + '<circle class="ff-flier-body" cx="0" cy="3" r="8"></circle>'
-  + '<circle class="ff-flier-head" cx="0" cy="-6" r="4.2"></circle></svg>';
+// Constant markup, never game or player data: firefly C from the design canvas, seen in
+// flight. Colors come from CSS classes (theme tokens); the glow is the sprite's own
+// CSS background, so no SVG gradient ids can clash between two fliers.
+export const FIREFLY_SVG = '<svg viewBox="0 0 30 30">'
+  + '<path class="ff-flier-wing ff-flier-wing-l" d="M13.5 12 C9 7 5.5 9.5 7.5 12.5 C9 14.5 12 14 13.5 13 Z"></path>'
+  + '<path class="ff-flier-wing ff-flier-wing-r" d="M16.5 12 C21 7 24.5 9.5 22.5 12.5 C21 14.5 18 14 16.5 13 Z"></path>'
+  + '<circle class="ff-flier-tail" cx="15" cy="17" r="4.4"></circle>'
+  + '<path class="ff-flier-ribs" d="M11.2 16 q3.8 1.8 7.6 0 M11.2 18.6 q3.8 1.8 7.6 0"></path>'
+  + '<circle class="ff-flier-head" cx="15" cy="10.8" r="2.2"></circle>'
+  + '<path class="ff-flier-feelers" d="M14.3 9 q-0.8 -3 -3 -3.4 q-1 0 -0.6 0.8 M15.7 9 q0.8 -3 3 -3.4 q1 0 0.6 0.8"></path>'
+  + '</svg>';
 
 const live = new Set<Animation>();
 

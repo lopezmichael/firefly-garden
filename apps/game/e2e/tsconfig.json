@@ -1,0 +1,11 @@
+{
+  // The browser smoke test: Node (Playwright runner) plus DOM (code run in the page).
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node", "vite/client"],
+    "resolveJsonModule": true,
+    "noEmit": true
+  },
+  "include": [".", "../../../playwright.config.ts"]
+}

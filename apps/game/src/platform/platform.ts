@@ -14,7 +14,7 @@ export interface Platform {
   gameplayStop(): void;
   /** Interstitial. Resolves after the ad finishes, or right away on no-fill. */
   showMidgame(): Promise<void>;
-  /** Rewarded ad. True only if the ad played to the end. */
+  /** Rewarded ad. True only if the ad played to the end; adapters resolve false on any failure rather than reject. */
   showRewarded(): Promise<boolean>;
   save(key: string, value: string): Promise<void>;
   /** Untrusted: callers must validate whatever comes back. */

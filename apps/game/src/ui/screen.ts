@@ -1,6 +1,10 @@
 import type { Band } from '../view/layout.ts';
 import { CompleteCard } from './complete.ts';
 import type { CompleteView } from './complete.ts';
+import { coin, icon, LANTERN_LIGHTS, lantern, moon } from './icons.ts';
+import { hillsFor, HILLS } from '../view/layout.ts';
+import { drawScenery } from '../view/art/scenery.ts';
+import type { Palette } from '../view/theme.ts';
 
 /**
  * The play screen's DOM: top bar, title, status card and controls around the
@@ -8,40 +12,11 @@ import type { CompleteView } from './complete.ts';
  * game text is always set with `textContent`, never parsed as HTML.
  */
 
-const ICONS = {
-  undo: '<path d="M9 14L4 9l5-5"></path><path d="M4 9h10a6 6 0 0 1 0 12h-3"></path>',
-  reset: '<path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path>',
-  map: '<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"></path><path d="M9 4v14"></path><path d="M15 6v14"></path>',
-  gear: '<circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path>',
-  // The game's firefly, not a stock star: wings, body, head.
-  hint: '<ellipse cx="7.5" cy="9" rx="4.5" ry="3" transform="rotate(-25 7.5 9)"></ellipse><ellipse cx="16.5" cy="9" rx="4.5" ry="3" transform="rotate(25 16.5 9)"></ellipse><circle cx="12" cy="15" r="4.6" fill="currentColor"></circle><circle cx="12" cy="8.6" r="2.4" fill="currentColor" stroke="none"></circle>',
-} as const;
-
-const JAR_SVG = '<svg viewBox="0 0 64 80"><ellipse class="ff-jar-glow" cx="32" cy="52" rx="26" ry="24"></ellipse>'
-  + '<path class="ff-jar-glass" d="M18 18 h28 v6 c8 4 12 12 12 22 v18 c0 8 -6 13 -14 13 h-24 c-8 0 -14 -5 -14 -13 v-18 c0 -10 4 -18 12 -22 z"></path>'
-  + '<path class="ff-jar-shine" d="M14 40 c0 -6 2 -10 6 -13"></path>'
-  + '<g class="ff-jar-lid"><rect class="ff-jar-cork" x="16" y="9" width="32" height="10" rx="3"></rect><rect class="ff-jar-cork-hi" x="16" y="9" width="32" height="4" rx="2"></rect></g></svg>';
-
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
   if (className) e.className = className;
   if (text !== undefined) e.textContent = text;
   return e;
-}
-
-function icon(name: keyof typeof ICONS): SVGSVGElement {
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('viewBox', '0 0 24 24');
-  svg.setAttribute('fill', 'none');
-  svg.setAttribute('stroke', 'currentColor');
-  svg.setAttribute('stroke-width', '2.4');
-  svg.setAttribute('stroke-linecap', 'round');
-  svg.setAttribute('stroke-linejoin', 'round');
-  svg.setAttribute('aria-hidden', 'true');
-  svg.classList.add('ff-icon');
-  // Constant markup from ICONS above, never game or player data.
-  svg.innerHTML = ICONS[name];
-  return svg;
 }
 
 export type StatusTone = 'plain' | 'warn' | 'glow' | 'solved';
@@ -81,17 +56,23 @@ export class PlayScreen {
   private readonly announcer = el('div', 'ff-sr');
   private mapButton: HTMLButtonElement | null = null;
   private readonly complete: CompleteCard;
+  private readonly scene = el('canvas', 'ff-scene');
+  private readonly motes = el('div', 'ff-motes');
+  private sceneFrame = 0;
+  private sceneDpr = 0;
+  private resolutionQuery: MediaQueryList | null = null;
 
-  constructor(handlers: ScreenHandlers) {
+  constructor(handlers: ScreenHandlers, private readonly palette: Palette) {
+    // The scenery (theme plan, milestone 6): night, grain and hills baked into one canvas,
+    // the crescent moon and drifting motes as DOM over it.
     const sky = el('div', 'ff-sky');
     sky.setAttribute('aria-hidden', 'true');
-    for (let i = 0; i < 16; i++) {
-      const s = el('span', 'ff-star');
-      const size = i % 3 === 0 ? 3 : 2;
-      s.style.cssText = `left:${(i * 89 + 23) % 100}%;top:${(i * 47 + 11) % 30}%;width:${size}px;height:${size}px;--dur:${(2 + (i % 4) * 0.7).toFixed(1)}s;--delay:${((i * 0.37) % 3).toFixed(2)}s`;
-      sky.append(s);
+    sky.append(this.scene, moon(), this.motes);
+    for (let i = 0; i < HILLS.motes; i++) {
+      const m = el('span', 'ff-mote');
+      m.style.setProperty('--ff-mote-delay', `${(-i * 1.3).toFixed(1)}s`);
+      this.motes.append(m);
     }
-    sky.append(el('div', 'ff-moon'));
 
     const side = el('section', 'ff-side');
     const top = el('header', 'ff-top');
@@ -99,11 +80,11 @@ export class PlayScreen {
     this.dots.setAttribute('aria-hidden', 'true');
     chapter.append(this.chapterLabel, this.dots);
     const coinBox = el('div', 'ff-coins');
-    coinBox.append(el('span', 'ff-coin'), this.coins);
+    coinBox.append(coin(), this.coins);
     const gear = el('button', 'ff-gear');
     gear.type = 'button';
     gear.setAttribute('aria-label', 'Settings');
-    gear.append(icon('gear'));
+    gear.append(icon('settings'));
     gear.addEventListener('click', () => handlers.settings());
     const mapButton = el('button', 'ff-gear');
     mapButton.type = 'button';
@@ -115,19 +96,19 @@ export class PlayScreen {
 
     this.status.setAttribute('role', 'status');
     this.status.setAttribute('aria-live', 'polite');
-    // The firefly jar (design: jar plus a slot per firefly). The jar is where fireflies fly
-    // from and back to; the slots make the count exact at a glance.
+    // The firefly jar, a paper lantern (design: lantern plus a slot per firefly). The lantern is
+    // where fireflies fly from and back to, with a light inside for each one left; the slots
+    // make the count exact at a glance.
     this.jar.setAttribute('aria-hidden', 'true');
-    // Constant markup, never game or player data.
-    this.jar.innerHTML = JAR_SVG;
+    this.jar.append(lantern());
     const count = el('div', 'ff-jar-count');
     this.slots.setAttribute('aria-hidden', 'true');
     count.append(this.jarLine, this.slots);
-    const row = el('div', 'ff-status-row');
-    row.append(this.jar, count);
     const text = el('div', 'ff-status-text');
     text.append(this.statusTitle, this.statusSub);
-    this.status.append(row, text);
+    const column = el('div', 'ff-status-column');
+    column.append(count, text);
+    this.status.append(this.jar, column);
     // The level-complete card sits where the status card and moves are (see game.css).
     this.complete = new CompleteCard({ next: () => handlers.next(), map: () => handlers.map() });
     side.append(top, this.title, this.status, this.complete.root);
@@ -146,24 +127,81 @@ export class PlayScreen {
       b.addEventListener('click', () => fn());
     }
     this.hintButton.type = 'button';
+    // "Hint · 30" (or "Hint · 2 saved"), as on the canvas; the label says "coins" for screen readers.
     const cost = el('span', 'ff-cost');
-    cost.append(el('span', 'ff-coin'), this.hintCost);
+    cost.append(el('span', 'ff-cost-sep', '·'), this.hintCost);
     this.hintButton.append(icon('hint'), document.createTextNode('Hint'), cost);
     this.hintButton.addEventListener('click', () => handlers.hint());
     controls.append(this.hintButton, this.undoButton, this.resetButton);
 
     this.root.append(sky, side, this.boardHost, controls, this.announcer);
     this.setBand('tall');
+    // Redraw the scenery when the screen or the card under the hills changes size or place.
+    const watch = new ResizeObserver(() => this.queueScene());
+    watch.observe(this.root);
+    watch.observe(this.status);
+    watch.observe(this.complete.root);
   }
 
   setBand(band: Band): void {
     this.root.dataset.band = band;
+    this.queueScene();
     // Visual order differs by band: the hint comes first in the wide column, last in a row.
     const controls = this.hintButton.parentElement;
     if (!controls) return;
     if (band === 'wide') controls.prepend(this.hintButton);
     else controls.append(this.hintButton);
   }
+
+  private queueScene(): void {
+    if (this.sceneFrame) return;
+    this.sceneFrame = requestAnimationFrame(() => {
+      this.sceneFrame = 0;
+      this.drawScene();
+    });
+  }
+
+  /** Bake night, grain and hills for the current size; place the motes over the ridges. */
+  private drawScene(): void {
+    const w = this.root.clientWidth, h = this.root.clientHeight;
+    if (w < 1 || h < 1) return;
+    const res = Math.min(2, window.devicePixelRatio || 1);
+    // Reallocate the backing store only when the size changes; the scene repaints every pixel anyway.
+    const cw = Math.round(w * res), ch = Math.round(h * res);
+    if (this.scene.width !== cw) this.scene.width = cw;
+    if (this.scene.height !== ch) this.scene.height = ch;
+    const ctx = this.scene.getContext('2d');
+    if (!ctx) return;
+    const origin = this.root.getBoundingClientRect();
+    const cardEl = this.status.offsetHeight > 0 ? this.status : this.complete.root;
+    const r = cardEl.getBoundingClientRect();
+    const card = { left: r.left - origin.left, top: r.top - origin.top, right: r.right - origin.left, bottom: r.bottom - origin.top };
+    const band = (this.root.dataset.band ?? 'tall') as Band;
+    const hills = hillsFor(band, w, h, card);
+    ctx.setTransform(res, 0, 0, res, 0, 0);
+    drawScenery(ctx, this.palette.css, w, h, hills);
+    [...this.motes.children].forEach((m, i) => {
+      const p = hills.motes[i];
+      if (p && m instanceof HTMLElement) m.style.transform = `translate(${p.x.toFixed(0)}px, ${p.y.toFixed(0)}px)`;
+    });
+    this.motes.dataset.placed = '';
+    this.watchResolution();
+  }
+
+  /**
+   * Redraw when the screen's pixel density changes (a window dragged between a 1x and a 2x
+   * monitor changes it without resizing anything the ResizeObserver sees).
+   */
+  private watchResolution(): void {
+    const dpr = window.devicePixelRatio || 1;
+    if (this.sceneDpr === dpr) return;
+    this.sceneDpr = dpr;
+    this.resolutionQuery?.removeEventListener('change', this.onResolution);
+    this.resolutionQuery = window.matchMedia(`(resolution: ${dpr}dppx)`);
+    this.resolutionQuery.addEventListener('change', this.onResolution);
+  }
+
+  private readonly onResolution = () => this.queueScene();
 
   setReducedMotion(reduced: boolean): void {
     this.root.dataset.motion = reduced ? 'reduced' : 'full';
@@ -191,11 +229,13 @@ export class PlayScreen {
     this.statusSub.textContent = s.sub;
   }
 
-  /** Swap the status card and moves for the level-complete card; `burst` throws sparks. */
-  showComplete(view: CompleteView, withBurst: boolean): void {
+  /**
+   * Swap the status card and moves for the level-complete card. The celebration itself is the
+   * board's solve moment (the bloom ripple), so the card only slides in.
+   */
+  showComplete(view: CompleteView): void {
     this.root.dataset.complete = 'true';
     this.complete.show(view);
-    if (withBurst && !this.reduced()) this.complete.burst(this.boardHost);
   }
 
   hideComplete(): void {
@@ -224,9 +264,13 @@ export class PlayScreen {
     this.jarLine.textContent = remaining === 0 ? `All ${size} fireflies are out` : `${remaining} of ${size} fireflies left`;
     this.jar.style.setProperty('--ff-jar-fill', String(size === 0 ? 0 : remaining / size));
     this.jar.dataset.empty = String(remaining === 0);
+    // A light in the lantern for each firefly left (the slots carry the exact count past eight).
+    this.jar.querySelectorAll('.ff-lantern-light').forEach((light, i) => {
+      light.classList.toggle('ff-on', i < Math.min(remaining, LANTERN_LIGHTS.length));
+    });
   }
 
-  /** Lift the cork for a firefly leaving or coming home. */
+  /** Lift the lantern's cap for a firefly leaving or coming home. */
   openJar(): void {
     if (!this.reduced()) this.restartClass(this.jar, 'ff-jar-open');
   }
@@ -269,5 +313,10 @@ export class PlayScreen {
 
   focusNext(): void {
     this.complete.focus();
+  }
+
+  /** Whether keyboard focus is on the level-complete card (a keyboard player pressing Next). */
+  completeHasFocus(): boolean {
+    return this.complete.root.contains(document.activeElement);
   }
 }
