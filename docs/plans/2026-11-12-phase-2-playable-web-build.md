@@ -216,22 +216,31 @@ the same transitions are tested in Node and in Playwright.
 ### D. Board renderer and juice (`view/`)
 
 - [x] Pixi app sized to the board area, devicePixelRatio-aware, paused when hidden.
-- [ ] 2.5D board: raised tiles with a front edge, slight downward tilt (vertical squash
+- [x] 2.5D board: raised tiles with a front edge, slight downward tilt (vertical squash
       plus front edges, no 3D camera), bushes standing off the board with soft shadows,
       dot rows that fill as fireflies land.
-- [ ] Glow without a filter stack: additive-blended radial sprites generated once at
+      *Done in the ink and wash pass (#7):* raised tiles with a front edge, bushes, and dots
+      filling gold. The tray and the tilt were dropped by decision (2026-11-12).
+- [x] Glow without a filter stack: additive-blended radial sprites generated once at
       startup (cheap on a Chromebook); WebGL first, Pixi's fallback chain otherwise.
-- [ ] Juice list, each item a separate effect that reduced motion can switch off:
-      - [ ] firefly drop with bounce, hover bob, wing flutter, breathing shadow
-      - [ ] light ripples tile by tile along row and column with a bloom per tile
-      - [ ] motes drifting up from lit tiles (pooled, capped)
-      - [ ] bush satisfied: dots glow gold, star twinkle, chime
-      - [ ] conflict: nervous flicker and pink tint
-      - [ ] solve: flowers pop on bushes, sparkle burst, then auto-advance
-      - [ ] ambient: twinkling stars, moon, slow parallax
-- [ ] **Hint fireflies:** gold ring and a small sparkle, distinct from player fireflies and
+      *Done (#7):* glows and washes are baked per cell size into the texture cache, with no live
+      filters.
+- [x] Juice list, each item a separate effect that reduced motion can switch off:
+      - [x] firefly drop with bounce, hover bob, wing flutter, breathing shadow
+      - [x] light ripples tile by tile along row and column (the wash spreads from the firefly)
+      - [x] motes: drifting over the hills (DOM), and rising from bushes at the solve (pooled on
+            the board's tween list)
+      - [x] bush satisfied: dots fill gold, roses open, chime (placeholder voice)
+      - [x] conflict: shiver lines and hatching, pink tint; an overfull bush wilts and slumps
+      - [x] solve: every bush blooms in a ripple from the last firefly (this replaced the sparkle
+            burst). The auto-advance is due to become a tap to continue
+            (`2026-11-13-flow-and-transitions.md`)
+      - [x] ambient: grained night, crescent moon, hills with roses (no parallax, by choice)
+- [x] **Hint fireflies:** gold ring and a small sparkle, distinct from player fireflies and
       lanterns; the `because` cells pulse briefly; a removal hint lifts the wrong firefly
       away visibly. A tap on a locked firefly gives a small "locked" wiggle, nothing else.
+      *Done in ink and wash (#7):* a seal-red dashed halo and a seal; one rounded outline around
+      the hint's cells, breathing gently.
 - [x] Every color from `theme.css` tokens (read once into a Pixi palette); new tokens added
       there, none hardcoded (ratchet).
 - [ ] Performance: object pools, a particle cap, an fps readout in dev builds; target
@@ -289,7 +298,8 @@ the same transitions are tested in Node and in Playwright.
 
 ### F. Audio (`audio/`)
 
-- [ ] Synthesized with Web Audio (no audio files, nothing added to the bundle): placement
+- [ ] Synthesized with Web Audio (no audio files, nothing added to the bundle). Still open:
+      the voices are tuned in the sound design pass. Planned voices: placement
       chime pitched by row, bush-satisfied chime, solve flourish, soft conflict tone.
       *Plumbing done, voices are placeholders (milestone 3):* `state/cues.ts` decides which moment
       gets which sound (tested), `audio/engine.ts` synthesizes seven voices; tuning waits for the
@@ -347,6 +357,8 @@ the same transitions are tested in Node and in Playwright.
       storage and the ad placeholder flow.
 - [ ] Living docs: ARCHITECTURE (game layers), rules.md (hint reasons, locked cells as
       implemented), analytics.md (where the local log lives), CHANGELOG, ROADMAP.
+      *ARCHITECTURE, CHANGELOG and ROADMAP are current as of 2026-11-13 (release #9); rules.md and
+      analytics.md still need checking.*
 
 ### J. Playtest and gate
 
@@ -421,7 +433,14 @@ Each milestone ends with typecheck, tests, build, screenshots and a commit (when
    garden map (milestone 3): until then a play only ends by solving.
 3. **Look and juice:** the mockup look, every juice item, audio, reduced motion, both
    layouts, keyboard.
+   *Done 2026-11-13:* the ink and wash look (#7) and milestone 3 (#5): keyboard, sound plumbing,
+   the crossing tip, idle rendering and the Playwright smoke test. Released to `main` in #9.
+   Merging the two found the 320 px status card and control row overflowing (both fixed; the
+   smoke test now checks the row fits). Still open: the sound voices, the conflict beam,
+   brighter crossings, and a real-device fps check.
 4. **Polish and playtest:** Playwright in CI, performance pass, docs, deploy, friends.
+   Before the playtest: tap to continue (`docs/plans/2026-11-13-flow-and-transitions.md`, A).
+   The chapter moment (B) can follow.
 
 ## Risks
 

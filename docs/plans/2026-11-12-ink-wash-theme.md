@@ -249,7 +249,8 @@ a level (a quit, as decided in the Phase 2 plan). Restyle it to the canvas board
 - [x] Living docs: CHANGELOG (look pass 2: ink and wash), ARCHITECTURE (the `view/art/` module
       and the scenery layer), ROADMAP (Phase 2 status), `docs/design/phase-2/README.md` (the open
       half is now ink and wash), CLAUDE.md if a lesson belongs there
-- [ ] PR from `feature/ink-wash-theme` into `develop` with before/after screenshots
+- [x] PR from `feature/ink-wash-theme` into `develop` with before/after screenshots (#7, merged
+      2026-11-13; released to `main` in #9 together with milestone 3)
 
 ## Risks
 

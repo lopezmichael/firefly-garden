@@ -69,6 +69,12 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
   called back, and hints send a gold one; saves holding more fireflies than the jar are dropped.
 
 ### Fixed
+- 320 px phones, found when the ink and wash look met the browser smoke test:
+  - The status card grew when long titles wrapped. Narrow cards now tighten the lantern and set
+    titles at 14 px.
+  - The title's 1.2 line height was shorter than Young Serif's glyphs. It is now 1.3.
+  - The Hint button ran off the screen. The control row tightens below 340 px, and the smoke test
+    checks it fits.
 - The status card still grew by 0.4 px on 320–360 px phones for two-line sub-lines: its title used
   the font's own line height (about 22 px) while the card reserves 1.2 (21.6 px). Found by the new
   browser height check; the title now has an explicit line height.
