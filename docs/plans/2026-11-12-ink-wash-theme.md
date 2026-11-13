@@ -202,13 +202,18 @@ The card exists: garden, time and hints, a +10 chip, Garden map, and Next garden
 counting down the auto-advance, plus a spark burst; it covers the status card so the board never
 resizes, and the last garden shows no Next. Restyle it to the canvas board "Level complete":
 
-- [ ] Paper card, "The garden is glowing" in Young Serif, the sub-line with garden, area and
+- [x] Paper card, "The garden is glowing" in Young Serif, the sub-line with garden, area and
       time, the coin badge with the rose-stamp coin, Garden map (paper, map icon) and Next garden
       (seal red, next arrow); the countdown becomes the thin seal-red bar (keep the ring if
-      playtests prefer it), with "The next garden opens by itself in a moment."
-- [ ] The spark burst becomes the solve moment from milestone 7 (bloom ripple, petals, motes)
-- [ ] Behaviour unchanged: timing, hidden-tab and settings-sheet waits, last-garden rule
-- [ ] Evidence: clips of solve to card to next garden, motion on and off, in all three bands
+      playtests prefer it), with "The next garden opens by itself in a moment." (The title keeps its
+      "!": only the bush copy was cleared to change. The bar fills toward the next garden and stays
+      still under reduced motion; the last garden shows Garden map alone and no bar)
+- [x] The spark burst becomes the solve moment from milestone 7 (bloom ripple, petals, motes)
+- [x] Behaviour unchanged: timing, hidden-tab and settings-sheet waits, last-garden rule
+- [x] Evidence: clips of solve to card to next garden, motion on and off, in all three bands
+      (and measured: at 360×640, 375×667, 390×844 and 820×1000 the canvas layout was 4 to 54 px
+      taller than the space the card takes over, so where that space is short the card goes
+      compact, title on one line and no note; it fits everywhere measured)
 
 ### 7c. Garden map (restyle `ui/map.ts`) and its motion
 

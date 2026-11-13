@@ -327,12 +327,13 @@
 .ff-map-continue:disabled { opacity: 0.6; cursor: default; }
 .ff-map-continue-sub { font-size: 13px; font-weight: 700; }
 
-/* Level complete (design baseline: Complete artboard). The card takes the place of the status card
+/* Level complete (design canvas: "Level complete"). The card takes the place of the status card
    and the moves; those keep their space (visibility only), so the board never resizes on a solve. */
 .ff-complete { position: relative; z-index: 1; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-end; }
 .ff-complete-panel {
-  box-sizing: border-box; border-radius: 22px; padding: 18px; display: flex; flex-direction: column; gap: 14px;
-  background: color-mix(in srgb, var(--ff-moss-lo) 95%, transparent);
+  box-sizing: border-box; border: 2px solid var(--ff-sumi); border-radius: 14px; padding: 18px 18px 16px;
+  display: flex; flex-direction: column; gap: 12px; color: var(--ff-sumi);
+  background: var(--ff-paper-texture, none) 0 0 / 128px 128px, var(--ff-paper);
 }
 .ff-complete[hidden], .ff-complete-next[hidden] { display: none; }
 .ff-app[data-complete] .ff-status, .ff-app[data-complete] .ff-controls { visibility: hidden; }
@@ -341,72 +342,74 @@
      hidden status card and moves keep, so the board can't resize under it. */
   grid-row: 4 / span 2; grid-column: 1; align-self: stretch; contain: size;
 }
-/* Narrow phones: a smaller title, and the ring alone says the next garden is coming. */
-@media (max-width: 380px) {
-  .ff-app[data-band='tall'] .ff-complete-panel { padding: 14px; gap: 12px; }
-  .ff-app[data-band='tall'] .ff-complete-title { font-size: 20px; }
-  .ff-app[data-band='tall'] .ff-complete-chip { font-size: 15px; padding: 6px 10px 6px 8px; }
-  .ff-app[data-band='tall'] .ff-complete-note { display: none; }
+/* The card has exactly the height the status card and moves leave (188 to 211 px on phones,
+   measured). Where the canvas layout (title wrapping beside the badge, plus the note) would
+   overflow it, the title takes one line, the sub-line and badge share the next, and the bar alone
+   says the next garden is coming. Each rule is scoped under .ff-complete so it outranks the base
+   rule whatever the order in this file. */
+.ff-app[data-band='tall'] .ff-complete, .ff-app[data-band='square'] .ff-complete { container: ff-complete / size; }
+@container ff-complete (max-height: 240px) {
+  .ff-complete .ff-complete-panel { padding: 12px 16px; gap: 10px; }
+  .ff-complete .ff-complete-head {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'title title' 'sub chip';
+    align-items: center; gap: 4px 12px;
+  }
+  .ff-complete .ff-complete-words { display: contents; }
+  .ff-complete .ff-complete-title { grid-area: title; font-size: 22px; white-space: nowrap; }
+  .ff-complete .ff-complete-sub { grid-area: sub; font-size: 14px; }
+  .ff-complete .ff-complete-chip { grid-area: chip; font-size: 15px; padding: 4px 8px; }
+  .ff-complete .ff-complete-chip .ff-coin { width: 18px; height: 18px; }
+  .ff-complete[data-more='true'] .ff-complete-note { display: none; }
 }
 .ff-app[data-band='tall'] .ff-complete { margin-inline: 8px; }
 .ff-app[data-band='square'] .ff-complete { width: 100%; max-width: 560px; justify-self: center; }
-.ff-app[data-band='wide'][data-complete] .ff-status { display: none; }
-.ff-complete-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.ff-complete-title { margin: 0; min-width: 0; font-family: var(--ff-font-display); font-weight: 400; font-size: 26px; line-height: 1.15; color: var(--ff-glow); }
-.ff-app[data-band='tall'] .ff-complete-title { font-size: 22px; }
-.ff-complete-sub { margin: -8px 0 0; font-size: 14px; line-height: 1.4; color: var(--ff-paper-quiet); }
+.ff-complete-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.ff-complete-words { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ff-complete-title { margin: 0; font-family: var(--ff-font-display); font-weight: 400; font-size: 26px; line-height: 1.15; color: var(--ff-sumi); }
+.ff-app[data-band='tall'] .ff-complete-title { font-size: 24px; }
+.ff-complete-sub { margin: 0; font-size: 15px; line-height: 1.4; color: var(--ff-sumi-soft); }
 .ff-complete-chip {
-  flex-shrink: 0; display: flex; align-items: center; gap: 6px; border-radius: 999px; padding: 8px 14px 8px 10px;
-  background: var(--ff-gold); color: var(--ff-sumi); font-weight: 700; font-size: 17px;
+  flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 6px 10px; border: 2px solid var(--ff-sumi);
+  border-radius: 18px; background: var(--ff-paper-warm); color: var(--ff-sumi); font-weight: 700; font-size: 17px;
 }
-.ff-complete-chip .ff-coin { width: 18px; height: 18px; background: var(--ff-sumi); box-shadow: inset 0 0 0 3px var(--ff-sumi), inset 0 0 0 4.5px var(--ff-gold); }
-.ff-complete-buttons { display: flex; gap: 10px; }
-.ff-complete-buttons button { height: 56px; border-radius: 16px; font-weight: 700; font-size: 15px; cursor: pointer; }
-.ff-complete-map {
-  flex: 1; border: 2px solid var(--ff-dusk-quiet); background: var(--ff-dusk); color: var(--ff-paper);
-  display: flex; align-items: center; justify-content: center;
+.ff-complete-chip .ff-coin { width: 22px; height: 22px; }
+.ff-complete-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.ff-complete[data-more='false'] .ff-complete-buttons { grid-template-columns: minmax(0, 1fr); }
+.ff-complete-buttons button {
+  height: 52px; border-radius: 10px; border: 2px solid var(--ff-sumi); font-weight: 700; font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
 }
-.ff-complete-map-icon { display: none; width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-.ff-app[data-band='wide'] .ff-complete-map-icon { display: block; }
-.ff-complete-next {
-  flex: 1.6; border: 0; background: var(--ff-gold); color: var(--ff-sumi); font-size: 16px;
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-}
-.ff-complete-note { margin: 0; font-size: 13px; text-align: center; color: var(--ff-paper-quiet); }
+.ff-complete-map { color: var(--ff-sumi); background: var(--ff-paper-texture, none) 0 0 / 128px 128px, var(--ff-paper); }
+.ff-complete-next { background: var(--ff-seal); color: var(--ff-on-seal); }
+.ff-complete-foot { display: flex; flex-direction: column; gap: 6px; }
+.ff-complete-track { height: 4px; border-radius: 2px; background: var(--ff-paper-track); overflow: hidden; }
+.ff-complete[data-more='false'] .ff-complete-track { display: none; }
+.ff-complete-bar { width: 100%; height: 100%; background: var(--ff-seal); transform-origin: left center; transform: scaleX(0); }
+.ff-counting.ff-complete-bar { animation: ff-count var(--ff-countdown, 3000ms) linear both; }
+@keyframes ff-count { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.ff-complete-note { margin: 0; font-size: 13px; color: var(--ff-sumi-quiet); }
 /* Wide band: the side panel is short on a landscape phone. The area title goes (the card's line
-   names the garden), the note goes (the ring says it), and the buttons share a row. */
+   names the garden), the note goes (the bar says it), and Garden map shows its icon alone. */
 .ff-app[data-band='wide'][data-complete] .ff-title { display: none; }
+.ff-app[data-band='wide'][data-complete] .ff-status { display: none; }
 .ff-app[data-band='wide'] .ff-complete { margin-top: auto; }
-.ff-app[data-band='wide'] .ff-complete-panel {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'title title' 'sub chip' 'buttons buttons';
-  align-items: center; gap: 10px 10px; padding: 14px;
-}
-.ff-app[data-band='wide'] .ff-complete-head { display: contents; }
-.ff-app[data-band='wide'] .ff-complete-title { grid-area: title; }
-.ff-app[data-band='wide'] .ff-complete-chip { grid-area: chip; }
-.ff-app[data-band='wide'] .ff-complete-sub { grid-area: sub; margin: 0; font-size: 13px; }
-.ff-app[data-band='wide'] .ff-complete-buttons { grid-area: buttons; }
-.ff-app[data-band='wide'] .ff-complete-map { flex: 0 0 48px; padding: 0; }
-.ff-app[data-band='wide'] .ff-complete-map-label { display: none; }
+.ff-app[data-band='wide'] .ff-complete-panel { padding: 14px; gap: 10px; }
+.ff-app[data-band='wide'] .ff-complete-head { flex-wrap: wrap; }
 .ff-app[data-band='wide'] .ff-complete-title { font-size: 20px; }
-.ff-app[data-band='wide'] .ff-complete-chip { font-size: 15px; padding: 6px 10px 6px 8px; }
-.ff-app[data-band='wide'] .ff-complete-chip .ff-coin { width: 15px; height: 15px; }
-.ff-app[data-band='wide'] .ff-complete-buttons { gap: 8px; }
+.ff-app[data-band='wide'] .ff-complete-sub { font-size: 13px; }
+.ff-app[data-band='wide'] .ff-complete-chip { font-size: 15px; padding: 4px 8px; }
+.ff-app[data-band='wide'] .ff-complete-chip .ff-coin { width: 16px; height: 16px; }
+.ff-app[data-band='wide'] .ff-complete-buttons { grid-template-columns: 48px minmax(0, 1fr); gap: 8px; }
+.ff-app[data-band='wide'] .ff-complete[data-more='false'] .ff-complete-buttons { grid-template-columns: minmax(0, 1fr); }
 .ff-app[data-band='wide'] .ff-complete-buttons button { height: 48px; font-size: 14px; padding: 0 8px; gap: 6px; }
-.ff-app[data-band='wide'] .ff-complete-ring { width: 20px; height: 20px; }
+.ff-app[data-band='wide'] .ff-complete[data-more='true'] .ff-complete-map-label { display: none; }
 .ff-app[data-band='wide'] .ff-complete-note { display: none; }
-.ff-complete-ring { width: 24px; height: 24px; transform: rotate(-90deg); flex-shrink: 0; }
-.ff-ring-track, .ff-ring-fill { fill: none; stroke-width: 5; }
-.ff-ring-track { stroke: color-mix(in srgb, var(--ff-sumi) 18%, transparent); }
-.ff-ring-fill { stroke: var(--ff-sumi); stroke-linecap: round; stroke-dashoffset: 0; }
-.ff-counting .ff-ring-fill { animation: ff-count var(--ff-countdown, 3000ms) linear both; }
-@keyframes ff-count { from { stroke-dashoffset: 0; } to { stroke-dashoffset: 126; } }
 .ff-enter .ff-complete-chip { animation: ff-coin-up 700ms ease-out 400ms both; }
 @keyframes ff-coin-up { 0% { transform: translateY(16px); opacity: 0; } 30% { transform: translateY(-4px); opacity: 1; } 100% { transform: none; opacity: 1; } }
-
-
-.ff-app[data-motion='reduced'] .ff-counting .ff-ring-fill,
+/* Reduced motion: the bar shows the wait without moving (it stays empty until the garden opens). */
+.ff-app[data-motion='reduced'] .ff-counting.ff-complete-bar,
 .ff-app[data-motion='reduced'] .ff-enter .ff-complete-chip { animation: none; }
+.ff-complete :focus-visible { outline-color: var(--ff-sumi); }
 
 /* Focus on paper: the glow ring (theme.css) vanishes against paper, so inside a sheet the ring is ink. */
 .ff-sheet :focus-visible { outline-color: var(--ff-sumi); }

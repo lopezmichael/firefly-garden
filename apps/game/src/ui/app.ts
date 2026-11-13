@@ -314,7 +314,7 @@ export class GameApp {
 
   // ---------------------------------------------------------------- levels
 
-  /** Arm the auto-advance (the complete card's ring counts it down), unless the tab is hidden or a
+  /** Arm the auto-advance (the complete card's bar fills toward it), unless the tab is hidden or a
    *  sheet is open: then it waits, and is re-armed from full when the player is back. */
   private scheduleAdvance(): void {
     if (this.advanceTimer !== null) clearTimeout(this.advanceTimer);
