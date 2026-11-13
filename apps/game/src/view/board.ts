@@ -5,7 +5,7 @@ import type { Board, Evaluation, Transform } from '@firefly/core';
 import { fitBoard } from './layout.ts';
 import type { BoardFit } from './layout.ts';
 import type { Palette } from './theme.ts';
-import { bushLayout, dotPositions, FACE_CENTER_Y, FLY_BOXES, FLY_MOTION, MOTION_TIMING, outlinePolylines, pulse, rippleDelays, ROSE_SLOTS, roseVariants, SWAY_ORIGIN, UNIT, WING_ROOT } from './art/geometry.ts';
+import { bushLayout, dotPositions, FACE_CENTER_Y, bloomDelays, FLY_BOXES, FLY_MOTION, MOTION_TIMING, outlinePolylines, pulse, rippleDelays, ROSE_SLOTS, roseVariants, SWAY_ORIGIN, UNIT, WING_ROOT } from './art/geometry.ts';
 import type { BushKind, UnitBox } from './art/geometry.ts';
 import { drawBush, drawConflictTile, drawMote, drawPetal, drawDarkTile, drawFlyBody, drawFlyGlow, drawFlyShadow, drawFlyWing, drawHintHalo, drawLitTile, drawRose, drawRuledCross } from './art/pieces.ts';
 import type { FlyKind } from './art/pieces.ts';
@@ -453,6 +453,9 @@ export class BoardView {
     const w = this.board.w;
     const spread = origin === undefined ? null
       : rippleDelays(this.cells.filter((v) => v.kind === 'path').map((v) => v.cell), origin, w, MOTION_TIMING.spreadPerCell, true, true);
+    // The solve ripple's timing for every bush at once, so it can be fitted before the auto-advance.
+    const bloomAt = animate && origin !== undefined && state.solved && !(prev?.solved ?? false)
+      ? bloomDelays(this.cells.filter((v) => v.kind === 'bush').map((v) => v.cell), origin, w, true) : null;
     for (const v of this.cells) {
       if (v.kind === 'path') {
         const has = flies.has(v.cell);
@@ -490,9 +493,7 @@ export class BoardView {
         if (bloom && (!v.roses.visible || solving)) {
           v.roses.visible = true;
           if (animate && was !== undefined) {
-            const delay = solving && origin !== undefined
-              ? MOTION_TIMING.bloomStart + (rippleDelays([v.cell], origin, w, MOTION_TIMING.bloomPerCell, true).get(v.cell) ?? 0)
-              : 0;
+            const delay = solving && bloomAt ? MOTION_TIMING.bloomStart + (bloomAt.get(v.cell) ?? 0) : 0;
             this.openRoses(v, landAt + delay, solving);
           }
         } else if (!bloom) {

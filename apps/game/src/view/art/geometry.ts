@@ -117,7 +117,7 @@ export const MOTION_TIMING = {
   spreadPerCell: 55, spreadFade: 160,
   roseOpen: 380, roseStagger: 70,
   slump: 420,
-  bloomStart: 260, bloomPerCell: 110,
+  bloomStart: 260, bloomPerCell: 110, bloomSpan: 1500,
   particle: 1400,
 } as const;
 
@@ -161,3 +161,16 @@ export const FLY_BOXES = {
   body: { x: 13, y: 27, w: 58, h: 31 },
   halo: { x: 14, y: 4, w: 66, h: 69 },
 } as const satisfies Record<string, UnitBox>;
+
+/**
+ * The solve ripple's start times: `bloomPerCell` per step out from the last firefly, but never
+ * spread over more than `bloomSpan`, so on the largest boards the last bush still opens well
+ * before the auto-advance (3 s) moves on. Without motion, all at once.
+ */
+export function bloomDelays(cells: readonly number[], origin: number, width: number, motion: boolean): Map<number, number> {
+  const raw = rippleDelays(cells, origin, width, MOTION_TIMING.bloomPerCell, motion);
+  const longest = Math.max(0, ...raw.values());
+  if (longest <= MOTION_TIMING.bloomSpan) return raw;
+  const k = MOTION_TIMING.bloomSpan / longest;
+  return new Map([...raw].map(([c, ms]) => [c, Math.round(ms * k)]));
+}

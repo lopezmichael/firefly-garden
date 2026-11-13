@@ -20,7 +20,8 @@ async function start(): Promise<void> {
   await platform.init();
   // The board draws its numbers with the display font; wait so they never flash in a fallback face.
   // A font that fails to load is not fatal: the CSS stacks fall back to system faces.
-  await Promise.all([document.fonts.load('400 24px "Young Serif"'), document.fonts.load('700 15px Figtree')]).catch(() => undefined);
+  await Promise.all([document.fonts.load('400 24px "Young Serif"'), document.fonts.load('400 15px Figtree'),
+    document.fonts.load('600 15px Figtree'), document.fonts.load('700 15px Figtree')]).catch(() => undefined);
   const catalog = createCatalog({ launch, reserve, manifest }, CHAPTERS);
   const palette = readPalette();
   // One baked paper tile for the DOM chrome; components layer it over --ff-paper. It arrives a

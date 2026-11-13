@@ -1,6 +1,6 @@
 # Ink and wash theme: implementation plan
 
-**Status:** approved by Michael (2026-11-12), ready to start. **Owner:** Michael. **Written:** 2026-11-12.
+**Status:** built (2026-11-13), in review: milestones 0 to 7c done, PR into `develop`; the real-device performance check is open. **Owner:** Michael. **Written:** 2026-11-12.
 **Source of truth:** the "Firefly Garden · Character" canvas
 (https://claude.ai/artifact/JYTEsJmpHaWKATru6UMvDG): Round 4 (locked), Components, Twists, the
 four screens and the three play bands; the asset list, tokens and motion table in
@@ -240,9 +240,13 @@ a level (a quit, as decided in the Phase 2 plan). Restyle it to the canvas board
 
 ### 8. Ship
 
-- [ ] Two parallel reviewer subagents (correctness, security) over the full diff;
-      `/security-review` is not needed (no SDK, storage or input changes) unless the diff grows
-- [ ] Living docs: CHANGELOG (look pass 2: ink and wash), ARCHITECTURE (the `view/art/` module
+- [x] Two parallel reviewer subagents (correctness, security) over the full diff;
+      `/security-review` is not needed (no SDK, storage or input changes) unless the diff grows.
+      (The diff did grow into storage with `mapSeen`; both its milestone review and the final one
+      had the security reviewer go through the save validation and fuzz. Final review fixes: the
+      solve ripple is fitted inside 1.5 s so the last bush opens before the auto-advance, the
+      map's sky is fixed to the viewport, an unused token and two stray images are gone)
+- [x] Living docs: CHANGELOG (look pass 2: ink and wash), ARCHITECTURE (the `view/art/` module
       and the scenery layer), ROADMAP (Phase 2 status), `docs/design/phase-2/README.md` (the open
       half is now ink and wash), CLAUDE.md if a lesson belongs there
 - [ ] PR from `feature/ink-wash-theme` into `develop` with before/after screenshots

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bushLayout, dotPositions, FACE_CENTER_Y, FLY_BOXES, MOTION_TIMING, outlinePolylines, rippleDelays, ROSE_SLOTS, ROSE_VARIANTS, roseVariants, UNIT } from '../src/view/art/geometry.ts';
+import { bushLayout, dotPositions, FACE_CENTER_Y, FLY_BOXES, bloomDelays, MOTION_TIMING, outlinePolylines, rippleDelays, ROSE_SLOTS, ROSE_VARIANTS, roseVariants, UNIT } from '../src/view/art/geometry.ts';
 
 const DOT_R = 3.6;
 
@@ -163,5 +163,28 @@ describe('firefly parts are baked tight but whole', () => {
     const perFly = area(FLY_BOXES.glow) + area(FLY_BOXES.shadow) + area(FLY_BOXES.wingL) + area(FLY_BOXES.wingR) + area(FLY_BOXES.body);
     // Five full-cell parts would be 5 × 84²; tight boxes stay under a cell's worth in all.
     expect(perFly).toBeLessThan(UNIT * UNIT);
+  });
+});
+
+describe('the solve bloom finishes before the next garden', () => {
+  it('keeps the ripple pace on small boards and squeezes it on the largest', () => {
+    // 4x4 from a corner: the farthest bush is about 4.2 steps away, inside the span.
+    const small = bloomDelays([0, 5, 15], 0, 4, true);
+    expect(small.get(15)).toBe(Math.round(Math.hypot(3, 3) * MOTION_TIMING.bloomPerCell));
+    // 10x10 from a corner: about 12.7 steps would be 1400 ms... and an 18-step reach would not fit.
+    const big = bloomDelays(Array.from({ length: 400 }, (_, i) => i), 0, 20, true);
+    expect(Math.max(...big.values())).toBeLessThanOrEqual(MOTION_TIMING.bloomSpan);
+    const order = [...big].sort((a, b) => a[1] - b[1]).map(([c]) => c);
+    expect(order[0]).toBe(0);
+  });
+
+  it('lands the last rose before the auto-advance, even on the farthest bush', () => {
+    const big = bloomDelays(Array.from({ length: 400 }, (_, i) => i), 0, 20, true);
+    const lastRose = 480 + MOTION_TIMING.bloomStart + Math.max(...big.values()) + MOTION_TIMING.roseOpen + 2 * MOTION_TIMING.roseStagger;
+    expect(lastRose).toBeLessThan(3000);
+  });
+
+  it('is all at once without motion', () => {
+    expect([...bloomDelays([0, 99], 0, 10, false).values()]).toEqual([0, 0]);
   });
 });

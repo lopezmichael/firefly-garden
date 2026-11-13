@@ -10,7 +10,7 @@ export const COLOR_TOKENS = [
   'sumi', 'sumi-soft', 'sumi-quiet',
   'seal', 'on-seal', 'seal-ink',
   'dusk', 'dusk-edge', 'dusk-wash', 'dusk-quiet', 'dusk-locked',
-  'gold', 'gold-edge', 'gold-pool', 'gold-deep', 'glow', 'glow-soft', 'glow-warm',
+  'gold', 'gold-edge', 'gold-pool', 'glow', 'glow-soft', 'glow-warm',
   'moss', 'moss-lo', 'moss-hi', 'moss-plain', 'moss-plain-lo', 'leaf', 'wilt', 'wilt-lo',
   'rose', 'rose-deep', 'rose-pale', 'rose-spiral', 'rose-leaf',
   'warn', 'warn-hatch', 'warn-glow',

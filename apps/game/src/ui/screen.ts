@@ -270,7 +270,7 @@ export class PlayScreen {
     });
   }
 
-  /** Lift the cork for a firefly leaving or coming home. */
+  /** Lift the lantern's cap for a firefly leaving or coming home. */
   openJar(): void {
     if (!this.reduced()) this.restartClass(this.jar, 'ff-jar-open');
   }

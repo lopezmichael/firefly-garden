@@ -282,7 +282,8 @@
 }
 .ff-map[hidden] { display: none; }
 .ff-map > :not(.ff-map-sky) { position: relative; width: 100%; max-width: 520px; align-self: center; box-sizing: border-box; }
-.ff-map-sky { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+/* Fixed to the viewport, so the hills stay put when the map scrolls on a short screen. */
+.ff-map-sky { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
 .ff-map-scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 /* The map's own moon, at its column's top right (outranks the play screen's per-band moon rules). */
 .ff-app .ff-map .ff-moon { left: auto; right: max(26px, calc(50% - 234px)); top: 70px; width: 50px; height: 48px; }
