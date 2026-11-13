@@ -1,7 +1,4 @@
-import '@fontsource/fredoka/latin-600.css';
-import '@fontsource/fredoka/latin-700.css';
-import '@fontsource/nunito/latin-700.css';
-import '@fontsource/nunito/latin-800.css';
+import './fonts.css';
 import './theme.css';
 import './ui/game.css';
 import launch from '../../../levels/launch.json';
@@ -22,7 +19,7 @@ async function start(): Promise<void> {
   await platform.init();
   // The board draws its numbers with the display font; wait so they never flash in a fallback face.
   // A font that fails to load is not fatal: the CSS stacks fall back to system faces.
-  await Promise.all([document.fonts.load('700 24px Fredoka'), document.fonts.load('800 15px Nunito')]).catch(() => undefined);
+  await Promise.all([document.fonts.load('400 24px "Young Serif"'), document.fonts.load('700 15px Figtree')]).catch(() => undefined);
   const catalog = createCatalog({ launch, reserve, manifest }, CHAPTERS);
   await new GameApp(root, catalog, platform, readPalette()).start();
 }

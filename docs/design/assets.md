@@ -158,11 +158,13 @@ builders without code changes elsewhere:
 
 | Asset | Source | Licence |
 | --- | --- | --- |
-| Fredoka, Nunito (current, to be replaced) | `@fontsource` | SIL OFL 1.1 |
-| Young Serif, Figtree (planned) | `@fontsource` | SIL OFL 1.1 (confirm on install) |
+| Young Serif 400 (latin, woff2) | `@fontsource/young-serif` 5.3.0; Copyright 2023 The Young Serif Project Authors | SIL OFL 1.1, confirmed on install 2026-11-13; text in `apps/game/public/licenses/young-serif-OFL.txt` |
+| Figtree 400, 600, 700 (latin, woff2) | `@fontsource/figtree` 5.3.0; Copyright 2022 The Figtree Project Authors | SIL OFL 1.1, confirmed on install 2026-11-13; text in `apps/game/public/licenses/figtree-OFL.txt` |
 
-Everything else is drawn in this repo. Ship each font's OFL licence text and copyright notice
-with the build (a `licenses/` folder or credits screen), as the OFL requires.
+Fredoka and Nunito (look pass 1, also OFL 1.1) were removed on 2026-11-13.
+
+Everything else is drawn in this repo. Each font's OFL licence text and copyright notice ships
+with the build in `licenses/` (from `apps/game/public/licenses/`), as the OFL requires.
 
 ### Reference only (design canvas, never shipped)
 

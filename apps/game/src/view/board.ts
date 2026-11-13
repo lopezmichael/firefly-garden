@@ -394,7 +394,7 @@ export class BoardView {
           } else {
             v.clue = new Text({
               text: String(b.clue[i]),
-              style: { fontFamily: this.pal.fontDisplay, fontWeight: '700', fontSize: Math.round(cell * 0.44), fill: this.pal.ink },
+              style: { fontFamily: this.pal.fontDisplay, fontWeight: '400', fontSize: Math.round(cell * 0.44), fill: this.pal.ink },
               resolution: Math.min(3, (window.devicePixelRatio || 1) * 1.5),
             });
             v.clue.anchor.set(0.5);

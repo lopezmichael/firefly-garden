@@ -4,18 +4,20 @@
  */
 
 const TOKENS = {
-  tray: '--ff-tray', trayEdge: '--ff-tray-edge',
-  tileDarkHi: '--ff-tile-dark-hi', tileDark: '--ff-tile-dark', tileDarkLo: '--ff-tile-dark-lo', tileDarkEdge: '--ff-tile-dark-edge',
-  tileLitHi: '--ff-tile-lit-hi', tileLit: '--ff-tile-lit', tileLitLo: '--ff-tile-lit-lo', tileLitEdge: '--ff-tile-lit-edge',
+  // Until the board is redrawn in the ink and wash shapes (theme plan, milestones 3 and 4),
+  // its existing parts read the nearest ink and wash token.
+  tray: '--ff-night', trayEdge: '--ff-night',
+  tileDarkHi: '--ff-dusk-wash', tileDark: '--ff-dusk', tileDarkLo: '--ff-dusk', tileDarkEdge: '--ff-dusk-edge',
+  tileLitHi: '--ff-glow-warm', tileLit: '--ff-gold', tileLitLo: '--ff-gold-pool', tileLitEdge: '--ff-gold-edge',
   ruled: '--ff-ruled',
-  mossHi: '--ff-moss-hi', moss: '--ff-moss', mossLo: '--ff-moss-lo', mossEdge: '--ff-moss-edge',
-  mossHiddenHi: '--ff-moss-hidden-hi', mossHidden: '--ff-moss-hidden', leaf: '--ff-leaf',
-  firefly: '--ff-firefly', fireflyEdge: '--ff-firefly-edge',
-  hintFirefly: '--ff-hint-firefly', hintFireflyEdge: '--ff-hint-firefly-edge',
-  conflict: '--ff-conflict', conflictEdge: '--ff-conflict-edge',
-  head: '--ff-firefly-head', wing: '--ff-wing', shadow: '--ff-shadow',
-  glow: '--ff-glow', gold: '--ff-gold', warn: '--ff-warn', ink: '--ff-ink', star: '--ff-star',
-  petalPink: '--ff-petal-pink', petalCream: '--ff-petal-cream',
+  mossHi: '--ff-moss-hi', moss: '--ff-moss', mossLo: '--ff-moss-lo', mossEdge: '--ff-sumi',
+  mossHiddenHi: '--ff-moss-plain', mossHidden: '--ff-moss-plain-lo', leaf: '--ff-leaf',
+  firefly: '--ff-glow', fireflyEdge: '--ff-sumi',
+  hintFirefly: '--ff-gold', hintFireflyEdge: '--ff-gold-edge',
+  conflict: '--ff-warn', conflictEdge: '--ff-sumi',
+  head: '--ff-sumi', wing: '--ff-wing', shadow: '--ff-night-deep',
+  glow: '--ff-glow-soft', gold: '--ff-gold', warn: '--ff-warn', ink: '--ff-paper', star: '--ff-glow',
+  petalPink: '--ff-rose', petalCream: '--ff-rose-pale',
   fontDisplay: '--ff-font-display',
 } as const;
 

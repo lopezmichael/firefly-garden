@@ -63,27 +63,33 @@ milestone that changes what's on screen.
 
 ### 0. Baseline
 
-- [ ] Screenshot the current build in tall, square and wide, motion on and off, for the
-      before/after record
+- [x] Screenshot the current build in tall, square and wide, motion on and off, for the
+      before/after record (2026-11-13: 9 states per band and motion setting: play, placed,
+      conflict, hint sheet, hint used, settings, solve, complete, map)
 - [x] Michael confirms the three decisions above (2026-11-12: drop tilt, remove tray, copy change)
 
 ### 1. Tokens, fonts and a contrast ratchet
 
-- [ ] Replace the look pass 1 tokens in `apps/game/src/theme.css` with the ink and wash set from
+- [x] Replace the look pass 1 tokens in `apps/game/src/theme.css` with the ink and wash set from
       `docs/design/assets.md` (each multi-value row becomes separate tokens, e.g. `--ff-moss` and
       `--ff-moss-lo`). Keep token names stable where the meaning is unchanged so `ui/game.css`
       churns less
-- [ ] Update `view/theme.ts` `TOKENS` to the new names; `readPalette` stays as is
-- [ ] Fonts: add `@fontsource/young-serif` and `@fontsource/figtree` (both OFL-1.1); write our
+- [x] Update `view/theme.ts` `TOKENS` to the new names; `readPalette` stays as is (the board's
+      existing palette keys point at the nearest new token until milestones 3 and 4 redraw it)
+- [x] Fonts: add `@fontsource/young-serif` and `@fontsource/figtree` (both OFL-1.1); write our
       own `@font-face` rules importing only the woff2 files (Young Serif 400; Figtree 400, 600,
       700) instead of the package CSS, so no woff fallbacks ship; remove Fredoka and Nunito
-- [ ] Ship the two OFL licence texts under `apps/game/public/licenses/` and record them in the
+- [x] Ship the two OFL licence texts under `apps/game/public/licenses/` and record them in the
       licence log
-- [ ] **Ratchet:** `tests/contrast.test.ts` reads `theme.css` and asserts WCAG contrast for the
+- [x] **Ratchet:** `tests/contrast.test.ts` reads `theme.css` and asserts WCAG contrast for the
       pairs that carry meaning (paper on night, sumi on paper, paper and gold numbers on moss,
       warn on wilt, paper on seal red, ruled-out and reason outline on dusk). A token change
-      that breaks contrast fails the build
-- [ ] Evidence: build passes, bundle size reported, the ratchet catches a deliberately bad token
+      that breaks contrast fails the build. (Paper on seal red is 4.44:1 and fails; the canvas
+      sets the button text in a lighter `#f8f0dd`, now `--ff-on-seal` at 4.77:1, and that is
+      the pair the ratchet checks)
+- [x] Evidence: build passes, bundle size reported, the ratchet catches a deliberately bad token
+      (2026-11-13: 1.10 → 1.04 MB; fonts 62 KB woff2; `--ff-sumi-quiet` lightened to `#8a7f73`
+      fails two pairs at 3.21:1 and 2.46:1)
 
 ### 2. Procedural texture kit
 

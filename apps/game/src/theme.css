@@ -1,85 +1,89 @@
 /* Design tokens. Components use these, never raw colors or font names, so the
-   placeholder-to-painted art swap is a theme change. The board renderer reads
-   the same tokens at startup (src/view/theme.ts). Source: the Phase 2 design
-   baseline (docs/design/phase-2/), state sheet "Color tokens"; look pass 1
-   (2026-11-12) moved the night from navy to the brief's teal and plum. */
+   look is a theme change. The board renderer reads the same tokens at startup
+   (src/view/theme.ts). Look pass 2 (2026-11-12): ink and wash, from the
+   "Firefly Garden · Character" canvas and docs/design/assets.md → Tokens.
+   Contrast for the pairs that carry text and states is a ratchet
+   (tests/contrast.test.ts). Twist tokens (moonlit, mint, pond, mushrooms)
+   arrive with the twist chapters. */
 :root {
-  /* Night */
-  --ff-night-0: #0c1a22;
-  --ff-night-1: #13252c;
-  --ff-night-2: #2a1b26;
-  --ff-tray: #08151a;
-  --ff-tray-edge: #1c3338;
-  --ff-panel: #1b2c30;
-  --ff-panel-deep: #122125;
-  --ff-panel-edge: #33494b;
-  --ff-track: #0a171b;
-  --ff-moon: #f3e4bd;
-  --ff-moon-crater: #ddc994;
-  --ff-star: #fff0cc;
+  /* Night and scenery */
+  --ff-night: #1c2740;
+  --ff-night-deep: #0b1020;    /* scrims, firefly shadows */
+  --ff-hill-dusk: #263556;     /* far ridge */
+  --ff-hill-ink: #151c2e;      /* far ridge line */
+  --ff-hill-dots: #4c8152;     /* dot texture on the moss ridge */
 
-  /* Text */
-  --ff-ink: #f3eedc;
-  --ff-ink-quiet: #cdd8cf;
-  --ff-label: #b3c6bd;
+  /* Paper (chrome) and sumi (ink line, text on paper) */
+  --ff-paper: #f1e8d4;
+  --ff-paper-quiet: #d9cfb8;   /* secondary text on the night, the dotted map path */
+  --ff-paper-dim: #d8ccb0;     /* locked map stop */
+  --ff-paper-track: #dccfae;   /* progress track */
+  --ff-paper-handle: #c9b896;  /* sheet grabber */
+  --ff-paper-rule: #b8a882;    /* dashed divider */
+  --ff-paper-warm: #f7e4b0;    /* coin badge */
+  --ff-sumi: #2a211b;
+  --ff-sumi-soft: #3b3328;     /* body text on paper */
+  --ff-sumi-quiet: #4a3f33;    /* small labels on paper */
 
-  /* Light */
-  --ff-glow: #ffe7a3;
-  --ff-gold: #f2c66d;
-  --ff-gold-deep: #b8862b;
-  --ff-on-gold: #2a1e08;
-  --ff-warn: #ffb4b4;
-  --ff-solved-panel: #2b3b2a;
+  /* Seal red: the one filled action, the hint halo and seal */
+  --ff-seal: #b8432c;
+  --ff-on-seal: #f8f0dd;
 
-  /* Tiles */
-  --ff-tile-dark-hi: #2e584c;
-  --ff-tile-dark: #20403a;
-  --ff-tile-dark-lo: #1a352f;
-  --ff-tile-dark-edge: #11241f;
-  --ff-tile-lit-hi: #ffedb5;
-  --ff-tile-lit: #f5cd74;
-  --ff-tile-lit-lo: #e3ae4e;
-  --ff-tile-lit-edge: #a9782a;
-  --ff-ruled: #9fb0cf;
+  /* Dark tile */
+  --ff-dusk: #2c3c5f;          /* card face */
+  --ff-dusk-edge: #121a2c;     /* front edge */
+  --ff-dusk-wash: #33466c;     /* inner wash */
+  --ff-dusk-quiet: #3d4d70;    /* empty progress dashes */
+  --ff-dusk-locked: #26324f;   /* locked map stop */
+
+  /* Light: lit tile wash, filled dots, happy numbers, coin */
+  --ff-gold: #f2c45c;
+  --ff-gold-edge: #a8792a;     /* lit tile front edge */
+  --ff-gold-pool: #d9a03c;     /* pooled wash edge */
+  --ff-gold-deep: #e9b450;     /* far stop of warm gradients */
+  --ff-glow: #fff6cf;          /* firefly tail and glow, motes */
+  --ff-glow-soft: #ffe9a8;
+  --ff-glow-warm: #fff3c8;     /* warm centre of a lit tile */
 
   /* Bushes */
-  --ff-moss-hi: #5ba97a;
-  --ff-moss: #33724f;
-  --ff-moss-lo: #275b40;
-  --ff-moss-edge: #1a3e2c;
-  --ff-moss-hidden-hi: #4a8c66;
-  --ff-moss-hidden: #2c6446;
-  --ff-leaf: #4e9a6e;
+  --ff-moss: #38653f;
+  --ff-moss-lo: #2f5636;
+  --ff-moss-hi: #6fa765;       /* leaf highlights */
+  --ff-moss-plain: #30583a;    /* bush with no number */
+  --ff-moss-plain-lo: #2a4c33;
+  --ff-leaf: #5c9460;          /* leaf strokes on the plain bush */
+  --ff-wilt: #46452a;          /* too many */
+  --ff-wilt-lo: #3f3e26;
 
-  /* Fireflies */
-  --ff-firefly: #fff3c4;
-  --ff-firefly-edge: #7a5413;
-  --ff-hint-firefly: #f2c66d;
-  --ff-hint-firefly-edge: #8a5a10;
-  --ff-conflict: #ff8a8a;
-  --ff-conflict-edge: #8a3a3a;
-  --ff-firefly-head: #3a2e1a;
+  /* Roses */
+  --ff-rose: #f2a7bd;
+  --ff-rose-deep: #ea8ca8;
+  --ff-rose-pale: #f7c4d2;
+  --ff-rose-spiral: #a8324f;
+
+  /* Warnings: too many, conflict */
+  --ff-warn: #f09aa6;
+  --ff-warn-hatch: #e07a8a;
+  --ff-warn-glow: #ffd6dc;
+
+  /* Marks */
+  --ff-ruled: #b9c6dc;         /* ruled-out brush cross, locked icon */
+  --ff-firefly-rib: #c9963c;   /* lantern ribs on the firefly's tail */
   --ff-wing: #ffffff;
-  --ff-shadow: #281800;
 
-  /* Firefly jar */
-  --ff-jar-glass: #cde6df;
-  --ff-cork: #b8862b;
-  --ff-cork-hi: #d9a54a;
+  /* Paper lantern jar */
+  --ff-jar-paper: #ffd97a;
+  --ff-jar-rib: #8a5a2b;
 
-  /* Petals */
-  --ff-petal-pink: #f7a8c4;
-  --ff-petal-cream: #fbe3c2;
-
-  --ff-font-display: 'Fredoka', ui-rounded, system-ui, sans-serif;
-  --ff-font-body: 'Nunito', system-ui, sans-serif;
+  --ff-font-display: 'Young Serif', Georgia, serif;
+  --ff-font-body: 'Figtree', system-ui, sans-serif;
 }
 
 html, body {
   margin: 0;
   height: 100%;
-  background: var(--ff-night-0);
-  color: var(--ff-ink);
+  background: var(--ff-night);
+  color: var(--ff-paper);
   font-family: var(--ff-font-body);
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
