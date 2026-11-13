@@ -1,28 +1,16 @@
 /**
  * The board renderer's palette, read once from the CSS tokens in theme.css so
  * colors live in exactly one place (a ratchet forbids color literals in code).
+ * Every color token is listed here by its own name and read as `pal.<camelCase>`
+ * (`--ff-gold-pool` → `pal.goldPool`), with no renaming in between;
+ * `apps/game/test/theme.test.ts` fails if this list and theme.css disagree.
  */
 
-const TOKENS = {
-  tray: '--ff-tray', trayEdge: '--ff-tray-edge',
-  tileDarkHi: '--ff-tile-dark-hi', tileDark: '--ff-tile-dark', tileDarkLo: '--ff-tile-dark-lo', tileDarkEdge: '--ff-tile-dark-edge',
-  tileLitHi: '--ff-tile-lit-hi', tileLit: '--ff-tile-lit', tileLitLo: '--ff-tile-lit-lo', tileLitEdge: '--ff-tile-lit-edge',
-  ruled: '--ff-ruled',
-  mossHi: '--ff-moss-hi', moss: '--ff-moss', mossLo: '--ff-moss-lo', mossEdge: '--ff-moss-edge',
-  mossHiddenHi: '--ff-moss-hidden-hi', mossHidden: '--ff-moss-hidden', leaf: '--ff-leaf',
-  firefly: '--ff-firefly', fireflyEdge: '--ff-firefly-edge',
-  hintFirefly: '--ff-hint-firefly', hintFireflyEdge: '--ff-hint-firefly-edge',
-  conflict: '--ff-conflict', conflictEdge: '--ff-conflict-edge',
-  head: '--ff-firefly-head', wing: '--ff-wing', shadow: '--ff-shadow',
-  glow: '--ff-glow', gold: '--ff-gold', warn: '--ff-warn', ink: '--ff-ink', star: '--ff-star',
-  petalPink: '--ff-petal-pink', petalCream: '--ff-petal-cream',
-  fontDisplay: '--ff-font-display',
-} as const;
-
-type ColorKey = Exclude<keyof typeof TOKENS, 'fontDisplay'>;
+import { camel, COLOR_TOKENS } from './tokens.ts';
+import type { ColorKey } from './tokens.ts';
 
 export type Palette = { readonly [K in ColorKey]: number } & {
-  /** The same colors as CSS strings, for canvas gradients. */
+  /** The same colors as CSS strings, for canvas drawing. */
   readonly css: { readonly [K in ColorKey]: string };
   readonly fontDisplay: string;
 };
@@ -40,12 +28,11 @@ export function readPalette(root: Element = document.documentElement): Palette {
   const style = getComputedStyle(root);
   const nums: Record<string, number> = {};
   const css: Record<string, string> = {};
-  for (const [key, token] of Object.entries(TOKENS)) {
-    if (key === 'fontDisplay') continue;
-    const v = normalizeHex(token, style.getPropertyValue(token));
-    nums[key] = parseInt(v.slice(1), 16);
-    css[key] = v;
+  for (const token of COLOR_TOKENS) {
+    const v = normalizeHex(`--ff-${token}`, style.getPropertyValue(`--ff-${token}`));
+    nums[camel(token)] = parseInt(v.slice(1), 16);
+    css[camel(token)] = v;
   }
-  const fontDisplay = style.getPropertyValue(TOKENS.fontDisplay).trim() || 'sans-serif';
+  const fontDisplay = style.getPropertyValue('--ff-font-display').trim() || 'serif';
   return { ...(nums as { [K in ColorKey]: number }), css: css as { [K in ColorKey]: string }, fontDisplay };
 }

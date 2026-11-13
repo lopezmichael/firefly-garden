@@ -42,7 +42,13 @@ about the code today.
   tests and, later, by the game.
 - Every SDK (portal, ads, purchases, Capacitor) is called only from
   `apps/game/src/platform/`. Ratchet-enforced.
-- Colors and fonts come from tokens in `apps/game/src/theme.css`; never hardcode them.
+- Colors and fonts come from tokens in `apps/game/src/theme.css`; never hardcode them. The board
+  reads each colour token by its own name (`view/tokens.ts`); add a token there and in theme.css.
+- The look is ink and wash (`docs/design/assets.md`). Art is drawn with 2D canvas and baked per
+  size (`view/art/`); never put a live SVG filter on screen. Every animation needs a reduced-motion
+  path that still lands the state (`apps/game/test/motion-css.test.ts` checks the CSS).
+- Anything that changes the status card's or complete card's height resizes the board, which
+  cancels a firefly in flight: measure wording and fonts against the reserved space.
 - Rules and level format: `docs/references/rules.md`. Layers and data flow: `ARCHITECTURE.md`.
 
 ## How we work

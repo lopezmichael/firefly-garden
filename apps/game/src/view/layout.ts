@@ -18,14 +18,18 @@ export function bandFor(width: number, height: number): Band {
   return 'square';
 }
 
-/** Proportions of the board drawing, in cells. */
+/**
+ * Proportions of the board drawing, in cells. Ink and wash: tiles sit straight
+ * on the night (no tray) with their front edge inside the cell, 6 units apart on
+ * the canvas's 84-unit tile.
+ */
 export const BOARD_GEOMETRY = {
   /** Gap between tiles, as a fraction of a cell. */
-  gap: 0.14,
-  /** Tray padding on each side, as a fraction of a cell. */
-  pad: 0.22,
-  /** Extra room below for tile front edges and the tray's lip. */
-  lip: 0.14,
+  gap: 0.07,
+  /** Room on each side for hint outlines and halos that reach past the outer tiles. */
+  pad: 0.06,
+  /** Extra room below the last row (none: the front edge is inside the cell). */
+  lip: 0,
 } as const;
 
 export interface BoardFit {
@@ -92,6 +96,90 @@ export function flightPath(from: Point, to: Point, steps = 16, lift = 110): Poin
     const t = i / steps;
     const a = (1 - t) * (1 - t), b = 2 * (1 - t) * t, c = t * t;
     out.push({ x: a * from.x + b * cx + c * to.x, y: a * from.y + b * cy + c * to.y });
+  }
+  return out;
+}
+
+export interface Rect {
+  readonly left: number;
+  readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
+}
+
+/**
+ * Where the hills sit, in screen pixels: behind the status card in every band
+ * (design: Round 4 and the two play bands). The moss ridge rises just above the
+ * card and the dusk ridge behind it; in the wide band they stay in the side
+ * column (and a little past it), elsewhere they span the screen. `motes` are the
+ * drifting firefly lights over the ridges.
+ */
+export interface HillLayout {
+  readonly left: number;
+  readonly right: number;
+  /** Highest point of the far (dusk) ridge and of the near (moss) ridge. */
+  readonly duskTop: number;
+  readonly mossTop: number;
+  readonly bottom: number;
+  readonly motes: readonly Point[];
+}
+
+/** How far above the card each ridge rises, and how far past the side column the wide band's hills reach. */
+export const HILLS = { mossAbove: 46, duskAbove: 96, wideReach: 40, motes: 6 } as const;
+
+export function hillsFor(band: Band, width: number, height: number, card: Rect): HillLayout {
+  const left = 0;
+  const right = band === 'wide' ? Math.min(width, card.right + HILLS.wideReach) : width;
+  const mossTop = Math.max(0, card.top - HILLS.mossAbove);
+  const duskTop = Math.max(0, card.top - HILLS.duskAbove);
+  // Motes drift in the band of sky over the ridges, spread evenly with a fixed jitter.
+  const motes: Point[] = [];
+  for (let i = 0; i < HILLS.motes; i++) {
+    const t = (i + 0.5) / HILLS.motes;
+    motes.push({ x: left + (right - left) * t + ((i * 37) % 23) - 11, y: duskTop - 18 + ((i * 53) % 44) });
+  }
+  return { left, right, duskTop, mossTop, bottom: height, motes };
+}
+
+/** The garden map's stop x positions as fractions of the width, cycling (from the canvas board). */
+export const MAP_XS = [0.25, 0.74, 0.38, 0.77] as const;
+
+export interface MapSegment {
+  readonly from: Point;
+  readonly c1: Point;
+  readonly c2: Point;
+  readonly to: Point;
+}
+
+/**
+ * The garden map's stops and the dotted path through them, top to bottom: one
+ * stop per chapter plus the teaser, zig-zagging across `width` between `top` and
+ * `bottom` (design: the "Garden map" board). Each label sits on the open side of
+ * its stop.
+ */
+export function mapLayout(stops: number, width: number, top: number, bottom: number): {
+  readonly stops: readonly Point[];
+  readonly segments: readonly MapSegment[];
+  readonly labelRight: readonly boolean[];
+} {
+  const pts: Point[] = [];
+  const step = stops > 1 ? (bottom - top) / (stops - 1) : 0;
+  for (let i = 0; i < stops; i++) pts.push({ x: Math.round(width * MAP_XS[i % MAP_XS.length]!), y: Math.round(top + i * step) });
+  const segments: MapSegment[] = [];
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const a = pts[i]!, b = pts[i + 1]!, dy = b.y - a.y;
+    segments.push({ from: a, c1: { x: a.x * 0.55 + b.x * 0.45, y: a.y + dy * 0.15 }, c2: { x: b.x, y: b.y - dy * 0.45 }, to: b });
+  }
+  return { stops: pts, segments, labelRight: pts.map((p) => p.x < width / 2) };
+}
+
+/** `n + 1` points along a map segment (a cubic), from its start to its end: the unlock flight's path. */
+export function segmentPoints(s: MapSegment, n = 24): Point[] {
+  const out: Point[] = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n, u = 1 - t;
+    const a = u * u * u, b = 3 * u * u * t, c = 3 * u * t * t, d = t * t * t;
+    out.push({ x: a * s.from.x + b * s.c1.x + c * s.c2.x + d * s.to.x, y: a * s.from.y + b * s.c1.y + c * s.c2.y + d * s.to.y });
   }
   return out;
 }
