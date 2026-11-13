@@ -1,6 +1,6 @@
 # Flow and transitions: the moments between gardens
 
-Status: **proposed** (Michael's direction, 2026-11-13). Nothing here is built yet.
+Status: **agreed** (Michael, 2026-11-13). Nothing here is built yet.
 
 ## Why
 
@@ -114,27 +114,29 @@ The flow when the solved garden is the last one of its chapter:
 
 - [ ] First-garden teaching: a single status line, "Tap a tile to send out a firefly". Already
       half there; check it reads as teaching.
-- [ ] New-technique intro (moment 6): written per chapter in `scripts/launch-plan.ts` next to
-      the chapter's tier, so the wording travels with the levels.
+- [ ] New-technique intro (moment 6): the manifest already records each chapter's `debut` tier
+      (c2 debuts T3). Write the wording per tier next to it in `scripts/launch-plan.ts`, so the
+      wording travels with the levels.
 - [ ] "Welcome back" on the map for a returning player, and the parked garden marked on it.
 - [ ] The ending card for the last chapter in the build.
 - [ ] Settings copy: "drops the drifting, bobbing and sparkles" still names the sparkle burst,
       which the ink and wash bloom replaced.
 
-## Open questions for Michael
+## Decisions (Michael, 2026-11-13)
 
-1. **Chapter bonus.** Should finishing a chapter pay coins (say +50)? It touches the economy, so
-   `PLAYER_CONFIG` and the hint-economy ratchet would need re-running.
-2. **The keepsake.** Should the chapter card's seal be collectible, with the map showing one seal
-   per finished chapter? A cheap goal, but new art.
-3. **Design first?** Mock the chapter card and the map hand-off on the design canvas before
-   building (recommended), or build straight in the ink and wash kit?
-4. **Order.** A first, then B? A is small and could ship with the friends playtest; B is larger.
+1. **Chapter bonus: yes.** Finishing a chapter pays coins. The amount goes in `PLAYER_CONFIG`,
+   with the hint-economy ratchet re-run. The chapter card offers a rewarded double; see
+   `2026-11-13-rewards-and-return.md`.
+2. **Keepsake seals: yes.** Each finished chapter leaves its seal on the map: one stamp per
+   chapter, shown in the journal (see the rewards plan).
+3. **Design first.** Mock the chapter card and the map hand-off on the design canvas before
+   building.
+4. **A first, then B.** Tap to continue ships before the friends playtest.
 
 ## Order of work
 
 1. **A, tap to continue.** Small; ready to build now.
-2. **B, chapter finished**, after the design question above is answered.
+2. **B, chapter finished**, after the chapter card and map hand-off are mocked on the design canvas.
 3. **C**, the smaller moments, alongside B or right after it.
 
 Each step ends with typecheck, tests, build, the e2e suite, screenshots or a clip of the moment,
