@@ -274,58 +274,83 @@
   .ff-app:not([data-band='wide']) .ff-status-text { min-height: calc(18px * 1.2 + 2px + 14px * 1.4 * 3); }
 }
 
-/* Garden map (design baseline: Map artboard). A screen over the play screen. */
+/* Garden map (design canvas: "Garden map"). A screen over the play screen. */
 .ff-map {
-  position: absolute; inset: 0; z-index: 5; box-sizing: border-box; overflow-y: auto;
-  background: linear-gradient(180deg, var(--ff-night) 0%, var(--ff-night) 45%, var(--ff-night) 100%);
-  padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
-  display: flex; flex-direction: column; gap: 16px;
+  position: absolute; inset: 0; z-index: 5; box-sizing: border-box; overflow-y: auto; background: var(--ff-night);
+  padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+  display: flex; flex-direction: column; gap: 14px;
 }
 .ff-map[hidden] { display: none; }
-.ff-map > * { width: 100%; max-width: 520px; align-self: center; box-sizing: border-box; }
+.ff-map > :not(.ff-map-sky) { position: relative; width: 100%; max-width: 520px; align-self: center; box-sizing: border-box; }
+.ff-map-sky { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.ff-map-scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* The map's own moon, at its column's top right (outranks the play screen's per-band moon rules). */
+.ff-app .ff-map .ff-moon { left: auto; right: max(26px, calc(50% - 234px)); top: 70px; width: 50px; height: 48px; }
 .ff-map-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.ff-map-top-right { display: flex; align-items: center; gap: 8px; }
-.ff-map-title { margin: 0; font-family: var(--ff-font-display); font-weight: 400; font-size: 30px; color: var(--ff-glow); }
-.ff-map-card { background: color-mix(in srgb, var(--ff-dusk) 90%, transparent); border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.ff-map-top-right { display: flex; align-items: center; gap: 10px; }
+.ff-map-title { margin: 0; font-family: var(--ff-font-display); font-weight: 400; font-size: 24px; color: var(--ff-paper); }
+.ff-map-card {
+  border: 2px solid var(--ff-sumi); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px;
+  color: var(--ff-sumi); background: var(--ff-paper-texture, none) 0 0 / 128px 128px, var(--ff-paper);
+}
 .ff-map-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-.ff-map-area { margin: 0; font-family: var(--ff-font-display); font-weight: 400; font-size: 22px; color: var(--ff-paper); }
-.ff-map-count { font-size: 14px; font-weight: 700; color: var(--ff-glow); }
-.ff-map-bar { height: 8px; border-radius: 999px; background: var(--ff-night-deep); overflow: hidden; }
-.ff-map-fill { height: 100%; width: 0; border-radius: 999px; background: var(--ff-gold); }
-.ff-map-note { margin: 0; font-size: 14px; color: var(--ff-paper-quiet); }
-.ff-map-beds { list-style: none; margin: 0; padding: 4px 8px; display: flex; flex-direction: column-reverse; gap: 14px; flex: 1; justify-content: flex-start; }
-.ff-map-bed { display: flex; align-items: center; gap: 12px; width: 76%; }
-.ff-map-bed:nth-child(even) { align-self: flex-end; flex-direction: row-reverse; text-align: right; }
-.ff-map-patch {
-  width: 96px; height: 66px; flex-shrink: 0; border-radius: 50% 48% 52% 46% / 58% 54% 46% 42%;
-  background: radial-gradient(circle at 40% 35%, var(--ff-dusk-wash) 0%, var(--ff-dusk) 60%, var(--ff-dusk) 100%);
-  box-shadow: 0 7px 0 var(--ff-dusk-edge);
+.ff-map-area { margin: 0; font-family: var(--ff-font-display); font-weight: 400; font-size: 22px; color: var(--ff-sumi); }
+.ff-map-count { font-size: 14px; font-weight: 700; color: var(--ff-sumi-soft); }
+.ff-map-bar { height: 8px; box-sizing: border-box; border-radius: 4px; background: var(--ff-paper-track); border: 1px solid var(--ff-sumi); overflow: hidden; }
+.ff-map-fill { height: 100%; width: 0; background: var(--ff-rose); }
+.ff-map-note { margin: 0; font-size: 14px; line-height: 1.4; color: var(--ff-sumi-soft); }
+/* The path and its stops, drawn by map.ts for the field's size; labels sit beside each stop. */
+.ff-map-field { flex: 1; min-height: 360px; }
+.ff-map-drawing { position: absolute; inset: 0; overflow: visible; }
+.ff-map-path { fill: none; stroke: var(--ff-paper-quiet); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 0.1 9; opacity: 0.8; }
+.ff-mstop-ring { fill: var(--ff-paper); stroke: var(--ff-sumi); stroke-width: 2; }
+.ff-mstop-inner { fill: var(--ff-dusk); }
+.ff-mstop-done .ff-mstop-inner { fill: var(--ff-gold); }
+.ff-mstop-glow { fill: var(--ff-glow-soft); opacity: 0.3; }
+.ff-mstop-half { fill: var(--ff-gold); opacity: 0.9; }
+.ff-mstop-dash, .ff-mstop-land { fill: none; stroke: var(--ff-gold); stroke-width: 2.4; }
+.ff-mstop-dash { stroke-dasharray: 6 5; }
+.ff-mstop-dark .ff-mstop-ring { fill: var(--ff-paper-dim); }
+.ff-mstop-dark .ff-mstop-inner { fill: var(--ff-dusk-locked); }
+.ff-mstop-lock { color: var(--ff-ruled); }
+.ff-mstop-teaser { fill: none; stroke: var(--ff-paper-quiet); stroke-width: 2; stroke-dasharray: 4 4; opacity: 0.55; }
+.ff-mbush { fill: var(--ff-moss); }
+.ff-mbush-lo { fill: var(--ff-moss-lo); }
+.ff-mbush-line { fill: none; stroke: var(--ff-sumi); stroke-width: 1.4; stroke-linecap: round; }
+.ff-mrose { fill: var(--ff-rose); stroke: var(--ff-sumi); stroke-width: 1; }
+.ff-mfly-glow { fill: var(--ff-glow-soft); opacity: 0.45; }
+.ff-mfly-wing { fill: color-mix(in srgb, var(--ff-wing) 70%, transparent); stroke: var(--ff-sumi); stroke-width: 0.7; }
+.ff-mfly-tail { fill: var(--ff-glow); stroke: var(--ff-sumi); stroke-width: 0.8; }
+.ff-mfly-head { fill: var(--ff-sumi); }
+/* Fireflies circling a finished chapter: two rings at different speeds (canvas: 14 s and 19 s). */
+.ff-morbit { transform-box: view-box; animation: ff-orbit 14s linear infinite; }
+.ff-morbit-2 { animation: ff-orbit 19s linear -6s infinite reverse; }
+@keyframes ff-orbit { to { transform: rotate(360deg); } }
+.ff-mhover { animation: ff-hover 2.4s ease-in-out infinite; }
+@keyframes ff-hover { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+/* The unlock flight's landing: the new stop rings gold, then the ring fades out. */
+.ff-mstop-land { stroke-width: 3; transform-box: fill-box; transform-origin: center; animation: ff-land 900ms ease-out both; }
+@keyframes ff-land { 0% { opacity: 0; transform: scale(0.6); } 25% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.25); } }
+.ff-map-flier { position: absolute; }
+.ff-map[data-motion='reduced'] .ff-morbit, .ff-map[data-motion='reduced'] .ff-morbit-2, .ff-map[data-motion='reduced'] .ff-mhover,
+.ff-map[data-motion='reduced'] .ff-mstop-land { animation: none; }
+.ff-map-beds { list-style: none; margin: 0; padding: 0; }
+.ff-map-bed, .ff-map-teaser {
+  position: absolute; box-sizing: border-box; display: flex; flex-direction: column; padding: 6px 10px; max-width: 46%;
+  border: 2px solid var(--ff-sumi); border-radius: 8px; color: var(--ff-sumi); background: var(--ff-paper);
 }
-.ff-map-bed[data-state='done'] .ff-map-patch {
-  background:
-    radial-gradient(circle at 26% 34%, var(--ff-rose) 0 6px, transparent 7px),
-    radial-gradient(circle at 58% 26%, var(--ff-rose-pale) 0 5px, transparent 6px),
-    radial-gradient(circle at 72% 60%, var(--ff-rose) 0 6px, transparent 7px),
-    radial-gradient(circle at 40% 66%, var(--ff-rose-pale) 0 5px, transparent 6px),
-    radial-gradient(circle at 40% 35%, var(--ff-moss-hi) 0%, var(--ff-moss) 60%, var(--ff-moss-lo) 100%);
-  box-shadow: 0 7px 0 var(--ff-sumi), 0 0 26px color-mix(in srgb, var(--ff-gold) 30%, transparent);
-}
-.ff-map-bed[data-state='now'] .ff-map-patch {
-  background: radial-gradient(circle at 40% 35%, var(--ff-moss-plain) 0%, var(--ff-moss-plain-lo) 60%, var(--ff-moss-lo) 100%);
-  box-shadow: 0 7px 0 var(--ff-sumi), 0 0 0 3px var(--ff-gold);
-}
-.ff-map-bed-text { display: flex; flex-direction: column; gap: 2px; }
-.ff-map-bed-text strong { font-size: 15px; font-weight: 700; color: var(--ff-paper); }
-.ff-map-bed-text span { font-size: 13px; font-weight: 700; color: var(--ff-paper-quiet); }
-.ff-map-bed[data-state='now'] .ff-map-bed-text span, .ff-map-bed[data-state='done'] .ff-map-bed-text span { color: var(--ff-glow); }
-.ff-map-teaser { border: 2px dashed var(--ff-dusk-quiet); border-radius: 14px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; color: var(--ff-paper-quiet); font-size: 14px; }
-.ff-map-teaser strong { color: var(--ff-paper); }
+.ff-map-bed strong { font-size: 12px; font-weight: 700; color: var(--ff-sumi-quiet); }
+.ff-map-bed span { font-size: 14px; font-weight: 600; }
+.ff-map-bed[data-state='dark'] { background: var(--ff-paper-dim); }
+.ff-map-teaser { border: 0; background: none; padding: 0; color: var(--ff-paper-quiet); }
+.ff-map-teaser strong { font-size: 12px; font-weight: 700; color: var(--ff-paper); }
+.ff-map-teaser span { font-size: 13px; font-weight: 600; }
 .ff-map-continue {
-  min-height: 64px; border: 0; border-radius: 18px; background: var(--ff-gold); color: var(--ff-sumi);
-  font-weight: 700; font-size: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer;
+  min-height: 60px; border: 2px solid var(--ff-sumi); border-radius: 12px; background: var(--ff-seal); color: var(--ff-on-seal);
+  font-weight: 700; font-size: 17px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer;
 }
 .ff-map-continue:disabled { opacity: 0.6; cursor: default; }
-.ff-map-continue-sub { font-size: 13px; font-weight: 700; }
+.ff-map-continue-sub { font-size: 13px; font-weight: 400; }
 
 /* Level complete (design canvas: "Level complete"). The card takes the place of the status card
    and the moves; those keep their space (visibility only), so the board never resizes on a solve. */

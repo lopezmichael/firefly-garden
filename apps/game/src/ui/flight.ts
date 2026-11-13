@@ -14,7 +14,7 @@ export const FLIGHT_MS = 560;
 // Constant markup, never game or player data: firefly C from the design canvas, seen in
 // flight. Colors come from CSS classes (theme tokens); the glow is the sprite's own
 // CSS background, so no SVG gradient ids can clash between two fliers.
-const FIREFLY_SVG = '<svg viewBox="0 0 30 30">'
+export const FIREFLY_SVG = '<svg viewBox="0 0 30 30">'
   + '<path class="ff-flier-wing ff-flier-wing-l" d="M13.5 12 C9 7 5.5 9.5 7.5 12.5 C9 14.5 12 14 13.5 13 Z"></path>'
   + '<path class="ff-flier-wing ff-flier-wing-r" d="M16.5 12 C21 7 24.5 9.5 22.5 12.5 C21 14.5 18 14 16.5 13 Z"></path>'
   + '<circle class="ff-flier-tail" cx="15" cy="17" r="4.4"></circle>'

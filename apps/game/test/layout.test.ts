@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bandFor, fitBoard, flightPath, HILLS, hillsFor, keepOrTurn, MIN_TAP, orientFor } from '../src/view/layout.ts';
+import { bandFor, fitBoard, flightPath, HILLS, hillsFor, keepOrTurn, mapLayout, MIN_TAP, orientFor, segmentPoints } from '../src/view/layout.ts';
 
 describe('layout bands follow the screen shape', () => {
   it.each([
@@ -93,5 +93,38 @@ describe('hills sit behind the status card', () => {
       expect(m.x).toBeLessThanOrEqual(g.right + 12);
       expect(m.y).toBeLessThan(g.mossTop + 30);
     }
+  });
+});
+
+describe('the garden map path', () => {
+  const m = mapLayout(4, 390, 260, 640);
+
+  it('puts one stop per chapter plus the teaser, top to bottom, inside the width', () => {
+    expect(m.stops).toHaveLength(4);
+    expect(m.stops[0]!.y).toBe(260);
+    expect(m.stops[3]!.y).toBe(640);
+    for (let i = 1; i < 4; i++) expect(m.stops[i]!.y).toBeGreaterThan(m.stops[i - 1]!.y);
+    for (const p of m.stops) {
+      expect(p.x).toBeGreaterThan(40);
+      expect(p.x).toBeLessThan(350);
+    }
+  });
+
+  it('zig-zags, with each label on the open side', () => {
+    expect(m.labelRight).toEqual([true, false, true, false]);
+    expect(m.stops[0]!.x).toBeLessThan(195);
+    expect(m.stops[1]!.x).toBeGreaterThan(195);
+  });
+
+  it('joins every stop to the next, and the flight runs exactly from one stop to the next', () => {
+    expect(m.segments).toHaveLength(3);
+    m.segments.forEach((s, i) => {
+      expect(s.from).toEqual(m.stops[i]);
+      expect(s.to).toEqual(m.stops[i + 1]);
+      const pts = segmentPoints(s);
+      expect(pts[0]).toEqual(s.from);
+      expect(pts.at(-1)!.x).toBeCloseTo(s.to.x, 9);
+      expect(pts.at(-1)!.y).toBeCloseTo(s.to.y, 9);
+    });
   });
 });

@@ -18,6 +18,7 @@ import type { Palette } from '../view/theme.ts';
 import { cancelFlights, fly, FLIGHT_MS } from './flight.ts';
 import { PlayScreen } from './screen.ts';
 import { HintSheet, SettingsSheet } from './sheets.ts';
+import { unlockToShow } from '../state/mapProgress.ts';
 import { MapScreen } from './map.ts';
 import type { BedView } from './map.ts';
 
@@ -69,6 +70,8 @@ export class GameApp {
   /** True while a rewarded ad plays: the board, moves, hints and the level clock all wait. */
   private adShowing = false;
   private boardArea = { w: 0, h: 0 };
+  /** Chapters the map has already shown finished (its one-time unlock flight played). */
+  private mapSeen: ReadonlySet<string> = new Set();
   private readonly clock = { now: () => performance.now() };
   private readonly wallClock = { now: () => Date.now() };
   private readonly reducedQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -100,7 +103,7 @@ export class GameApp {
     this.mapScreen = new MapScreen({
       continue: () => this.leaveMap(),
       settings: () => this.openSettings(),
-    });
+    }, palette);
     this.settingsSheet = new SettingsSheet({
       motion: (m) => this.setMotion(m),
       copyLog: () => this.copyLog(),
@@ -165,6 +168,7 @@ export class GameApp {
   private restoreState({ save, install, events }: Stored): void {
     this.install = install;
     this.settings = save?.settings ?? DEFAULT_SETTINGS;
+    this.mapSeen = save?.mapSeen ?? new Set();
     this.parked = [...(save?.parked ?? [])];
     this.log = new EventLog(this.install, (save?.session ?? 0) + 1, new Set(this.catalog.levels.keys()), this.wallClock, events.events);
     this.log.dropped = events.dropped;
@@ -189,7 +193,7 @@ export class GameApp {
     return {
       install: this.install, session: this.log.session, coins: this.wallet.coins, bank: this.wallet.bank,
       solved: pr.solved, history: pr.history, playedReserve: pr.playedReserve, quitMain: pr.quitMain,
-      current, parked: this.parked, settings: this.settings,
+      current, parked: this.parked, settings: this.settings, mapSeen: this.mapSeen,
     };
   }
 
@@ -265,6 +269,7 @@ export class GameApp {
     const reduced = this.reducedMotion();
     this.board.setReducedMotion(reduced);
     this.screen.setReducedMotion(reduced);
+    this.mapScreen.setMotion(!reduced);
   }
 
   private setMotion(m: MotionSetting): void {
@@ -441,6 +446,11 @@ export class GameApp {
       return { title: `Chapter ${i + 1}`, solved: done, total: ch.levels.length, state };
     });
     const chapterNo = nextPlace ? this.catalog.chapters.findIndex((c) => c.id === nextPlace.chapter.id) + 1 : 0;
+    // A chapter finished since the map last showed it: one firefly flies on to the next stop.
+    const unlock = unlockToShow(this.catalog.chapters.map((c, i) => ({ id: c.id, finished: beds[i]!.state === 'done' })), this.mapSeen);
+    const changed = unlock.seen.size !== this.mapSeen.size || [...unlock.seen].some((c) => !this.mapSeen.has(c));
+    this.mapSeen = unlock.seen;
+    if (changed) this.scheduleSave();
     for (const el of this.mapBackground()) el.inert = true;
     this.mapScreen.show({
       area: (nextPlace?.chapter ?? this.catalog.chapters[0])?.area ?? 'Garden',
@@ -451,6 +461,8 @@ export class GameApp {
       continueLabel: nextMain ? 'Continue' : 'Every garden is glowing',
       continueSub: nextPlace ? `Chapter ${chapterNo} · Garden ${nextPlace.index + 1}` : 'More gardens are on the way',
       finished: !nextMain,
+      flyFrom: unlock.from,
+      motion: !this.reducedMotion(),
     });
   }
 

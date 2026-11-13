@@ -221,17 +221,22 @@ The map exists: area card with gardens solved ("15 of 30"), one bed per chapter 
 you are here, still dark), the next area as a teaser, Continue; the top bar's map button leaves
 a level (a quit, as decided in the Phase 2 plan). Restyle it to the canvas board "Garden map":
 
-- [ ] Paper area card with the rose-pink progress bar; chapter stops along a dotted ink path
+- [x] Paper area card with the rose-pink progress bar; chapter stops along a dotted ink path
       (glowing with a bush and roses, current half-lit with a dashed gold ring and a hovering
       firefly, dark and locked); the teaser as a faded stop; Continue in seal red; hills behind
-- [ ] Top bar map button uses the map icon from the Components board
-- [ ] **New motion:** fireflies circle every finished chapter, heads along their path, two rings
+- [x] Top bar map button uses the map icon from the Components board
+- [x] **New motion:** fireflies circle every finished chapter, heads along their path, two rings
       at different speeds; when a chapter is newly finished, the first map open after it plays
       one firefly flying the path to the next stop, which lights with a gold ring as it lands
-      (needs a "seen" flag per chapter in the save, validated like the rest of it)
-- [ ] Reduced motion: no circling, no flight; the new stop simply appears lit
-- [ ] Evidence: screenshots in all three bands; a clip of the unlock flight; a test that the
-      flight plays once per newly finished chapter
+      (needs a "seen" flag per chapter in the save, validated like the rest of it): `mapSeen`,
+      known chapter ids only and only chapters this save has finished; an older save without it
+      gets one flight, for its latest chapter (`state/mapProgress.ts`)
+- [x] Reduced motion: no circling, no flight; the new stop simply appears lit (the chapter is
+      still marked seen)
+- [x] Evidence: screenshots in all three bands; a clip of the unlock flight; a test that the
+      flight plays once per newly finished chapter (`apps/game/test/mapProgress.test.ts`, the
+      save tests for `mapSeen`, and end to end: in every band the flight plays on the first open,
+      not on the reopen, and the save holds the chapter)
 
 ### 8. Ship
 
