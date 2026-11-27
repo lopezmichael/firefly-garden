@@ -8,7 +8,7 @@ import type { Economy, HintSource } from '@firefly/core';
  * event) so no change can go unlogged.
  */
 
-export type CoinReason = 'solve' | 'hint' | 'doubler' | 'start';
+export type CoinReason = 'solve' | 'hint' | 'doubler' | 'start' | 'chapter';
 
 export interface WalletListener {
   coins?(delta: number, balance: number, why: CoinReason): void;
@@ -67,6 +67,12 @@ export class Wallet {
 
   creditSolve(): void {
     this.change(this.economy.coinsPerSolve, 'solve');
+  }
+
+  /** A chapter's main path is finished: the chapter card's bonus (none if the economy has none). */
+  creditChapter(): void {
+    const bonus = this.economy.chapterBonus ?? 0;
+    if (bonus > 0) this.change(bonus, 'chapter');
   }
 
   private change(delta: number, why: CoinReason): void {

@@ -4,6 +4,16 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+- Chapter finished (flow plan B), in two taps. A chapter's last garden offers **Finish the
+  chapter**: the board shrinks into its chapter's stop as the map opens around it, and a chapter
+  card settles over the map (an ink seal, a line about what the chapter taught, gardens, time and
+  hints, and a **+30 chapter bonus**). **Start chapter N** flies a firefly along the path, lights
+  the next stop and zooms into it as its first garden opens. Reduced motion uses cuts; a reload on
+  the card goes to the map and plays the flight once. The bonus is `PLAYER_CONFIG.economy.chapterBonus`,
+  credited and saved at the solve, logged as a `coins` event (`why: 'chapter'`), and simulated by
+  both player simulators (the economy ratchets hold; `reports/` regenerated).
+
 ### Changed
 - Tap to continue (flow plan `docs/plans/2026-11-13-flow-and-transitions.md`, A): a solved
   garden waits for the player. The auto-advance, its countdown bar and the code that paused and

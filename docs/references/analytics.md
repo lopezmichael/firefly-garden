@@ -36,7 +36,7 @@ far, so the last one per session counts. A level resumed after a reload logs no 
 | `level_end` | Solved or abandoned | outcome, active seconds, placements, undos, restarts, hints |
 | `hint` | A hint is used | source (`coins`, `ad`, `bank`), step (which grader step it revealed) |
 | `ad` | An ad finishes or fails | kind (`midgame`, `rewarded`), completed, seconds |
-| `coins` | Balance changes | delta, balance, why |
+| `coins` | Balance changes | delta, balance, why (`solve`, `hint`, `doubler`, `start`, `chapter`) |
 | `continue` | The player moves on from a solved garden | level, choice (`next`, `map`), seconds from the solve to the tap |
 
 ## What each Phase 1 model is refit from

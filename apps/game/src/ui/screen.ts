@@ -238,18 +238,21 @@ export class PlayScreen {
   }
 
   /**
-   * The solve's coins land in the coin pill: it keeps showing `before` until `afterMs` (as the
-   * card's +10 chip rises), then shows the new total with a small bump. 0 lands it now, still.
+   * The solve's coins land in the coin pill: it shows `before` until `afterMs` (as the card's +10
+   * chip rises), then `after` with a small bump. 0 shows `after` now, still. (A chapter's bonus is
+   * shown on its card and the map; the pill catches up at the next refresh.)
    */
-  landCoins(before: number, afterMs: number): void {
+  landCoins(before: number, after: number, afterMs: number): void {
     if (this.coinTimer !== null) clearTimeout(this.coinTimer);
     this.coinTimer = null;
-    const after = this.coins.textContent ?? '';
-    if (afterMs <= 0) return;
+    if (afterMs <= 0) {
+      this.coins.textContent = String(after);
+      return;
+    }
     this.coins.textContent = String(before);
     this.coinTimer = setTimeout(() => {
       this.coinTimer = null;
-      this.coins.textContent = after;
+      this.coins.textContent = String(after);
       const pill = this.coins.parentElement;
       if (!pill) return;
       delete pill.dataset.bump;

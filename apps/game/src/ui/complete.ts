@@ -13,6 +13,8 @@ export interface CompleteView {
   readonly coins: number;
   /** Whether another garden follows (false on the last one: no Next). */
   readonly more: boolean;
+  /** The Next button's words, when not "Next garden" ("Finish the chapter"). */
+  readonly nextLabel?: string;
 }
 
 export interface CompleteHandlers {
@@ -38,6 +40,7 @@ export class CompleteCard {
   private readonly mapButton = el('button', 'ff-complete-map');
   private readonly nextButton = el('button', 'ff-complete-next');
   private readonly note = el('p', 'ff-complete-note');
+  private readonly nextText = document.createTextNode('Next garden');
   /** Until the card is ready it is inert (no taps, no focus); this ends the wait. */
   private readyTimer: ReturnType<typeof setTimeout> | null = null;
   /** Focus asked for while the card was still waiting: given once it is ready. */
@@ -63,7 +66,7 @@ export class CompleteCard {
     map.append(icon('map'), el('span', 'ff-complete-map-label', 'Garden map'));
     map.addEventListener('click', () => handlers.map());
     this.nextButton.type = 'button';
-    this.nextButton.append(document.createTextNode('Next garden'), icon('next'));
+    this.nextButton.append(this.nextText, icon('next'));
     this.nextButton.addEventListener('click', () => handlers.next());
     buttons.append(map, this.nextButton);
 
@@ -95,6 +98,7 @@ export class CompleteCard {
     this.chipText.textContent = `+${view.coins}`;
     this.chipSr.textContent = `${view.coins} coins earned`;
     this.nextButton.hidden = !view.more;
+    this.nextText.textContent = view.nextLabel ?? 'Next garden';
     this.note.textContent = view.more ? '' : 'You lit every garden in this build.';
     this.note.hidden = view.more;
     this.root.dataset.more = String(view.more);

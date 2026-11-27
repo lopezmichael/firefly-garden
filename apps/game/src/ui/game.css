@@ -472,3 +472,50 @@
 .ff-sheet :focus-visible { outline-color: var(--ff-sumi); }
 .ff-board:focus-visible { outline: none; } /* the board draws its own focus ring on the focused cell */
 .ff-fps { position: fixed; right: 6px; bottom: 6px; z-index: 50; font: 700 11px var(--ff-font-body); color: var(--ff-paper-quiet); pointer-events: none; } /* dev builds only */
+
+/* The chapter card (flow plan B): paper over the dimmed map, once the board has shrunk into its
+   stop. A modal dialog: the map behind it is inert. */
+.ff-chapter-layer { position: absolute; inset: 0; z-index: 6; display: flex; align-items: center; justify-content: center; padding: 22px; box-sizing: border-box; }
+.ff-chapter-layer[hidden] { display: none; }
+.ff-chapter-scrim { position: absolute; inset: 0; background: var(--ff-night-deep); opacity: 0.45; }
+.ff-chapter-card {
+  position: relative; width: 100%; max-width: 380px; box-sizing: border-box; padding: 24px 20px 20px; border: 2px solid var(--ff-sumi); border-radius: 16px;
+  background: var(--ff-paper-texture, none) 0 0 / 128px 128px, var(--ff-paper); color: var(--ff-sumi);
+  display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center;
+}
+.ff-chapter-seal { width: 72px; height: 72px; transform: rotate(-8deg); }
+.ff-chapter-seal svg { width: 100%; height: 100%; display: block; }
+.ff-seal-disc { fill: var(--ff-seal); }
+.ff-seal-rim { fill: none; stroke: var(--ff-paper); stroke-width: 2; stroke-dasharray: 3 3; }
+.ff-seal-rose { fill: none; stroke: var(--ff-paper); stroke-width: 3; stroke-linecap: round; }
+.ff-seal-fleck { fill: var(--ff-paper); opacity: 0.45; }
+.ff-chapter-title { margin: 0; font-family: var(--ff-font-display); font-weight: 400; font-size: 28px; line-height: 1.15; }
+.ff-chapter-line { margin: 0; font-size: 15px; line-height: 1.45; color: var(--ff-sumi-soft); }
+.ff-chapter-stats {
+  align-self: stretch; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 10px 0;
+  border-top: 2px dashed var(--ff-paper-rule); border-bottom: 2px dashed var(--ff-paper-rule);
+}
+.ff-chapter-stat { display: flex; flex-direction: column; gap: 2px; }
+.ff-chapter-num { font-family: var(--ff-font-display); font-size: 24px; }
+.ff-chapter-label { font-size: 13px; font-weight: 600; color: var(--ff-sumi-quiet); }
+.ff-chapter-bonus {
+  display: flex; align-items: center; gap: 8px; padding: 6px 12px; border: 2px solid var(--ff-sumi); border-radius: 18px;
+  background: var(--ff-paper-warm); font-weight: 700; font-size: 16px;
+}
+.ff-chapter-bonus[hidden] { display: none; }
+.ff-chapter-bonus .ff-coin { width: 22px; height: 22px; }
+.ff-chapter-go {
+  align-self: stretch; height: 54px; border-radius: 10px; border: 2px solid var(--ff-sumi); background: var(--ff-seal); color: var(--ff-on-seal);
+  font: 700 16px var(--ff-font-body); display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;
+}
+.ff-chapter-card :focus-visible { outline-color: var(--ff-sumi); }
+/* It settles in: the card rises, the seal is stamped. */
+.ff-enter .ff-chapter-card { animation: ff-chapter-in 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.ff-enter .ff-chapter-scrim { animation: ff-scrim-in 400ms ease-out both; }
+.ff-enter .ff-chapter-seal { animation: ff-stamp 600ms cubic-bezier(0.3, 1.4, 0.5, 1) 280ms both; }
+@keyframes ff-chapter-in { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes ff-scrim-in { from { opacity: 0; } to { opacity: 0.45; } }
+@keyframes ff-stamp { 0% { transform: rotate(-8deg) scale(1.6); opacity: 0; } 60% { opacity: 1; } 100% { transform: rotate(-8deg) scale(1); opacity: 1; } }
+.ff-app[data-motion='reduced'] .ff-enter .ff-chapter-card,
+.ff-app[data-motion='reduced'] .ff-enter .ff-chapter-scrim,
+.ff-app[data-motion='reduced'] .ff-enter .ff-chapter-seal { animation: none; }
