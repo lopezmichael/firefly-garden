@@ -13,6 +13,24 @@ export interface ChapterInfo {
   readonly title: string;
   readonly area: string;
   readonly levels: readonly string[];
+  /** The status card's line on the chapter's first garden, for what it debuts (or null). */
+  readonly intro: { readonly title: string; readonly sub: string } | null;
+}
+
+/** Longest intro the status card can hold (the status-length budget, apps/game/test/status.test.ts). */
+const INTRO_MAX = { title: 29, sub: 72 } as const;
+
+function introOf(raw: unknown, i: number): ChapterInfo['intro'] {
+  if (raw === undefined || raw === null) return null;
+  const o = typeof raw === 'object' ? raw as Record<string, unknown> : {};
+  // Own fields only, and real text: a blank line would show an empty status card.
+  const title = Object.hasOwn(o, 'title') ? o.title : undefined;
+  const sub = Object.hasOwn(o, 'sub') ? o.sub : undefined;
+  if (typeof title !== 'string' || typeof sub !== 'string' || title.trim() === '' || sub.trim() === ''
+    || title.length > INTRO_MAX.title || sub.length > INTRO_MAX.sub) {
+    throw new CatalogError(`manifest chapter ${i} has a malformed intro`);
+  }
+  return { title, sub };
 }
 
 export interface Catalog {
@@ -68,7 +86,7 @@ function chaptersOf(manifest: unknown): ChapterInfo[] {
       || !Array.isArray(levels) || !levels.every((l) => typeof l === 'string')) {
       throw new CatalogError(`manifest chapter ${i} is malformed`);
     }
-    return { id: o.id, title: o.title, area: o.area, levels: levels as string[] };
+    return { id: o.id, title: o.title, area: o.area, levels: levels as string[], intro: introOf(o.intro, i) };
   });
 }
 

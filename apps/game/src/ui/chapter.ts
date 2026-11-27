@@ -10,13 +10,11 @@ import { coin, icon } from './icons.ts';
  */
 
 export interface ChapterCardView {
-  /** "Chapter 1 complete". */
+  /** "Chapter 1 complete", or "Every garden is glowing" for the build's ending. */
   readonly title: string;
   readonly line: string;
-  readonly gardens: number;
-  /** "9:24". */
-  readonly time: string;
-  readonly hints: number;
+  /** Three figures under the line: "10" gardens grown, "9:24" in the garden, "2" hints used. */
+  readonly stats: readonly [ChapterStat, ChapterStat, ChapterStat];
   /** Coins credited for the chapter (0: no chip). */
   readonly bonus: number;
   /** "Start chapter 2", or "See the garden map" after the last chapter. */
@@ -28,6 +26,11 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
   if (className) e.className = className;
   if (text !== undefined) e.textContent = text;
   return e;
+}
+
+export interface ChapterStat {
+  readonly value: string;
+  readonly label: string;
 }
 
 // Constant markup, never game or player data: the chapter's seal, a rose stamped in seal ink.
@@ -44,9 +47,8 @@ export class ChapterCard {
   private readonly card = el('section', 'ff-chapter-card');
   private readonly title = el('h2', 'ff-chapter-title');
   private readonly line = el('p', 'ff-chapter-line');
-  private readonly gardens = el('span', 'ff-chapter-num');
-  private readonly time = el('span', 'ff-chapter-num');
-  private readonly hints = el('span', 'ff-chapter-num');
+  private readonly nums = [el('span', 'ff-chapter-num'), el('span', 'ff-chapter-num'), el('span', 'ff-chapter-num')] as const;
+  private readonly labels = [el('span', 'ff-chapter-label'), el('span', 'ff-chapter-label'), el('span', 'ff-chapter-label')] as const;
   private readonly bonus = el('div', 'ff-chapter-bonus');
   private readonly bonusText = el('span');
   private readonly button = el('button', 'ff-chapter-go');
@@ -64,13 +66,12 @@ export class ChapterCard {
     this.line.id = 'ff-chapter-line';
     const seal = el('div', 'ff-chapter-seal');
     seal.innerHTML = SEAL_SVG;
-    const stat = (num: HTMLElement, label: string) => {
-      const s = el('div', 'ff-chapter-stat');
-      s.append(num, el('span', 'ff-chapter-label', label));
-      return s;
-    };
     const stats = el('div', 'ff-chapter-stats');
-    stats.append(stat(this.gardens, 'gardens grown'), stat(this.time, 'in the garden'), stat(this.hints, 'hints used'));
+    this.nums.forEach((num, k) => {
+      const s = el('div', 'ff-chapter-stat');
+      s.append(num, this.labels[k]!);
+      stats.append(s);
+    });
     this.bonus.append(coin(), this.bonusText);
     this.button.type = 'button';
     this.button.append(this.buttonLabel, icon('next'));
@@ -93,9 +94,10 @@ export class ChapterCard {
   show(view: ChapterCardView): void {
     this.title.textContent = view.title;
     this.line.textContent = view.line;
-    this.gardens.textContent = String(view.gardens);
-    this.time.textContent = view.time;
-    this.hints.textContent = String(view.hints);
+    view.stats.forEach((st, k) => {
+      this.nums[k]!.textContent = st.value;
+      this.labels[k]!.textContent = st.label;
+    });
     this.bonus.hidden = view.bonus <= 0;
     this.bonusText.textContent = `+${view.bonus} chapter bonus`;
     this.buttonLabel.textContent = view.action;

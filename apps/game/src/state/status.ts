@@ -72,6 +72,30 @@ export function noticeStatus(n: Notice, ev: Evaluation): StatusText {
   }
 }
 
+/**
+ * The very first garden, before the first move: the goal, then the action (flow plan C). Later
+ * gardens open with the plain line from `boardStatus`.
+ */
+export const FIRST_GARDEN: StatusText = {
+  title: 'Light up every dark path',
+  sub: 'Tap a tile to send out a firefly. Bush dots fill as fireflies land.',
+  tone: 'plain',
+};
+
+/**
+ * Whether an opening line (the first garden's, or a chapter's intro) may show: the board is truly
+ * empty, nothing has been played on it, and no notice or solve owns the card. A resumed board
+ * keeps its fireflies but restarts its move counters, so the counters alone can't say "untouched".
+ */
+export function opensUntouched(b: { placed: number; locked: number; placements: number; solved: boolean; notice: boolean }): boolean {
+  return b.placed === 0 && b.locked === 0 && b.placements === 0 && !b.solved && !b.notice;
+}
+
+/** A chapter's first garden, before the first move: what the chapter brings (its manifest intro). */
+export function introStatus(intro: { readonly title: string; readonly sub: string }): StatusText {
+  return { title: intro.title, sub: intro.sub, tone: 'glow' };
+}
+
 /** The end of the build: every garden is lit. */
 export function finishedStatus(): StatusText {
   return { title: 'Every garden is glowing!', sub: 'You lit every garden in this build. More gardens are on the way.', tone: 'solved' };

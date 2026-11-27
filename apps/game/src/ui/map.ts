@@ -21,6 +21,8 @@ export interface BedView {
   readonly solved: number;
   readonly total: number;
   readonly state: 'done' | 'now' | 'dark';
+  /** A garden left unfinished in this chapter is parked, waiting to be resumed. */
+  readonly waiting: boolean;
 }
 
 export interface MapView {
@@ -32,6 +34,8 @@ export interface MapView {
   readonly continueLabel: string;
   readonly continueSub: string;
   readonly finished: boolean;
+  /** The card's line under the area's progress (a returning player's welcome), or the default. */
+  readonly note?: string;
   /** Index of a newly finished chapter whose unlock flight plays now, or null. */
   readonly flyFrom: number | null;
   readonly motion: boolean;
@@ -100,6 +104,7 @@ export class MapScreen {
   private readonly areaName = el('h2', 'ff-map-area');
   private readonly areaCount = el('span', 'ff-map-count');
   private readonly areaFill = el('div', 'ff-map-fill');
+  private readonly note = el('p', 'ff-map-note');
   private readonly field = el('div', 'ff-map-field');
   private readonly drawing = svg('svg', {}, 'ff-map-drawing');
   private readonly beds = el('ol', 'ff-map-beds');
@@ -150,7 +155,7 @@ export class MapScreen {
     head.append(this.areaName, this.areaCount);
     const bar = el('div', 'ff-map-bar');
     bar.append(this.areaFill);
-    card.append(head, bar, el('p', 'ff-map-note', 'Each garden you light brings more roses back.'));
+    card.append(head, bar, this.note);
 
     this.drawing.setAttribute('aria-hidden', 'true');
     this.beds.setAttribute('aria-label', 'Chapters');
@@ -177,11 +182,14 @@ export class MapScreen {
     this.areaName.textContent = `The ${view.area}`;
     this.areaCount.textContent = `${view.solved} of ${view.total}`;
     this.areaFill.style.width = `${view.total === 0 ? 0 : Math.round((view.solved / view.total) * 100)}%`;
+    this.note.textContent = view.note ?? 'Each garden you light brings more roses back.';
     this.beds.replaceChildren(...view.beds.map((b) => {
       const li = el('li', 'ff-map-bed');
       li.dataset.state = b.state;
       const what = b.state === 'done' ? `${b.solved} of ${b.total} glowing`
-        : b.state === 'now' ? `${b.solved} of ${b.total} · you are here` : 'Still dark';
+        : b.waiting ? `${b.solved} of ${b.total} · a garden is waiting`
+          : b.state === 'now' ? `${b.solved} of ${b.total} · you are here` : 'Still dark';
+      li.dataset.waiting = String(b.waiting);
       li.append(el('strong', undefined, b.title), el('span', undefined, what));
       return li;
     }));

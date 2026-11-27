@@ -197,7 +197,7 @@ export class SettingsSheet extends Sheet {
 
     const motion = el('section', 'ff-section');
     motion.append(sectionTitle('motion', 'Reduce motion'),
-      el('p', 'ff-sheet-sub', 'Keeps every change you make, drops the drifting, bobbing and sparkles.'));
+      el('p', 'ff-sheet-sub', 'Keeps every change you make, drops the drifting, bobbing and flying.'));
     const group = el('div', 'ff-segments');
     group.setAttribute('role', 'radiogroup');
     group.setAttribute('aria-label', 'Reduce motion');

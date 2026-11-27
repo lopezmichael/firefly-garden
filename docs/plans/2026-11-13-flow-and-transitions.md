@@ -154,14 +154,23 @@ look is (deliberately) the same everywhere. Split the job:
 
 ## C. Smaller moments to design alongside
 
-- [ ] First-garden teaching: a single status line, "Tap a tile to send out a firefly". Already
-      half there; check it reads as teaching.
-- [ ] New-technique intro (moment 6): the manifest already records each chapter's `debut` tier
+- [x] First-garden teaching: a single status line, "Tap a tile to send out a firefly". Already
+      half there; check it reads as teaching. *Done 2026-11-27:* it didn't (the title said "N path
+      tiles still dark"). The very first garden now opens on "Light up every dark path" with the
+      tap line under it (`FIRST_GARDEN`, status.ts), until the first move.
+- [x] New-technique intro (moment 6): the manifest already records each chapter's `debut` tier
       (c2 debuts T3). Write the wording per tier next to it in `scripts/launch-plan.ts`, so the
-      wording travels with the levels.
-- [ ] "Welcome back" on the map for a returning player, and the parked garden marked on it.
-- [ ] The ending card for the last chapter in the build.
-- [ ] Settings copy: "drops the drifting, bobbing and sparkles" still names the sparkle burst,
+      wording travels with the levels. *Done:* `INTROS` in `launch-plan.ts` (T3, T4 and the four
+      twists), written into the manifest as each chapter's `intro`, validated by the catalog
+      against the status card's length budget, shown on the chapter's first garden until the first
+      move. The status-length test and the browser height check measure every shipped intro.
+- [x] "Welcome back" on the map for a returning player, and the parked garden marked on it.
+      *Done:* the map card says "Welcome back. Chapter N · Garden M is waiting." on launch, and a
+      chapter holding a parked garden reads "a garden is waiting".
+- [x] The ending card for the last chapter in the build. *Done:* the last chapter's card becomes
+      the ending card (every garden glowing, thanks, build-wide figures, the bonus), then the
+      finished map with focus on Settings.
+- [x] Settings copy: "drops the drifting, bobbing and sparkles" still names the sparkle burst,
       which the ink and wash bloom replaced.
 
 ## Decisions (Michael, 2026-11-13)

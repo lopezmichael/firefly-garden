@@ -15,6 +15,7 @@
       "title": "Rose Bed 1",
       "area": "Rose Bed",
       "debut": null,
+      "intro": null,
       "levels": [
         "c1-t1-0",
         "c1-t1-5",
@@ -33,6 +34,10 @@
       "title": "Rose Bed 2",
       "area": "Rose Bed",
       "debut": "T3",
+      "intro": {
+        "title": "New: bushes that share",
+        "sub": "Two bushes can need the same spot. Read their numbers together."
+      },
       "levels": [
         "c2-04",
         "c2-00",
@@ -51,6 +56,10 @@
       "title": "Rose Bed 3",
       "area": "Rose Bed",
       "debut": "T4",
+      "intro": {
+        "title": "New: think a move ahead",
+        "sub": "Some spots only make sense once you look one move further."
+      },
       "levels": [
         "c3-23",
         "c3-12",
@@ -69,6 +78,7 @@
       "title": "Rose Bed 4",
       "area": "Rose Bed",
       "debut": null,
+      "intro": null,
       "levels": [
         "c4-14",
         "c4-09",
@@ -87,6 +97,7 @@
       "title": "Rose Bed 5",
       "area": "Rose Bed",
       "debut": null,
+      "intro": null,
       "levels": [
         "c5-20",
         "c5-29",
@@ -105,6 +116,10 @@
       "title": "Orchard 1",
       "area": "Orchard",
       "debut": "shaped",
+      "intro": {
+        "title": "New: shaped gardens",
+        "sub": "Light stops where the garden ends, just as it does at an edge."
+      },
       "levels": [
         "c6-open-4",
         "c6-20",
@@ -123,6 +138,7 @@
       "title": "Orchard 2",
       "area": "Orchard",
       "debut": null,
+      "intro": null,
       "levels": [
         "c7-12",
         "c7-19",
@@ -141,6 +157,7 @@
       "title": "Orchard 3",
       "area": "Orchard",
       "debut": null,
+      "intro": null,
       "levels": [
         "c8-07",
         "c8-24",
@@ -159,6 +176,7 @@
       "title": "Orchard 4",
       "area": "Orchard",
       "debut": null,
+      "intro": null,
       "levels": [
         "c9-09",
         "c9-25",
@@ -177,6 +195,7 @@
       "title": "Orchard 5",
       "area": "Orchard",
       "debut": null,
+      "intro": null,
       "levels": [
         "c10-27",
         "c10-15",
@@ -195,6 +214,10 @@
       "title": "Mushroom Glade 1",
       "area": "Mushroom Glade",
       "debut": "mushrooms",
+      "intro": {
+        "title": "New: mushrooms",
+        "sub": "A mushroom counts only its four side tiles, never the diagonals."
+      },
       "levels": [
         "c11-open-3",
         "c11-09",
@@ -214,6 +237,7 @@
       "title": "Mushroom Glade 2",
       "area": "Mushroom Glade",
       "debut": null,
+      "intro": null,
       "levels": [
         "c12-10",
         "c12-21",
@@ -233,6 +257,7 @@
       "title": "Mushroom Glade 3",
       "area": "Mushroom Glade",
       "debut": null,
+      "intro": null,
       "levels": [
         "c13-20",
         "c13-28",
@@ -252,6 +277,7 @@
       "title": "Mushroom Glade 4",
       "area": "Mushroom Glade",
       "debut": null,
+      "intro": null,
       "levels": [
         "c14-21",
         "c14-09",
@@ -271,6 +297,7 @@
       "title": "Mushroom Glade 5",
       "area": "Mushroom Glade",
       "debut": null,
+      "intro": null,
       "levels": [
         "c15-07",
         "c15-06",
@@ -290,6 +317,10 @@
       "title": "Moon Meadow 1",
       "area": "Moon Meadow",
       "debut": "moonlit",
+      "intro": {
+        "title": "New: moonlit tiles",
+        "sub": "Moonlit tiles are already lit. A firefly may still sit on one."
+      },
       "levels": [
         "c16-09",
         "c16-02",
@@ -309,6 +340,7 @@
       "title": "Moon Meadow 2",
       "area": "Moon Meadow",
       "debut": null,
+      "intro": null,
       "levels": [
         "c17-08",
         "c17-15",
@@ -328,6 +360,7 @@
       "title": "Moon Meadow 3",
       "area": "Moon Meadow",
       "debut": null,
+      "intro": null,
       "levels": [
         "c18-10",
         "c18-25",
@@ -347,6 +380,7 @@
       "title": "Moon Meadow 4",
       "area": "Moon Meadow",
       "debut": null,
+      "intro": null,
       "levels": [
         "c19-27",
         "c19-09",
@@ -366,6 +400,7 @@
       "title": "Moon Meadow 5",
       "area": "Moon Meadow",
       "debut": null,
+      "intro": null,
       "levels": [
         "c20-13",
         "c20-18",
@@ -385,6 +420,10 @@
       "title": "Lantern Walk 1",
       "area": "Lantern Walk",
       "debut": "lanterns",
+      "intro": {
+        "title": "New: lanterns",
+        "sub": "A lantern is a firefly that never moves. Nothing may see it."
+      },
       "levels": [
         "c21-open-1",
         "c21-26",
@@ -404,6 +443,7 @@
       "title": "Lantern Walk 2",
       "area": "Lantern Walk",
       "debut": null,
+      "intro": null,
       "levels": [
         "c22-05",
         "c22-25",
@@ -423,6 +463,7 @@
       "title": "Lantern Walk 3",
       "area": "Lantern Walk",
       "debut": null,
+      "intro": null,
       "levels": [
         "c23-09",
         "c23-32",
@@ -442,6 +483,7 @@
       "title": "Lantern Walk 4",
       "area": "Lantern Walk",
       "debut": null,
+      "intro": null,
       "levels": [
         "c24-26",
         "c24-02",
@@ -461,6 +503,7 @@
       "title": "Lantern Walk 5",
       "area": "Lantern Walk",
       "debut": null,
+      "intro": null,
       "levels": [
         "c25-12",
         "c25-08",
@@ -480,6 +523,7 @@
       "title": "Koi Pond 1",
       "area": "Koi Pond",
       "debut": null,
+      "intro": null,
       "levels": [
         "c26-07",
         "c26-32",
@@ -499,6 +543,7 @@
       "title": "Koi Pond 2",
       "area": "Koi Pond",
       "debut": null,
+      "intro": null,
       "levels": [
         "c27-06",
         "c27-12",
@@ -518,6 +563,7 @@
       "title": "Koi Pond 3",
       "area": "Koi Pond",
       "debut": null,
+      "intro": null,
       "levels": [
         "c28-00",
         "c28-18",
@@ -537,6 +583,7 @@
       "title": "Koi Pond 4",
       "area": "Koi Pond",
       "debut": null,
+      "intro": null,
       "levels": [
         "c29-06",
         "c29-15",
@@ -556,6 +603,7 @@
       "title": "Koi Pond 5",
       "area": "Koi Pond",
       "debut": null,
+      "intro": null,
       "levels": [
         "c30-19",
         "c30-06",
@@ -575,6 +623,7 @@
       "title": "Stone Bridge 1",
       "area": "Stone Bridge",
       "debut": null,
+      "intro": null,
       "levels": [
         "c31-17",
         "c31-21",
@@ -594,6 +643,7 @@
       "title": "Stone Bridge 2",
       "area": "Stone Bridge",
       "debut": null,
+      "intro": null,
       "levels": [
         "c32-26",
         "c32-24",
@@ -613,6 +663,7 @@
       "title": "Stone Bridge 3",
       "area": "Stone Bridge",
       "debut": null,
+      "intro": null,
       "levels": [
         "c33-06",
         "c33-27",
@@ -632,6 +683,7 @@
       "title": "Stone Bridge 4",
       "area": "Stone Bridge",
       "debut": null,
+      "intro": null,
       "levels": [
         "c34-22",
         "c34-24",
@@ -651,6 +703,7 @@
       "title": "Stone Bridge 5",
       "area": "Stone Bridge",
       "debut": null,
+      "intro": null,
       "levels": [
         "c35-17",
         "c35-32",
@@ -670,6 +723,7 @@
       "title": "Old Greenhouse 1",
       "area": "Old Greenhouse",
       "debut": null,
+      "intro": null,
       "levels": [
         "c36-29",
         "c36-26",
@@ -689,6 +743,7 @@
       "title": "Old Greenhouse 2",
       "area": "Old Greenhouse",
       "debut": null,
+      "intro": null,
       "levels": [
         "c37-16",
         "c37-09",
@@ -708,6 +763,7 @@
       "title": "Old Greenhouse 3",
       "area": "Old Greenhouse",
       "debut": null,
+      "intro": null,
       "levels": [
         "c38-03",
         "c38-18",
@@ -727,6 +783,7 @@
       "title": "Old Greenhouse 4",
       "area": "Old Greenhouse",
       "debut": null,
+      "intro": null,
       "levels": [
         "c39-27",
         "c39-26",
@@ -746,6 +803,7 @@
       "title": "Old Greenhouse 5",
       "area": "Old Greenhouse",
       "debut": null,
+      "intro": null,
       "levels": [
         "c40-01",
         "c40-29",
