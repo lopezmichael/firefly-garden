@@ -50,6 +50,12 @@ test('solves the first garden by tapping its answer, and the complete card credi
   }
   await expect.poll(async () => (await level(page)).solved).toBe(true);
   await expect(page.locator('.ff-complete')).toBeVisible();
+  // The card waits out the board's celebration inert (a stray tap can't skip the garden), then
+  // takes taps and focus.
+  const panel = page.locator('.ff-complete-panel');
+  expect(await panel.evaluate((el) => (el as HTMLElement).inert)).toBe(true);
+  await expect.poll(() => panel.evaluate((el) => (el as HTMLElement).inert)).toBe(false);
+  await expect(page.locator('.ff-complete-next')).toBeFocused();
   expect((await page.evaluate(() => window.__ff.wallet())).coins).toBe(startingCoins + coinsPerSolve);
   // The taps unlocked sound and played it (the landing chimes and the flourish).
   const audio = await page.evaluate(() => window.__ff.audio());

@@ -40,6 +40,10 @@ export class CompleteCard {
   private readonly bar = el('div', 'ff-complete-bar');
   private readonly nextButton = el('button', 'ff-complete-next');
   private readonly note = el('p', 'ff-complete-note');
+  /** While the entrance waits, the card is inert (no taps, no focus); this ends the wait. */
+  private readyTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Focus asked for while the card was still waiting: given once it is ready. */
+  private focusWanted = false;
 
   constructor(handlers: CompleteHandlers) {
     this.root.hidden = true;
@@ -78,7 +82,20 @@ export class CompleteCard {
     return !this.root.hidden;
   }
 
-  show(view: CompleteView): void {
+  /** Show the card; its entrance waits `delayMs` (the board's celebration plays first). */
+  show(view: CompleteView, delayMs = 0): void {
+    this.root.style.setProperty('--ff-complete-delay', `${delayMs}ms`);
+    // Invisible until its entrance, so it takes no taps or keys meanwhile (a tap where the moves
+    // were must not open the next garden mid-celebration).
+    this.clearWait();
+    this.panel.inert = delayMs > 0;
+    if (delayMs > 0) {
+      this.readyTimer = setTimeout(() => {
+        this.readyTimer = null;
+        this.panel.inert = false;
+        if (this.focusWanted) this.focus();
+      }, delayMs);
+    }
     this.sub.textContent = view.sub;
     this.chipText.textContent = `+${view.coins}`;
     this.chipSr.textContent = `${view.coins} coins earned`;
@@ -96,11 +113,20 @@ export class CompleteCard {
   hide(): void {
     this.root.hidden = true;
     this.bar.classList.remove('ff-counting');
+    this.clearWait();
+    this.panel.inert = false;
   }
 
-  /** Fill the bar over `ms` (restarted from empty each time the auto-advance is armed). */
-  countdown(ms: number): void {
+  private clearWait(): void {
+    if (this.readyTimer !== null) clearTimeout(this.readyTimer);
+    this.readyTimer = null;
+    this.focusWanted = false;
+  }
+
+  /** Fill the bar over `ms` after `delayMs` (restarted from empty each time the auto-advance is armed). */
+  countdown(ms: number, delayMs = 0): void {
     this.bar.style.setProperty('--ff-countdown', `${ms}ms`);
+    this.bar.style.setProperty('--ff-countdown-delay', `${delayMs}ms`);
     this.bar.classList.remove('ff-counting');
     void this.bar.getBoundingClientRect();
     this.bar.classList.add('ff-counting');
@@ -113,6 +139,11 @@ export class CompleteCard {
 
   /** Focus Next, or Garden map on the last garden. */
   focus(): void {
+    if (this.panel.inert) {
+      this.focusWanted = true;
+      return;
+    }
+    this.focusWanted = false;
     (this.nextButton.hidden ? this.mapButton : this.nextButton).focus({ preventScroll: true });
   }
 }

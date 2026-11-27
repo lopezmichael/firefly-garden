@@ -68,7 +68,7 @@ canvas texture at startup from noise; **painted** = optional scan from Michael's
 | --- | --- | --- | --- |
 | Paper grain, card fibre, wash wobble, pooled edge | procedural | Value noise (one shared generator, seeded); fibre is the same noise stretched 12:1. Generated per tile size and cached, as the board's textures are today | 0 KB, < 30 ms at startup |
 | Dark tile | code + procedural | Card face, front edge, fibre, inner dusk wash | — |
-| Lit tile | code + procedural | Paper rim, gold wash, pooled edge, soft warm centre, paper grain; same however it was lit | — |
+| Lit tile | code + procedural | Paper lit from within: a pale gold wash, a luminous warm-white centre over most of the face, gold pooling at the wobbled edge, light grain. A tile two or more beams light has a wider, whiter centre (crossing reads as more light). The firefly's glow is blended additively, so its own tile is the brightest | — |
 | Bush, numbered | code | Three-lobe moss shape, ink outline, leaf highlights | ~2 KB |
 | Bush, no number | code | Deeper, leafier variant | ~1 KB |
 | Wilted bush | code | Slumped olive mound, falling petals, dashed warn border | ~1 KB |
@@ -78,7 +78,7 @@ canvas texture at startup from noise; **painted** = optional scan from Michael's
 | Conflict | code | Rose tail and glow, sumi shiver lines either side, soft rose hatching on the tile; slow sway | ~0.5 KB |
 | Ruled-out cross | code | Two pale brush strokes | ~0.2 KB |
 | Hint reason outline | code | Dashed gold rounded outline around the cells a hint names | — |
-| Solve moment | code | All bushes bloom in a ripple from the last firefly; petals and motes rise | — |
+| Solve moment | code | Fireflies flash together twice, a warm halo swells round the board's edge and settles to an afterglow, a wave of light rolls across the lit tiles, every bush blooms in a ripple, then the fireflies drift up into the night with fading gold trails (`CELEBRATION` in `view/art/geometry.ts`) | — |
 
 ### Scene and chrome
 
@@ -124,7 +124,7 @@ noise). Every sound mutable (the settings toggle and the sound on/off icon drive
 | Bush satisfied | Roses open (mushrooms: spores puff) | Roses shown open |
 | Too many | Bush slumps and drops petals | Shown slumped |
 | Conflict | Slow uneasy sway | Still; shiver lines and hatching stay |
-| Solve | Bloom ripple, petals and motes rise, card slides in | Everything shown open; card appears |
+| Solve | Sync flash, halo swells, light wave, bloom ripple with petals and motes, fireflies released into the sky; the card rises in at 1.5 s | Roses open, afterglow shown, fireflies stay on their tiles; card appears at once |
 | Ambient | Motes drift over the hills; ripples and koi in ponds | Still |
 | Map | Fireflies circle finished chapters; unlock flight along the path | Still; the new stop appears lit |
 

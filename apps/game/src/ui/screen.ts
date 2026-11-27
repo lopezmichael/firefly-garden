@@ -231,11 +231,12 @@ export class PlayScreen {
 
   /**
    * Swap the status card and moves for the level-complete card. The celebration itself is the
-   * board's solve moment (the bloom ripple), so the card only slides in.
+   * board's solve moment, so the card only slides in, `delayMs` later (it keeps its space
+   * meanwhile, so the board does not resize mid-celebration).
    */
-  showComplete(view: CompleteView): void {
+  showComplete(view: CompleteView, delayMs = 0): void {
     this.root.dataset.complete = 'true';
-    this.complete.show(view);
+    this.complete.show(view, delayMs);
   }
 
   hideComplete(): void {
@@ -243,8 +244,8 @@ export class PlayScreen {
     this.complete.hide();
   }
 
-  countdown(ms: number): void {
-    this.complete.countdown(ms);
+  countdown(ms: number, delayMs = 0): void {
+    this.complete.countdown(ms, delayMs);
   }
 
   holdCountdown(): void {

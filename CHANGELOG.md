@@ -5,6 +5,18 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Changed
+- The solve celebration and the light (plan `docs/plans/2026-11-27-solve-celebration.md`). A win
+  now plays out on the board before the complete card arrives: every firefly flashes together
+  twice, a warm halo swells round the board's edge and settles into an afterglow, a soft wave of
+  light rolls across the lit tiles, the bushes bloom (petals burst from the roses and tumble down
+  turning over; small sparks of light rise from the leaves and twinkle out, replacing the milky
+  motes and the row of rising petals), then the fireflies
+  lift off one by one and drift up into the night with fading gold trails while the garden keeps
+  glowing. The complete card rises in at 1.5 s and the next garden opens 3 s after it (was: card
+  at once, 3 s); until it rises it is inert, so a stray tap can't skip the garden. Reduced motion lands the roses, the afterglow and the card at once and keeps
+  the fireflies on their tiles. Lit tiles in play read as paper lit from within (a luminous
+  centre, gold pooling at the edge), a firefly's glow is additive so its tile is the light's
+  source, and tiles lit by two or more beams are a touch brighter (from the 2026-11-12 feedback).
 - Look pass 2: the ink and wash theme (plan `docs/plans/2026-11-12-ink-wash-theme.md`, design
   canvas "Firefly Garden · Character"). A theme change only: game logic, levels, layout bands and
   the screen flow are as they were.

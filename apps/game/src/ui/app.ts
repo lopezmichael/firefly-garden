@@ -20,6 +20,7 @@ import { conflictWords, crossTipDue } from '../state/teach.ts';
 import type { TipId } from '../state/teach.ts';
 import { Wallet } from '../state/wallet.ts';
 import { BoardView } from '../view/board.ts';
+import { CELEBRATION } from '../view/art/geometry.ts';
 import { bandFor, canonicalCell, displayCell, displayDims, keepOrTurn, keyAction, orientFor, stepFocus } from '../view/layout.ts';
 import type { Palette } from '../view/theme.ts';
 import { cancelFlights, fly, FLIGHT_MS } from './flight.ts';
@@ -35,8 +36,8 @@ import type { BedView } from './map.ts';
  * auto-advances, saves after every change and logs every analytics event.
  */
 
-/** Seconds the solved board stays up before the next garden opens by itself. */
-const AUTO_ADVANCE_MS = 3000;
+/** Milliseconds the complete card stays up before the next garden opens by itself. */
+const AUTO_ADVANCE_MS = CELEBRATION.advanceAfterCard;
 /** A return after this long hidden starts a new analytics session. */
 const SESSION_BREAK_MS = 30 * 60_000;
 /** Saves are batched this long after a change (and flushed when the tab hides). */
@@ -94,6 +95,8 @@ export class GameApp {
   private advanceTimer: ReturnType<typeof setTimeout> | null = null;
   /** Auto-advance waits for the tab to be visible, so a hidden tab never starts a level's clock. */
   private advancePending = false;
+  /** When (Date.now()) the complete card's entrance is due; an auto-advance never starts before it. */
+  private cardDueAt = 0;
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
   /** Visible time in the current analytics session (hidden stretches excluded). */
   private sessionVisibleMs = 0;
@@ -377,6 +380,8 @@ export class GameApp {
   /** Arm the auto-advance (the complete card's bar fills toward it), unless the tab is hidden or a
    *  sheet is open: then it waits, and is re-armed from full when the player is back. */
   private scheduleAdvance(): void {
+    // Re-armed after a hold during the celebration, the card still owes its wait.
+    const delayMs = Math.max(0, this.cardDueAt - Date.now());
     if (this.advanceTimer !== null) clearTimeout(this.advanceTimer);
     this.advanceTimer = null;
     this.advancePending = false;
@@ -385,8 +390,8 @@ export class GameApp {
       this.screen.holdCountdown();
       return;
     }
-    this.advanceTimer = setTimeout(() => this.advance(), AUTO_ADVANCE_MS);
-    this.screen.countdown(AUTO_ADVANCE_MS);
+    this.advanceTimer = setTimeout(() => this.advance(), delayMs + AUTO_ADVANCE_MS);
+    this.screen.countdown(AUTO_ADVANCE_MS, delayMs);
   }
 
   /** Put an armed auto-advance on hold (the tab hid, a sheet opened). */
@@ -722,7 +727,11 @@ export class GameApp {
     const coins = this.wallet.coins - before;
     // The policy is pure: peek whether another garden follows (none after the last one).
     const more = this.session.next(Date.now()) !== null;
-    this.screen.showComplete({ sub, coins, more });
+    // With motion, the card waits while the board celebrates (the flash, the wave, the release).
+    const starts = this.board.celebrationStartsIn();
+    const cardDelay = starts === null ? 0 : Math.round(starts + CELEBRATION.cardDelay);
+    this.cardDueAt = Date.now() + cardDelay;
+    this.screen.showComplete({ sub, coins, more }, cardDelay);
     this.screen.announce(`Solved! The garden is glowing. ${sub} ${coins} coins earned.`);
     this.screen.focusNext();
     if (more) this.scheduleAdvance();

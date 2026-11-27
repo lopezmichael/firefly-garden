@@ -428,7 +428,7 @@
 .ff-complete-track { height: 4px; border-radius: 2px; background: var(--ff-paper-track); overflow: hidden; }
 .ff-complete[data-more='false'] .ff-complete-track { display: none; }
 .ff-complete-bar { width: 100%; height: 100%; background: var(--ff-seal); transform-origin: left center; transform: scaleX(0); }
-.ff-counting.ff-complete-bar { animation: ff-count var(--ff-countdown, 3000ms) linear both; }
+.ff-counting.ff-complete-bar { animation: ff-count var(--ff-countdown, 3000ms) linear var(--ff-countdown-delay, 0ms) both; }
 @keyframes ff-count { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .ff-complete-note { margin: 0; font-size: 13px; color: var(--ff-sumi-quiet); }
 /* Wide band: the side panel is short on a landscape phone. The area title goes (the card's line
@@ -447,10 +447,14 @@
 .ff-app[data-band='wide'] .ff-complete-buttons button { height: 48px; font-size: 14px; padding: 0 8px; gap: 6px; }
 .ff-app[data-band='wide'] .ff-complete[data-more='true'] .ff-complete-map-label { display: none; }
 .ff-app[data-band='wide'] .ff-complete-note { display: none; }
-.ff-enter .ff-complete-chip { animation: ff-coin-up 700ms ease-out 400ms both; }
+/* The card rises in once the board's celebration has played (--ff-complete-delay, set per solve). */
+.ff-enter .ff-complete-panel { animation: ff-card-in 460ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--ff-complete-delay, 0ms) both; }
+@keyframes ff-card-in { from { transform: translateY(18px); opacity: 0; } to { transform: none; opacity: 1; } }
+.ff-enter .ff-complete-chip { animation: ff-coin-up 700ms ease-out calc(var(--ff-complete-delay, 0ms) + 400ms) both; }
 @keyframes ff-coin-up { 0% { transform: translateY(16px); opacity: 0; } 30% { transform: translateY(-4px); opacity: 1; } 100% { transform: none; opacity: 1; } }
 /* Reduced motion: the bar shows the wait without moving (it stays empty until the garden opens). */
 .ff-app[data-motion='reduced'] .ff-counting.ff-complete-bar,
+.ff-app[data-motion='reduced'] .ff-enter .ff-complete-panel,
 .ff-app[data-motion='reduced'] .ff-enter .ff-complete-chip { animation: none; }
 .ff-complete :focus-visible { outline-color: var(--ff-sumi); }
 
