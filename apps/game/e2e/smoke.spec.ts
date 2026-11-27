@@ -341,3 +341,13 @@ test('the build\'s last chapter ends on the ending card, then the finished map',
   await expect(page.locator('.ff-map-flier')).toHaveCount(0);
   await expect(page.locator('.ff-map-top .ff-gear')).toBeFocused();
 });
+
+test('every voice makes a sound and none clips (rendered offline)', async ({ page }) => {
+  await open(page);
+  const voices = await page.evaluate(() => window.__ff.voices());
+  expect(Object.keys(voices)).toHaveLength(10);
+  for (const [name, v] of Object.entries(voices)) {
+    expect(v.rms, `${name} is silent`).toBeGreaterThan(0.001);
+    expect(v.peak, `${name} clips`).toBeLessThan(0.9);
+  }
+});

@@ -107,13 +107,28 @@ canvas texture at startup from noise; **painted** = optional scan from Michael's
 
 ### Sound (synthesized, WebAudio)
 
-Not designed yet; the audition page comes next. There is no audio in the game today: the sound
-setting is saved but nothing plays, so the audio engine and the ad-break mute are new work, with
-the portal mute hook inside `apps/game/src/platform/` like every other SDK call. Planned set, all synthesized at runtime
-(0 KB of audio files): place (soft glass note), call back (reverse of it), bush blooms (small
-chime, pitched by bush), solve (rising four-note flourish), empty jar (paper rustle), hint (two
-bells), chapter unlock (wing flutter and chime), optional ambient (crickets and wind, generated
-noise). Every sound mutable (the settings toggle and the sound on/off icon drive it); muted during ads.
+Designed 2026-11-27 on the sound audition page (https://claude.ai/artifact/3m1NrYk5B37HRbWyffJbWB:
+three takes per moment, Michael picked one each). All synthesized at runtime in
+`apps/game/src/audio/engine.ts` (0 KB of audio files), through a small generated night-garden
+reverb. Muted by the setting, a hidden tab or an ad; nothing plays before the first gesture.
+
+| Moment | Voice | Sound |
+| --- | --- | --- |
+| A firefly lands | `place` | Glass note, pitched by the row on screen |
+| Calling a firefly back | `lift` | Soft breath (a falling puff of air) |
+| A bush blooms | `bush` | Wind chime |
+| A hint firefly arrives | `hint` | Two bells, a fifth apart |
+| Fireflies see each other | `conflict` | Two wood taps ("not quite", never "wrong") |
+| The jar is empty | `empty` | Hollow knock |
+| The garden is solved | `solve` | Four notes and a glow |
+| A firefly reaches the progress track | `land` | Tiny tick, one per firefly |
+| Chapter complete | `chapter` | Warm bloom |
+| A new chapter opens | `opens` | Sparkle trail along the map path |
+
+Fireflies landing on the progress track in the same instant tick once, not in a stack (a tick
+within 30 ms of the last is skipped; each has a hair of jitter), so a big release patters instead of
+clicking. Night sounds (crickets, wind) were auditioned and left off. The browser smoke test renders every
+voice offline and fails if one is silent or clips.
 
 ## Motion (what reduced motion keeps and drops)
 

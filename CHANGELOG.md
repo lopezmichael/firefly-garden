@@ -5,6 +5,11 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Added
+- The game's sounds, picked on a sound audition page (three synthesized takes per moment).
+  - **Ten voices, still no audio files:** glass note, soft breath, wind chime, two bells, wood taps, hollow knock, four notes and a glow, tiny tick, warm bloom, sparkle trail.
+  - **A small generated reverb** gives them a garden-at-night room.
+  - **New cues:** each firefly reaching the progress track ticks, the chapter card blooms, and Start chapter plays the sparkle trail. Before, these moments borrowed the solve and hint sounds.
+  - **New test:** the smoke test renders every voice offline and fails on silence or clipping.
 - The smaller moments (flow plan C):
   - **First garden:** it now teaches the goal before the first move: "Light up every dark path".
   - **New-technique and twist intros (moment 6):** a chapter's first garden says what it brings ("New: bushes that share"). The wording lives in `scripts/launch-plan.ts` and travels in the manifest; the catalog validates it against the status card's length budget.

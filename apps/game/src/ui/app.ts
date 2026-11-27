@@ -45,7 +45,7 @@ const SAVE_DELAY_MS = 300;
 
 /** Which voice each cue plays (placeholder sounds; the voices live in audio/engine.ts). */
 const VOICE: { readonly [K in Cue['kind']]: Voice } = {
-  place: 'chime', hint: 'sparkle', lift: 'lift', bush: 'bell', conflict: 'buzz', solve: 'flourish', empty: 'bump',
+  place: 'place', hint: 'hint', lift: 'lift', bush: 'bush', conflict: 'conflict', solve: 'solve', empty: 'empty',
 };
 
 /** What the end-to-end tests read and drive (built only with `--mode e2e`). */
@@ -69,6 +69,8 @@ export interface E2EHooks {
   events(): Record<string, unknown>[];
   /** Each chapter's level ids, in order. */
   chapters(): string[][];
+  /** Render every voice offline: its peak and RMS level (each voice must sound, and never clip). */
+  voices(): Promise<Record<string, { peak: number; rms: number }>>;
   /** Record these gardens as solved (to reach a chapter's last garden quickly), and save. */
   markSolved(ids: string[]): void;
   platform: TestPlatform;
@@ -598,7 +600,7 @@ export class GameApp {
       };
     this.chapterCard.show(view);
     this.chapterIndex = index;
-    this.audio.play(VOICE.solve, 0.5);
+    this.audio.play('chapter');
     this.screen.announce(`${view.title}. ${view.line}`);
   }
 
@@ -625,7 +627,7 @@ export class GameApp {
       this.mapScreen.focusContinue();
       return;
     }
-    this.audio.play(VOICE.hint, 0.7);
+    this.audio.play('opens');
     await this.mapScreen.playFlight(index);
     if (run !== this.chapterRun || !this.mapScreen.isOpen) return;
     await this.mapScreen.zoomInto(index + 1);
@@ -1060,6 +1062,26 @@ export class GameApp {
       frames: () => this.board.frameStats(),
       events: () => this.log.events.map((e) => ({ ...e })),
       chapters: () => this.catalog.chapters.map((c) => [...c.levels]),
+      voices: async () => {
+        const out: Record<string, { peak: number; rms: number }> = {};
+        const all: Voice[] = ['place', 'lift', 'bush', 'hint', 'conflict', 'empty', 'solve', 'land', 'chapter', 'opens'];
+        for (const v of all) {
+          const off = new OfflineAudioContext(2, 44_100 * 3, 44_100);
+          // The engine plays only into a running context; an offline one runs once rendering starts.
+          Object.defineProperty(off, 'state', { get: () => 'running' });
+          const engine = new AudioEngine(() => off as unknown as AudioContext);
+          engine.unlock();
+          engine.play(v);
+          const d = (await off.startRendering()).getChannelData(0);
+          let peak = 0, sum = 0;
+          for (const x of d) {
+            peak = Math.max(peak, Math.abs(x));
+            sum += x * x;
+          }
+          out[v] = { peak, rms: Math.sqrt(sum / d.length) };
+        }
+        return out;
+      },
       markSolved: (ids) => {
         for (const id of ids) this.session.record({ levelId: id, reason: 'main', solved: true, seconds: 20, hints: 0, endedAt: Date.now() });
         this.flushSave();
@@ -1078,7 +1100,10 @@ export class GameApp {
     if (this.reducedMotion() || this.blocked()) return false;
     const to = this.screen.progressTarget();
     if (!to) return false;
-    release(this.screen.root, from, to, gold, phase, cellPx, () => this.screen.lightProgress(true));
+    release(this.screen.root, from, to, gold, phase, cellPx, () => {
+      this.screen.lightProgress(true);
+      this.audio.play('land');
+    });
     return true;
   }
 
