@@ -138,6 +138,60 @@ export const CELEBRATION = {
   cardDelay: 500, cardReady: 1100,
 } as const;
 
+/**
+ * A conflict beam's ends (board pixels): the segment between two firefly centres, pulled in by
+ * `inset` at each end so it runs between the fireflies, not over them. Null when they are too
+ * close for a visible beam.
+ */
+export function beamEnds(a: { x: number; y: number }, b: { x: number; y: number }, inset: number): [number, number, number, number] | null {
+  const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
+  if (len <= 2 * inset) return null;
+  const ux = dx / len, uy = dy / len;
+  return [a.x + ux * inset, a.y + uy * inset, b.x - ux * inset, b.y - uy * inset];
+}
+
+/**
+ * The conflict beam's motion ("crossed gazes"): two streaks shoot from the fireflies and meet in
+ * the middle, then sparks keep streaming from each firefly toward the meeting point, the line
+ * between them quivers like a plucked string, and a small star flickers where the gazes clash.
+ */
+export const BEAM = { revealMs: 260, retractMs: 200, motes: 4, motePeriodMs: 900, quiverMs: 95, swellMs: 420 } as const;
+
+/**
+ * Where a beam leaves its firefly, in tile units: the glowing tail (the light it sees with), and
+ * how far out from it the line starts, so it reads as coming out of that light, clear of the body.
+ */
+export const BEAM_SOURCE = { x: 42, y: 46, inset: 15 } as const;
+
+/** How far each streak has reached the middle, 0..1, `ms` after the conflict began (eased out). */
+export function beamReveal(ms: number): number {
+  const k = Math.min(1, Math.max(0, ms / BEAM.revealMs));
+  return 1 - (1 - k) ** 3;
+}
+
+/** The same once the conflict is over: the streaks pull back into the fireflies, 1 → 0 (eased in). */
+export function beamRetract(ms: number): number {
+  const k = Math.min(1, Math.max(0, ms / BEAM.retractMs));
+  return 1 - k * k;
+}
+
+/**
+ * Where each streaming spark is at `ms`, as a fraction of the way from its firefly to the meeting
+ * point (0 at the firefly, 1 at the middle), evenly spaced and always moving inward.
+ */
+export function gazeMotes(ms: number): number[] {
+  const base = (ms / BEAM.motePeriodMs) % 1;
+  return Array.from({ length: BEAM.motes }, (_, k) => (base + k / BEAM.motes) % 1);
+}
+
+/**
+ * The string's sideways offset at `s` along the whole beam (0..1), as a fraction of its amplitude:
+ * still at both ends, widest in the middle, quivering over time.
+ */
+export function quiver(s: number, ms: number): number {
+  return Math.sin(Math.PI * Math.min(1, Math.max(0, s))) * Math.sin((ms / BEAM.quiverMs) * Math.PI);
+}
+
 /** The fireflies' synchronised flash over 0..1: two bright beats, dark between and after. */
 export function syncFlash(t: number): number {
   if (t <= 0 || t >= 1) return 0;

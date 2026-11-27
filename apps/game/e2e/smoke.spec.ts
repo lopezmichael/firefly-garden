@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { PLAYER_CONFIG } from '@firefly/core';
+import { PLAYER_CONFIG, validateEvent } from '@firefly/core';
 import type { E2EHooks } from '../src/ui/app.ts';
 import { everyStatus } from '../test/status-samples.ts';
 import { displayCell } from '../src/view/layout.ts';
@@ -350,4 +350,36 @@ test('every voice makes a sound and none clips (rendered offline)', async ({ pag
     expect(v.rms, `${name} is silent`).toBeGreaterThan(0.001);
     expect(v.peak, `${name} clips`).toBeLessThan(0.9);
   }
+});
+
+test('a scripted play-through logs an event stream that matches the play', async ({ page }) => {
+  await open(page);
+  const first = await level(page);
+  // Place, undo it, place it again, then the rest: one undo, every answer cell placed.
+  await tapCell(page, first.answer[0]!);
+  await page.getByRole('button', { name: 'Undo' }).click();
+  for (const c of first.answer) await tapCell(page, c);
+  await expect.poll(async () => (await level(page)).solved).toBe(true);
+  const nextButton = page.locator('.ff-complete-next');
+  await expect(nextButton).toBeFocused();
+  await nextButton.click();
+  await expect.poll(async () => (await level(page)).id).not.toBe(first.id);
+  const second = await level(page);
+  // Leave the second garden for the map after one move: a quit.
+  await tapCell(page, second.answer[0]!);
+  await page.locator('.ff-top .ff-gear[aria-label="Garden map"]').click();
+  await expect(page.locator('.ff-map')).toBeVisible();
+
+  const events = await page.evaluate(() => window.__ff.events());
+  // Every stored event is a valid schema event.
+  for (const e of events) expect(validateEvent(e), JSON.stringify(e)).toEqual([]);
+  const of = (type: string) => events.filter((e) => e.type === type);
+  expect(of('session_start')).toHaveLength(1);
+  expect(of('level_start').map((e) => [e.level, e.reason, e.attempt])).toEqual([[first.id, 'main', 1], [second.id, 'main', 1]]);
+  const [solved, quit] = of('level_end');
+  expect(solved).toMatchObject({ level: first.id, reason: 'main', attempt: 1, outcome: 'solved', undos: 1, restarts: 0, hints: 0 });
+  expect(solved!.placements).toBe(first.answer.length + 1);
+  expect(quit).toMatchObject({ level: second.id, outcome: 'quit', placements: 1, undos: 0, hints: 0 });
+  expect(of('continue')).toEqual([expect.objectContaining({ level: first.id, choice: 'next' })]);
+  expect(of('coins').map((e) => e.why)).toEqual(['start', 'solve']);
 });

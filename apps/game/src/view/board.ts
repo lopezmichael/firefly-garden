@@ -1,12 +1,12 @@
 // Pixi's CSP-safe shader path: our pages (and portals) forbid eval; this module replaces it.
 import 'pixi.js/unsafe-eval';
 import { Application, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js';
-import { lightCounts } from '@firefly/core';
+import { conflictPairs, lightCounts } from '@firefly/core';
 import type { Board, Evaluation, Transform } from '@firefly/core';
 import { canonicalCell, displayDims, fitBoard } from './layout.ts';
 import type { BoardFit } from './layout.ts';
 import type { Palette } from './theme.ts';
-import { bushLayout, dotPositions, FACE_CENTER_Y, bloomDelays, cappedRipple, CELEBRATION, flightAt, FLY_BOXES, FLY_MOTION, haloStrength, MOTION_TIMING, outlinePolylines, pulse, rippleDelays, ROSE_SLOTS, roseVariants, SWAY_ORIGIN, syncFlash, UNIT, WING_ROOT } from './art/geometry.ts';
+import { BEAM, BEAM_SOURCE, beamEnds, beamRetract, beamReveal, bushLayout, gazeMotes, quiver, dotPositions, FACE_CENTER_Y, bloomDelays, cappedRipple, CELEBRATION, flightAt, FLY_BOXES, FLY_MOTION, haloStrength, MOTION_TIMING, outlinePolylines, pulse, rippleDelays, ROSE_SLOTS, roseVariants, SWAY_ORIGIN, syncFlash, UNIT, WING_ROOT } from './art/geometry.ts';
 import type { BushKind, UnitBox } from './art/geometry.ts';
 import { drawBush, drawConflictTile, drawMote, drawPetal, drawDarkTile, drawFlyBody, drawFlyGlow, drawFlyShadow, drawFlyWing, drawHintHalo, drawLitTile, drawRose, drawRuledCross, drawHalo, drawSpark } from './art/pieces.ts';
 import type { FlyKind } from './art/pieces.ts';
@@ -243,6 +243,13 @@ export class BoardView {
   private readonly particleLayer = new Container();
   /** Under the tiles: the solved garden's halo. */
   private readonly glowLayer = new Container();
+  /**
+   * Fireflies that see each other: a pink beam between each pair (the broken rule made visible,
+   * from Michael's 2026-11-12 feedback), over the tiles, pulled in clear of the fireflies.
+   */
+  private readonly beams = new Graphics();
+  /** The beams on the board now (board pixels), each with when it appeared (board clock), for its motion. */
+  private beamSegs: { key: string; x0: number; y0: number; x1: number; y1: number; born: number; gone?: number }[] = [];
   /** Over the tiles, additive: the solve's wave of light. */
   private readonly flashLayer = new Container();
   /** Released fireflies and their trails. */
@@ -275,7 +282,7 @@ export class BoardView {
     this.onTap = opts.onTap;
     this.onRelease = opts.onRelease;
     this.motion = !opts.reducedMotion;
-    this.stage.addChild(this.glowLayer, this.cellsLayer, this.flashLayer, this.outline, this.particleLayer, this.ghostLayer, this.flightLayer, this.focusRing);
+    this.stage.addChild(this.glowLayer, this.cellsLayer, this.beams, this.flashLayer, this.outline, this.particleLayer, this.ghostLayer, this.flightLayer, this.focusRing);
     app.stage.addChild(this.stage);
     app.ticker.add((ticker) => this.tick(ticker.deltaMS));
     // A lost and restored WebGL context (common on phones in the background) needs a fresh frame.
@@ -308,6 +315,8 @@ export class BoardView {
       this.endFlights();
       if (this.haloFrom !== null) this.haloFrom = this.time - 1e9;
     }
+    // Beams land in their still form (or start moving again) at once.
+    this.paintBeams();
     this.wake();
   }
 
@@ -335,6 +344,7 @@ export class BoardView {
 
   private animating(): boolean {
     if (this.ghosts.length > 0 || this.tweens.length > 0 || this.fliers.length > 0 || this.trails.length > 0) return true;
+    if (this.beamSegs.some((b) => b.gone !== undefined)) return true;
     if (this.haloFrom !== null) return true;
     if (!this.motion) return false;
     if ((this.state?.because.size ?? 0) > 0) return true;
@@ -350,6 +360,7 @@ export class BoardView {
     this.released.clear();
     this.haloFrom = null;
     this.celebrateAt = null;
+    this.beamSegs = [];
     this.build();
   }
 
@@ -458,6 +469,9 @@ export class BoardView {
     this.cells = [];
     this.outline.clear();
     this.outlineKey = null;
+    this.beams.clear();
+    // Beams keep their start times through a rebuild (a resize or fold doesn't replay the shoot-in);
+    // their positions are worked out again by the render below.
     // Ghosts, moments and particles use the old size's sprites and textures, which the
     // prune below frees: end them first (a rebuild redraws the position at rest).
     for (const g of this.ghosts) g.fly.root.destroy({ children: true });
@@ -665,6 +679,8 @@ export class BoardView {
       }
     }
     this.drawOutline(state.because);
+    // A new beam waits for its firefly to land (it may still be flying in from the jar).
+    this.drawBeams(ev, landAt);
     if (opts.removed !== undefined && opts.removed !== null) this.liftAway(opts.removed);
     if (solvingNow) this.celebrate(origin, landAt);
     else if (!state.solved) this.haloFrom = this.celebrateAt = null;
@@ -954,6 +970,120 @@ export class BoardView {
     }
   }
 
+  /**
+   * Work out which beams the board shows: one per pair of fireflies that see each other, pulled
+   * clear of both. A beam that was already showing keeps its start time; a new one starts now.
+   */
+  private drawBeams(ev: Evaluation, bornAt = this.time): void {
+    const before = this.beamSegs;
+    const was = new Map(before.filter((b) => b.gone === undefined).map((b) => [b.key, b.born]));
+    const next: typeof this.beamSegs = [];
+    if (this.board && this.fit && ev.conflicts.length > 0) {
+      const { cell } = this.fit;
+      const u = cell / UNIT;
+      // Each end leaves from the firefly's glowing tail, pulled out just clear of its body.
+      const at = new Map(this.cells.map((v) => [v.cell, { x: v.root.x + BEAM_SOURCE.x * u, y: v.root.y + BEAM_SOURCE.y * u }]));
+      for (const [a, b] of conflictPairs(this.board, ev.fireflies)) {
+        const pa = at.get(a), pb = at.get(b);
+        const ends = pa && pb ? beamEnds(pa, pb, BEAM_SOURCE.inset * u) : null;
+        if (!ends) continue;
+        const key = `${a}-${b}`;
+        const [x0, y0, x1, y1] = ends;
+        // Without motion a beam is simply there; with it, a new beam shoots in from both fireflies.
+        next.push({ key, x0, y0, x1, y1, born: was.get(key) ?? (this.motion ? bornAt : -Infinity) });
+      }
+    }
+    // A beam whose conflict is over pulls back into its fireflies (with motion); without, it just goes.
+    if (this.motion) {
+      const live = new Set(next.map((b) => b.key));
+      for (const b of before) {
+        if (live.has(b.key)) continue;
+        if (b.gone === undefined) next.push({ ...b, gone: this.time });
+        else if (this.time - b.gone < BEAM.retractMs) next.push(b);
+      }
+    }
+    this.beamSegs = next;
+    this.paintBeams();
+  }
+
+  /**
+   * "Crossed gazes": two streaks race from the fireflies to meet in the middle; then sparks stream
+   * from each firefly toward the meeting point, the line between quivers like a plucked string, and
+   * a small star flickers where the gazes clash. Reduced motion: the line and the star, still.
+   */
+  private paintBeams(): void {
+    const g = this.beams;
+    g.clear();
+    if (!this.fit || this.beamSegs.length === 0) return;
+    const cell = this.fit.cell, t = this.time, warn = this.pal.warn, hot = this.pal.warnGlow;
+    // Retracted beams are done.
+    this.beamSegs = this.beamSegs.filter((b) => b.gone === undefined || (this.motion && t - b.gone < BEAM.retractMs));
+    for (const b of this.beamSegs) {
+      const reveal = b.gone !== undefined ? Math.min(beamReveal(t - b.born), beamRetract(t - b.gone))
+        : this.motion ? beamReveal(t - b.born) : 1;
+      if (reveal <= 0) continue;
+      const mx = (b.x0 + b.x1) / 2, my = (b.y0 + b.y1) / 2;
+      const len = Math.hypot(b.x1 - b.x0, b.y1 - b.y0);
+      const nx = -(b.y1 - b.y0) / len, ny = (b.x1 - b.x0) / len;
+      // Each half grows from its firefly toward the middle.
+      const halves: [number, number, number, number][] = [
+        [b.x0, b.y0, b.x0 + (mx - b.x0) * reveal, b.y0 + (my - b.y0) * reveal],
+        [b.x1, b.y1, b.x1 + (mx - b.x1) * reveal, b.y1 + (my - b.y1) * reveal],
+      ];
+      // Where each gaze leaves its firefly: a small glow, breathing with motion.
+      const breath = this.motion ? 0.85 + 0.15 * Math.sin(t / 160) : 1;
+      for (const [ax, ay] of halves) {
+        g.circle(ax, ay, cell * 0.1 * breath * Math.min(1, reveal * 2)).fill({ color: hot, alpha: 0.45 });
+        g.circle(ax, ay, cell * 0.045 * Math.min(1, reveal * 2)).fill({ color: hot, alpha: 0.9 });
+      }
+      // A soft glow under the line.
+      for (const [ax, ay, bx, by] of halves) g.moveTo(ax, ay).lineTo(bx, by);
+      g.stroke({ width: cell * 0.16, color: warn, alpha: 0.2, cap: 'round' });
+      // The taut string, quivering (still without motion).
+      const amp = this.motion && reveal >= 1 ? cell * 0.05 * (0.65 + 0.35 * Math.sin((t / BEAM.swellMs) * Math.PI)) : 0;
+      halves.forEach(([ax, ay], h) => {
+        const steps = 10;
+        for (let k = 0; k <= steps; k++) {
+          const f = (k / steps) * reveal; // 0 at the firefly, `reveal` at the furthest point
+          const s = h === 0 ? f / 2 : 1 - f / 2; // position along the whole beam
+          const off = amp * quiver(s, t);
+          const x = ax + (mx - ax) * f + nx * off, y = ay + (my - ay) * f + ny * off;
+          if (k === 0) g.moveTo(x, y);
+          else g.lineTo(x, y);
+        }
+      });
+      g.stroke({ width: Math.max(1.5, cell * 0.038), color: warn, alpha: 0.9, cap: 'round', join: 'round' });
+      if (reveal < 1) {
+        // The streaks' leading sparks while they race in (or pull back out).
+        for (const [, , bx, by] of halves) g.circle(bx, by, cell * 0.055).fill({ color: hot, alpha: 0.95 });
+        continue;
+      }
+      // Sparks streaming from each firefly toward the meeting point, brightest midway.
+      if (this.motion) {
+        for (const [ax, ay] of halves) {
+          for (const s of gazeMotes(t)) {
+            const x = ax + (mx - ax) * s, y = ay + (my - ay) * s;
+            const a = Math.sin(Math.PI * s);
+            g.circle(x, y, cell * (0.035 + 0.04 * a)).fill({ color: hot, alpha: 0.95 * a });
+            g.circle(x, y, cell * 0.022 * a).fill({ color: warn, alpha: a });
+          }
+        }
+      }
+      // The clash: a small star where the gazes meet, flickering and turning with motion.
+      const flick = this.motion ? 0.75 + 0.25 * Math.sin(t / 47) * Math.sin(t / 131) : 1;
+      const turn = this.motion ? t / 900 : Math.PI / 4;
+      const ray = cell * 0.19 * flick;
+      for (let k = 0; k < 4; k++) {
+        const ang = turn + (k * Math.PI) / 2;
+        g.moveTo(mx + Math.cos(ang) * ray * 0.35, my + Math.sin(ang) * ray * 0.35).lineTo(mx + Math.cos(ang) * ray, my + Math.sin(ang) * ray);
+      }
+      g.stroke({ width: Math.max(2, cell * 0.04), color: warn, alpha: 0.95, cap: 'round' });
+      g.circle(mx, my, cell * 0.16 * flick).fill({ color: hot, alpha: 0.35 });
+      g.circle(mx, my, cell * 0.085 * flick).fill({ color: hot, alpha: 0.95 });
+      g.circle(mx, my, cell * 0.04).fill({ color: warn, alpha: 1 });
+    }
+  }
+
   /** The dashed gold outline around the cells a hint names (one shape per touching group). */
   private drawOutline(because: ReadonlySet<number>): void {
     // Redraw only when the named cells change (a move with the same hint showing keeps its shape).
@@ -1020,6 +1150,8 @@ export class BoardView {
     }
     if (this.fliers.length > 0 || this.trails.length > 0) this.tickFlights(dt);
     if (this.haloFrom !== null) this.drawHalo();
+    // Conflict beams move every frame with motion on (fireflies are bobbing then anyway); still without.
+    if (this.beamSegs.length > 0 && (this.motion || this.beamSegs.some((b) => b.gone !== undefined))) this.paintBeams();
     // The reason outline breathes gently with motion on; still and full strength without.
     this.outline.alpha = this.motion ? 0.45 + 0.55 * (0.5 + 0.5 * Math.sin((this.time / 1200) * TAU)) : 1;
     this.ghosts = this.ghosts.filter((g) => {

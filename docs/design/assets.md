@@ -138,7 +138,7 @@ voice offline and fails if one is silent or clips.
 | Light spreads | The wash spreads tile by tile along row and column, then settles | All lit tiles appear at once |
 | Bush satisfied | Roses open (mushrooms: spores puff) | Roses shown open |
 | Too many | Bush slumps and drops petals | Shown slumped |
-| Conflict | Slow uneasy sway | Still; shiver lines and hatching stay |
+| Conflict | Slow uneasy sway; the beam between the pair shoots in, sparks stream toward the middle, the line quivers, a star flickers where they meet | Still; shiver lines, hatching, the beam and its star stay |
 | Solve | Sync flash, halo swells, light wave, bloom ripple with petals and motes, fireflies fly to the progress track and its dash turns gold; the card rises in with the bloom and takes taps from 1.1 s | Roses open, afterglow shown, fireflies stay on their tiles, the dash turns gold; card appears at once |
 | Ambient | Motes drift over the hills; ripples and koi in ponds | Still |
 | Map | Fireflies circle finished chapters; unlock flight along the path | Still; the new stop appears lit |

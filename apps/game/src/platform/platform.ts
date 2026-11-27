@@ -16,8 +16,9 @@ export interface Platform {
   showMidgame(): Promise<void>;
   /** Rewarded ad. True only if the ad played to the end; adapters resolve false on any failure rather than reject. */
   showRewarded(): Promise<boolean>;
+  /** Never rejects: an adapter swallows storage failures (quota, blocked storage) and resolves. */
   save(key: string, value: string): Promise<void>;
-  /** Untrusted: callers must validate whatever comes back. */
+  /** Untrusted: callers must validate whatever comes back. Never rejects: resolves null on failure. */
   load(key: string): Promise<string | null>;
   haptic?(kind: 'light' | 'success'): void;
   /** iOS and Android only. */

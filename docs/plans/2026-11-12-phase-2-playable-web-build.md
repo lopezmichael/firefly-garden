@@ -211,7 +211,13 @@ the same transitions are tested in Node and in Playwright.
       main-path level. Never throws.
 - [x] Fuzz test: random and hostile saves (prototype keys, huge numbers, wrong cells,
       unknown levels) never lock a wrong cell, never grant more than the cap, never crash.
-- [ ] `/security-review` on the save and storage code before it lands.
+- [x] `/security-review` on the save and storage code before it lands. *Done 2026-11-27* (a
+      dedicated review of save.ts, events.ts and the adapters): one real finding, fixed. A tampered
+      save or event log holding an object like `{"toString":1}` made `String()` throw, so the game
+      failed to open on every reload. Untrusted values are no longer stringified; the fuzz tests now
+      cover it (a mutation that brings the bug back fails them). Also: adapters must never reject
+      (documented; loading treats a rejection as empty), and an unreadable save is backed up before
+      a fresh start instead of only one from another version.
 
 ### D. Board renderer and juice (`view/`)
 
@@ -257,13 +263,16 @@ the same transitions are tested in Node and in Playwright.
       Chromebook). Waiting for the juice pass: pools and the particle cap (no particles yet), and
       batching the additive halos into one layer (fewer draw calls, but halos would then glow over
       neighbouring tiles, a look decision).
+      *2026-11-27:* the celebration added the capped pieces (trail motes capped at 160, one flier
+      per firefly, every particle destroyed by its tween). Still open: the 60 fps check on a real GPU.
 
 ### E. UI, layout, accessibility (`ui/`)
 
-- [ ] Tall band: top bar (area, chapter progress, coins) above the board, status card and
+- [x] Tall band: top bar (area, chapter progress, coins) above the board, status card and
       controls (undo, reset, hint with bank count) below. Wide band: the same in side
-      panels. Near-square band for foldables and tablets (see "Foldables").
-- [ ] Safe-area insets; every button at least 44 px; the board's cells sized from the
+      panels. Near-square band for foldables and tablets (see "Foldables"). *Done (bands in
+      `view/layout.ts`; the smoke test covers landscape and a fold).*
+- [x] Safe-area insets; every button at least 44 px; the board's cells sized from the
       viewport. **Known squeeze:** 8x8 on a 360 px-wide phone gives about 42 px cells, so
       the board gets no outer gutter in portrait; checked in a 360x740 screenshot.
 - [x] Garden map: the Rose Bed with chapter progress toward the next area, "Continue".
@@ -286,8 +295,9 @@ the same transitions are tested in Node and in Playwright.
       through a tap and two hints. *Now in the CI browser smoke test, for every message.*
 - [x] Settings: sound, reduced motion (defaults to `prefers-reduced-motion`, overridable),
       play log. *Sound On/Off added (milestone 3), saved, applied at load.*
-- [ ] First-level teaching: the one-line hint from the plan ("Tap a tile to place a
-      firefly"), no text tutorial.
+- [x] First-level teaching: the one-line hint from the plan ("Tap a tile to place a
+      firefly"), no text tutorial. *Done 2026-11-27 (flow plan C):* the first garden opens on
+      "Light up every dark path" with the tap line under it.
 - [x] Keyboard for desktop portals: arrows move a focus ring, space/enter toggles, Z undo,
       H hint. Board has an accessible label and a live region announcing "solved".
       *Done (milestone 3):* the ring follows the board as drawn (rotation-aware, skips cells outside
@@ -325,8 +335,9 @@ the same transitions are tested in Node and in Playwright.
 - [x] Ring buffer (last 2,000 events) saved through `Platform.save`; random install id
       from `crypto.getRandomValues` on first launch.
 - [x] Play log panel: levels played and solved, hints, copy-as-JSON.
-- [ ] Test: a scripted play-through emits a valid event stream whose `level_end` rows
-      match the play (counts, outcome, reason, attempt).
+- [x] Test: a scripted play-through emits a valid event stream whose `level_end` rows
+      match the play (counts, outcome, reason, attempt). *Done 2026-11-27 (smoke test):* a solve with
+      an undo, Next, then a quit to the map; every event passes `validateEvent` and matches the play.
 
 ### H. Platform adapter
 
@@ -348,15 +359,16 @@ the same transitions are tested in Node and in Playwright.
       pinned to 1.63.0, the version of the Chromium preinstalled in Claude's cloud sessions.
       No garden in this build is non-square, so the board never turns in play; rot90 is covered by
       the display-mapping unit tests, and the fold test asserts the board stays upright.
-- [ ] Screenshots for review: 390x844, 360x740, 844x390, 1280x720, iPhone Duo inner
+- [x] Screenshots for review: 390x844, 360x740, 844x390, 1280x720, iPhone Duo inner
       626x890 and 890x626, outer 470x670; reduced motion on; each juice moment; a short
-      clip of a solve; the fold/unfold resize test.
+      clip of a solve; the fold/unfold resize test. *Done across the milestones (shared in the
+      sessions and PRs); the smoke test covers the fold.*
 - [x] Bundle stays well under 8 MB (expect ~1 MB with Pixi and fonts).
 - [x] New ratchets in `tests/ratchets.test.ts`:
       - `apps/game/src/state` imports only `@firefly/core` and itself
       - no color literals (`#rrggbb`, `0xrrggbb`, `rgb(`) in `apps/game/src` outside `theme.css`
       - economy numbers appear only in `PLAYER_CONFIG` (game reads, never restates)
-- [ ] Reviews per CLAUDE.md before each substantive commit; `/security-review` for saves,
+- [x] Reviews per CLAUDE.md before each substantive commit; `/security-review` for saves,
       storage and the ad placeholder flow.
 - [ ] Living docs: ARCHITECTURE (game layers), rules.md (hint reasons, locked cells as
       implemented), analytics.md (where the local log lives), CHANGELOG, ROADMAP.
@@ -377,11 +389,14 @@ Two things confused him on first play, plus two ideas worth keeping.
 1. **Light crossing light reads as wrong.** It is allowed (only fireflies may not see each other),
    but the status line "Fireflies in the same row or column need a bush between them" invites the
    misreading "light can't overlap". Planned, all in the open look:
-   - [ ] On a conflict, draw a pink beam between the two fireflies that see each other (the broken
+   - [x] On a conflict, draw a pink beam between the two fireflies that see each other (the broken
          rule made visible), not only a pink tint on each. *Logic done:* `conflictPairs` (core) gives
          the nearest pairs, cross-checked against `evaluate` on every shipped level; screen readers
-         already hear the pair. The beam itself waits for the design.
-   - [ ] Tiles lit by two beams look a touch brighter, so crossing reads as fine. *Logic done:*
+         already hear the pair. *Done 2026-11-27:* "crossed gazes": two streaks shoot from the
+         fireflies and meet; sparks stream from each toward the middle, the line quivers like a
+         plucked string, and a small star flickers where the gazes clash. Reduced motion: the line
+         and the star, still.
+   - [x] Tiles lit by two beams look a touch brighter, so crossing reads as fine. *Logic done:*
          `lightCounts` / `crossings` (core). Drawing waits for the design.
    - [x] A one-line tip the first time beams cross in the opening levels: "Light can cross. Only
          fireflies can't see each other." *Done (milestone 3):* chapter 1 only, once per install

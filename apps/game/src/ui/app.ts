@@ -8,7 +8,7 @@ import { EVENT_LOG_KEY, EventLog, parseEventLog } from '../state/events.ts';
 import type { EventBody } from '../state/events.ts';
 import { Play } from '../state/play.ts';
 import type { ShownHint } from '../state/play.ts';
-import { DEFAULT_SETTINGS, MAX_PARKED, newInstallId, parseSave, SAVE_KEY, serializeSave } from '../state/save.ts';
+import { DEFAULT_SETTINGS, MAX_PARKED, MAX_SAVE_CHARS, newInstallId, parseSave, SAVE_KEY, serializeSave } from '../state/save.ts';
 import type { CurrentPlay, MotionSetting, SaveData, Settings } from '../state/save.ts';
 import { Session } from '../state/session.ts';
 import { cuesFor } from '../state/cues.ts';
@@ -223,13 +223,22 @@ export class GameApp {
 
   private async loadStored(): Promise<Stored> {
     const now = Date.now();
-    const [rawSave, rawEvents] = await Promise.all([this.platform.load(SAVE_KEY), this.platform.load(EVENT_LOG_KEY)]);
+    // Adapters must never reject, but a failing one must not stop the garden opening: treat it as empty.
+    const load = (key: string) => this.platform.load(key).catch(() => null);
+    const [rawSave, rawEvents] = await Promise.all([load(SAVE_KEY), load(EVENT_LOG_KEY)]);
     const freshId = () => newInstallId((n) => crypto.getRandomValues(new Uint8Array(n)));
     const parsed = parseSave(rawSave, this.catalog, now, freshId);
     // Problems mean a corrupt or edited save; the parser already fell back safely.
     if (parsed.problems.length > 0) console.warn('Saved progress had problems:', parsed.problems);
-    // A save from another build version is kept aside before this build starts fresh over it.
-    if (parsed.unknownVersion && rawSave !== null) await this.platform.save(`${SAVE_KEY}-backup`, rawSave);
+    // A save this build can't use is kept aside before this build starts fresh over it, so a
+    // player's progress is never silently overwritten. One slot: a save from another version always
+    // takes it; an unreadable one only if the slot is empty, so junk never replaces a real backup.
+    // Empty and oversized ones aren't copied (they would only fill storage).
+    const backupKey = `${SAVE_KEY}-backup`;
+    if (parsed.data === null && rawSave && rawSave.length <= MAX_SAVE_CHARS
+      && (parsed.unknownVersion || !(await load(backupKey)))) {
+      await this.platform.save(backupKey, rawSave).catch(() => undefined);
+    }
     const install = parsed.data?.install ?? freshId();
     return { save: parsed.data, install, events: parseEventLog(rawEvents, new Set(this.catalog.levels.keys()), install) };
   }

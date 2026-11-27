@@ -5,6 +5,13 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Added
+- The conflict beam ("crossed gazes"), from Michael's 2026-11-12 feedback. When two fireflies see each other (once the second has landed), two streaks shoot out of their glowing tails, each with a small glow where the gaze leaves, and meet in the middle; sparks then stream from each toward the meeting point, the line quivers like a plucked string, and a small star flickers where the gazes clash. When the conflict clears, the beam pulls back into the fireflies. The broken rule is visible, not just a tint on each firefly. Reduced motion shows the line and the star, still.
+- A smoke test plays a garden (with an undo), moves on and quits the next to the map, then checks every logged event passes the schema and matches the play.
+
+### Fixed
+- **A tampered save or event log could stop the game from opening.** A value like `{"toString":1}` made the parsers throw, and the bad data stayed in storage, so every reload failed. Untrusted values are no longer stringified, and the fuzz tests now cover it.
+- **Loading treats a failing storage adapter as empty** instead of failing to start.
+- **An unreadable save is backed up** before a fresh start (before, only a save from another version was).
 - The game's sounds, picked on a sound audition page (three synthesized takes per moment).
   - **Ten voices, still no audio files:** glass note, soft breath, wind chime, two bells, wood taps, hollow knock, four notes and a glow, tiny tick, warm bloom, sparkle trail.
   - **A small generated reverb** gives them a garden-at-night room.
