@@ -57,8 +57,7 @@ about the code today.
 - **Plan first, replan when it breaks.** Non-trivial work gets a plan; multi-session
   work gets a `docs/plans/YYYY-MM-DD-<topic>.md` with checkboxes, ticked as work lands.
 - **Branching.** Feature branches into `develop`; Claude opens the `develop` → `main`
-  release PR; Michael merges. Never merge to `main` locally. (`develop` does not exist yet;
-  create it from `main` when the first feature branch is ready to land.)
+  release PR; Michael merges. Never merge to `main` locally.
   Conventional commits that explain why.
 - **Commit or push only when asked.**
 - **CI** (`.github/workflows/ci.yml`) on PRs and pushes to `main`/`develop`: typecheck,
