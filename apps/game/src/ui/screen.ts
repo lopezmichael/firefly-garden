@@ -4,6 +4,10 @@ import type { CompleteView } from './complete.ts';
 import { coin, icon, LANTERN_LIGHTS, lantern, moon } from './icons.ts';
 import { hillsFor, HILLS } from '../view/layout.ts';
 import { drawScenery } from '../view/art/scenery.ts';
+import { coinFlight, crossSky, SKY_MS } from './flight.ts';
+
+/** How long the coins take to fly from the complete card's chip to the coin pill. */
+const COIN_FLIGHT_MS = 560;
 import type { Palette } from '../view/theme.ts';
 
 /**
@@ -59,6 +63,12 @@ export class PlayScreen {
   private readonly complete: CompleteCard;
   private readonly scene = el('canvas', 'ff-scene');
   private readonly motes = el('div', 'ff-motes');
+  /** The crescent moon: it travels across the sky through a chapter, and a tap sends a firefly by. */
+  private readonly moon = moon();
+  /** How far through its chapter the current garden is, 0 (first) to 1 (last). */
+  private moonProgress = 0;
+  /** A firefly is crossing the sky: a moon tap meanwhile does nothing (no pile-up from rapid taps). */
+  private skyBusy = false;
   private sceneFrame = 0;
   private sceneDpr = 0;
   private resolutionQuery: MediaQueryList | null = null;
@@ -68,7 +78,15 @@ export class PlayScreen {
     // the crescent moon and drifting motes as DOM over it.
     const sky = el('div', 'ff-sky');
     sky.setAttribute('aria-hidden', 'true');
-    sky.append(this.scene, moon(), this.motes);
+    sky.append(this.scene, this.moon, this.motes);
+    // The moon sits behind the play screen's layers, so a tap on it is found by where it lands.
+    this.root.addEventListener('click', (e) => {
+      // Only taps on the play screen itself: not controls, the board, or anything over it (the map,
+      // the chapter card, a sheet's backdrop), all of which sit inside this root too.
+      if (e.target instanceof Element && e.target.closest('button, a, input, .ff-board, .ff-map, .ff-chapter-layer, .ff-backdrop')) return;
+      const r = this.moon.getBoundingClientRect(), pad = 10;
+      if (e.clientX >= r.left - pad && e.clientX <= r.right + pad && e.clientY >= r.top - pad && e.clientY <= r.bottom + pad) this.moonTapped();
+    });
     for (let i = 0; i < HILLS.motes; i++) {
       const m = el('span', 'ff-mote');
       m.style.setProperty('--ff-mote-delay', `${(-i * 1.3).toFixed(1)}s`);
@@ -186,6 +204,8 @@ export class PlayScreen {
       if (p && m instanceof HTMLElement) m.style.transform = `translate(${p.x.toFixed(0)}px, ${p.y.toFixed(0)}px)`;
     });
     this.motes.dataset.placed = '';
+    // The layout changed: the room between the title and the moon may have too.
+    this.placeMoon();
     this.watchResolution();
   }
 
@@ -208,9 +228,54 @@ export class PlayScreen {
     this.root.dataset.motion = reduced ? 'reduced' : 'full';
   }
 
+  /**
+   * The moon travels through a chapter (rewards plan, "the moon travels"): from its place at the
+   * first garden, leftward toward the end of the area title and a little lower, garden by garden,
+   * warming toward gold, so the chapter's end feels near without a bar. Measured, so it never
+   * overlaps the title; it glides there (CSS), or lands there at once under reduced motion.
+   */
+  private placeMoon(): void {
+    const p = this.moonProgress;
+    // Its resting place, untouched by the travel transform (which may be mid-glide): the sky's
+    // left edge plus the moon's own left offset, which transforms never change.
+    const sky = this.moon.parentElement?.getBoundingClientRect();
+    const baseLeft = sky ? sky.left + Number.parseFloat(getComputedStyle(this.moon).left) : NaN;
+    const range = document.createRange();
+    range.selectNodeContents(this.title);
+    const titleRight = range.getBoundingClientRect().right;
+    // Nothing to measure against (the title is hidden, as in the wide band under the complete card,
+    // or nothing is laid out yet): leave the moon where it is rather than sending it home.
+    if (!Number.isFinite(baseLeft) || titleRight <= 0 || this.moon.getBoundingClientRect().width === 0) return;
+    // Room between the title's last letter and where the moon sits with no travel. Where there is
+    // little (the wide band's side panel, the moon right beside the title), it sinks down the sky instead.
+    const room = Math.max(0, baseLeft - titleRight - 16);
+    const across = room >= 24;
+    this.moon.style.setProperty('--ff-moon-x', `${(across ? -room * p : 0).toFixed(1)}px`);
+    this.moon.style.setProperty('--ff-moon-y', `${(across ? 12 * p - 10 * Math.sin(Math.PI * p) : 64 * p).toFixed(1)}px`);
+    this.moon.style.setProperty('--ff-moon-warm', p.toFixed(2));
+  }
+
+  /** Tap the moon: a firefly crosses the sky (with motion only; it changes nothing). */
+  private moonTapped(): void {
+    if (this.root.dataset.motion === 'reduced' || this.skyBusy) return;
+    const r = this.moon.getBoundingClientRect(), w = this.root.clientWidth;
+    const y = r.top + r.height * 0.6;
+    const leftToRight = r.left + r.width / 2 > w / 2;
+    const from = { x: leftToRight ? -30 : w + 30, y: y + 28 }, to = { x: leftToRight ? w + 30 : -30, y: y - 6 };
+    this.skyBusy = true;
+    crossSky(this.root, from, to, () => { this.skyBusy = false; });
+    // A hidden tab can hold the animation: never leave the moon unresponsive.
+    setTimeout(() => { this.skyBusy = false; }, SKY_MS + 800);
+  }
+
   setChapter(label: string, title: string, dots: readonly ('done' | 'now' | 'todo')[]): void {
     this.chapterLabel.textContent = label;
     this.title.textContent = title;
+    // The moon's place: the current garden's (or, for a bonus garden, the gardens done so far).
+    const now = dots.indexOf('now');
+    const at = now >= 0 ? now : dots.filter((d) => d === 'done').length;
+    this.moonProgress = dots.length <= 1 ? 0 : Math.min(1, at / (dots.length - 1));
+    this.placeMoon();
     this.dots.replaceChildren(...dots.map((d) => {
       const s = el('span', 'ff-dot');
       s.dataset.state = d;
@@ -250,15 +315,32 @@ export class PlayScreen {
       return;
     }
     this.coins.textContent = String(before);
+    // Coins fly from the card's chip into the pill (rewards plan), then the pill counts up.
+    const flyAt = Math.max(0, afterMs - COIN_FLIGHT_MS);
     this.coinTimer = setTimeout(() => {
-      this.coinTimer = null;
-      this.coins.textContent = String(after);
-      const pill = this.coins.parentElement;
-      if (!pill) return;
+      const from = this.complete.chipCenter(), pill = this.coins.parentElement;
+      const r = pill?.getBoundingClientRect();
+      if (from && r && r.width > 0) coinFlight(this.root, from, { x: r.left + 18, y: r.top + r.height / 2 }, COIN_FLIGHT_MS);
+      this.coinTimer = setTimeout(() => this.countUp(before, after), afterMs - flyAt);
+    }, flyAt);
+  }
+
+  /** The pill counts up from `before` to `after` with a small bump (the coins have landed). */
+  private countUp(before: number, after: number): void {
+    const pill = this.coins.parentElement;
+    if (pill) {
       delete pill.dataset.bump;
       void pill.offsetWidth;
       pill.dataset.bump = 'true';
-    }, afterMs);
+    }
+    const steps = Math.min(10, Math.max(1, after - before));
+    let k = 0;
+    const tick = () => {
+      k++;
+      this.coins.textContent = String(k >= steps ? after : Math.round(before + ((after - before) * k) / steps));
+      this.coinTimer = k >= steps ? null : setTimeout(tick, 32);
+    };
+    tick();
   }
 
   setCoins(coins: number, hintCost: number, bank: number): void {

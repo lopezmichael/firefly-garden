@@ -79,6 +79,8 @@
 
   --ff-font-display: 'Young Serif', Georgia, serif;
   --ff-font-body: 'Figtree', system-ui, sans-serif;
+  /* The garden code: characters that must read apart (l, 1, I). */
+  --ff-font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 }
 
 html, body {

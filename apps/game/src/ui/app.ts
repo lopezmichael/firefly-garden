@@ -8,7 +8,7 @@ import { EVENT_LOG_KEY, EventLog, parseEventLog } from '../state/events.ts';
 import type { EventBody } from '../state/events.ts';
 import { Play } from '../state/play.ts';
 import type { ShownHint } from '../state/play.ts';
-import { DEFAULT_SETTINGS, MAX_PARKED, newInstallId, parseSave, SAVE_KEY, serializeSave } from '../state/save.ts';
+import { DEFAULT_SETTINGS, MAX_PARKED, MAX_SAVE_CHARS, newInstallId, parseSave, SAVE_KEY, serializeSave } from '../state/save.ts';
 import type { CurrentPlay, MotionSetting, SaveData, Settings } from '../state/save.ts';
 import { Session } from '../state/session.ts';
 import { cuesFor } from '../state/cues.ts';
@@ -19,6 +19,9 @@ import type { Notice, StatusText } from '../state/status.ts';
 import { conflictWords, crossTipDue } from '../state/teach.ts';
 import type { TipId } from '../state/teach.ts';
 import { Wallet } from '../state/wallet.ts';
+import { CODE_MESSAGES, readGardenCode, writeGardenCode } from '../state/gardenCode.ts';
+import { browserCodec } from './deflate.ts';
+import type { CodeCheck } from './sheets.ts';
 import { BoardView } from '../view/board.ts';
 import { CELEBRATION } from '../view/art/geometry.ts';
 import { bandFor, canonicalCell, displayCell, displayDims, keepOrTurn, keyAction, orientFor, stepFocus } from '../view/layout.ts';
@@ -73,6 +76,7 @@ export interface E2EHooks {
   voices(): Promise<Record<string, { peak: number; rms: number }>>;
   /** Record these gardens as solved (to reach a chapter's last garden quickly), and save. */
   markSolved(ids: string[]): void;
+  isSolved(id: string): boolean;
   platform: TestPlatform;
 }
 
@@ -104,7 +108,7 @@ export class GameApp {
   private opening: StatusText | null = null;
   /** When (Date.now()) the current garden was solved, until the player moves on (for `continue`). */
   private solvedAt: number | null = null;
-  private readonly chapterCard = new ChapterCard(() => void this.startNextChapter());
+  private readonly chapterCard = new ChapterCard(() => void this.startNextChapter(), () => void this.doubleChapterBonus());
   /** The solve just finished this chapter (index): Next becomes Finish the chapter. */
   private chapterMoment: number | null = null;
   /** Bumped by anything that cuts the chapter sequence short (a new level, the map closing). */
@@ -114,6 +118,10 @@ export class GameApp {
   /** Lights the solved garden's dash if no released firefly landed on it (a cut-short celebration). */
   private progressTimer: ReturnType<typeof setTimeout> | null = null;
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
+  /** A garden code's save, checked and waiting for the player's yes. */
+  private pendingCode: SaveData | null = null;
+  /** Set once a garden code is being written over this garden: nothing else may save over it. */
+  private replacing = false;
   /** Visible time in the current analytics session (hidden stretches excluded). */
   private sessionVisibleMs = 0;
   private visibleSince: number | null = null;
@@ -169,6 +177,10 @@ export class GameApp {
       sound: (on) => this.setSound(on),
       motion: (m) => this.setMotion(m),
       copyLog: () => this.copyLog(),
+      copyCode: () => this.copyCode(),
+      checkCode: (text) => this.checkCode(text),
+      useCode: () => this.useCode(),
+      forgetCode: () => { this.pendingCode = null; },
     });
     this.settingsSheet.onClose = () => this.resumeClock();
   }
@@ -223,13 +235,22 @@ export class GameApp {
 
   private async loadStored(): Promise<Stored> {
     const now = Date.now();
-    const [rawSave, rawEvents] = await Promise.all([this.platform.load(SAVE_KEY), this.platform.load(EVENT_LOG_KEY)]);
+    // Adapters must never reject, but a failing one must not stop the garden opening: treat it as empty.
+    const load = (key: string) => this.platform.load(key).catch(() => null);
+    const [rawSave, rawEvents] = await Promise.all([load(SAVE_KEY), load(EVENT_LOG_KEY)]);
     const freshId = () => newInstallId((n) => crypto.getRandomValues(new Uint8Array(n)));
     const parsed = parseSave(rawSave, this.catalog, now, freshId);
     // Problems mean a corrupt or edited save; the parser already fell back safely.
     if (parsed.problems.length > 0) console.warn('Saved progress had problems:', parsed.problems);
-    // A save from another build version is kept aside before this build starts fresh over it.
-    if (parsed.unknownVersion && rawSave !== null) await this.platform.save(`${SAVE_KEY}-backup`, rawSave);
+    // A save this build can't use is kept aside before this build starts fresh over it, so a
+    // player's progress is never silently overwritten. One slot: a save from another version always
+    // takes it; an unreadable one only if the slot is empty, so junk never replaces a real backup.
+    // Empty and oversized ones aren't copied (they would only fill storage).
+    const backupKey = `${SAVE_KEY}-backup`;
+    if (parsed.data === null && rawSave && rawSave.length <= MAX_SAVE_CHARS
+      && (parsed.unknownVersion || !(await load(backupKey)))) {
+      await this.platform.save(backupKey, rawSave).catch(() => undefined);
+    }
     const install = parsed.data?.install ?? freshId();
     return { save: parsed.data, install, events: parseEventLog(rawEvents, new Set(this.catalog.levels.keys()), install) };
   }
@@ -268,13 +289,14 @@ export class GameApp {
   }
 
   private scheduleSave(): void {
-    if (this.saveTimer !== null) return;
+    if (this.saveTimer !== null || this.replacing) return;
     this.saveTimer = setTimeout(() => this.flushSave(), SAVE_DELAY_MS);
   }
 
   private flushSave(): void {
     if (this.saveTimer !== null) clearTimeout(this.saveTimer);
     this.saveTimer = null;
+    if (this.replacing) return;
     void this.platform.save(SAVE_KEY, serializeSave(this.snapshot(), this.catalog));
     void this.platform.save(EVENT_LOG_KEY, this.log.serialize());
   }
@@ -359,7 +381,9 @@ export class GameApp {
     if (this.adShowing || this.hintSheet.isOpen || this.settingsSheet.isOpen) return;
     this.play?.pause();
     const s = this.log.summary();
-    this.settingsSheet.open({ sound: this.settings.sound, motion: this.settings.motion, played: s.played, solved: s.solved, hints: s.hints });
+    this.settingsSheet.open({ sound: this.settings.sound, motion: this.settings.motion, played: s.played, solved: s.solved, hints: s.hints,
+      canCarry: this.session.progress.history.length > 0 || this.session.progress.solved.size > 0,
+      codes: browserCodec.supported });
   }
 
   private async copyLog(): Promise<boolean> {
@@ -371,6 +395,70 @@ export class GameApp {
       console.warn('Copy failed:', err);
       return false;
     }
+  }
+
+  // ---------------------------------------------------------------- garden code
+
+  private async copyCode(): Promise<{ code: string; copied: boolean } | null> {
+    let code: string;
+    try {
+      code = await writeGardenCode(this.snapshot(), this.catalog, browserCodec);
+    } catch (err) {
+      // No CompressionStream (an old browser): say so on the button rather than fail silently.
+      console.warn('Garden code failed:', err);
+      return null;
+    }
+    try {
+      await navigator.clipboard.writeText(code);
+      return { code, copied: true };
+    } catch {
+      // Refused (a portal's frame, permissions): the sheet shows the code to copy by hand.
+      return { code, copied: false };
+    }
+  }
+
+  private async checkCode(text: string): Promise<CodeCheck> {
+    this.pendingCode = null;
+    const device = { install: this.install, session: this.log.session, settings: this.settings };
+    const r = await readGardenCode(text, this.catalog, Date.now(), device, browserCodec);
+    if (!r.ok) return { ok: false, message: CODE_MESSAGES[r.why] };
+    // Problems mean parts of the code were dropped (a level this build doesn't have); the rest is safe to use.
+    if (r.problems.length > 0) console.warn('Garden code had problems:', r.problems);
+    this.pendingCode = r.save;
+    return {
+      ok: true,
+      here: { solved: this.session.progress.solved.size, coins: this.wallet.coins },
+      there: { solved: r.save.solved.size, coins: r.save.coins },
+    };
+  }
+
+  /**
+   * Write the code's garden over this one and reload: the game then opens it through the same
+   * validated load path as any save, with no half-replaced state in memory.
+   */
+  private async useCode(): Promise<boolean> {
+    const save = this.pendingCode;
+    if (!save || this.replacing) return false;
+    this.replacing = true;
+    if (this.saveTimer !== null) clearTimeout(this.saveTimer);
+    this.saveTimer = null;
+    const load = (key: string) => this.platform.load(key).catch(() => null);
+    const raw = serializeSave(save, this.catalog);
+    // A player's garden is never silently lost: this one goes to the backup slot first (the same
+    // slot a save from another version is kept in), so a wrong code can still be recovered.
+    await this.platform.save(`${SAVE_KEY}-backup`, serializeSave(this.snapshot(), this.catalog)).catch(() => undefined);
+    // The play log stays this device's; write it out so nothing logged so far is lost. (The
+    // reload's own session_end is dropped: nothing may save once replacing.)
+    await this.platform.save(EVENT_LOG_KEY, this.log.serialize()).catch(() => undefined);
+    await this.platform.save(SAVE_KEY, raw).catch(() => undefined);
+    // Storage can refuse quietly (full, private mode): reload only once the new garden is really there.
+    if ((await load(SAVE_KEY)) !== raw) {
+      this.replacing = false;
+      this.scheduleSave();
+      return false;
+    }
+    window.location.reload();
+    return true;
   }
 
   private updateBand(): void {
@@ -585,6 +673,7 @@ export class GameApp {
           { value: String(this.wallet.coins), label: 'coins saved' },
         ] as const,
         bonus,
+        doubler: this.platform.rewardedAds && bonus > 0,
         action: 'See the garden map',
       }
       : {
@@ -596,6 +685,7 @@ export class GameApp {
           { value: String(totals.hints), label: 'hints used' },
         ] as const,
         bonus,
+        doubler: this.platform.rewardedAds && bonus > 0,
         action: `Start chapter ${index + 2}`,
       };
     this.chapterCard.show(view);
@@ -613,7 +703,8 @@ export class GameApp {
    * build's last chapter the card's button only shows the map.
    */
   private async startNextChapter(): Promise<void> {
-    if (!this.chapterCard.isOpen) return;
+    // Never while the doubler's ad plays: the next garden (and its clock) would start under it.
+    if (!this.chapterCard.isOpen || this.adShowing) return;
     const run = ++this.chapterRun;
     const index = this.chapterIndex;
     this.chapterCard.hide();
@@ -788,21 +879,7 @@ export class GameApp {
     if (choice === 'pay') {
       source = this.wallet.payForHint();
     } else if (choice === 'ad' && this.platform.rewardedAds) {
-      const started = Date.now();
-      this.adShowing = true;
-      this.audio.setMuted('ad', true);
-      let completed = false;
-      try {
-        completed = await this.platform.showRewarded();
-      } catch (err) {
-        // An adapter that rejects instead of resolving false (real SDKs do): no credit, carry on.
-        console.warn('Rewarded ad failed:', err);
-        completed = false;
-      } finally {
-        this.adShowing = false;
-        this.audio.setMuted('ad', false);
-      }
-      this.emit({ type: 'ad', kind: 'rewarded', completed, seconds: Math.round((Date.now() - started) / 1000) });
+      const completed = await this.watchRewarded();
       // Credited only when the ad finished (rules.md); a failed or skipped ad charges and credits nothing.
       if (completed && this.play === play && !play.solved) {
         this.wallet.creditAd();
@@ -860,8 +937,9 @@ export class GameApp {
     const cardDelay = starts === null ? 0 : Math.round(starts + CELEBRATION.cardDelay);
     const cardReady = starts === null ? 0 : Math.round(starts + CELEBRATION.cardReady);
     this.solvedAt = Date.now();
-    // The +10 lands in the coin pill as the card's chip rises (its CSS: 400 ms after the card).
-    this.screen.landCoins(before, before + garden, starts === null ? 0 : cardDelay + 700);
+    // The +10 flies from the card's chip once it has risen in (its CSS: 400 ms after the card, over
+    // 700 ms), then lands in the coin pill, which counts up.
+    this.screen.landCoins(before, before + garden, starts === null ? 0 : cardDelay + 1150 + 560);
     // Without a celebration no firefly flies to the progress track: the dash turns gold now. With
     // one, it turns gold as the first lands; and once the last is due it is gold whatever happened
     // (reduced motion switched on, a resize cancelling the flights, the map opened).
@@ -1086,6 +1164,7 @@ export class GameApp {
         for (const id of ids) this.session.record({ levelId: id, reason: 'main', solved: true, seconds: 20, hints: 0, endedAt: Date.now() });
         this.flushSave();
       },
+      isSolved: (id) => this.session.isSolved(id),
       platform: this.platform as TestPlatform,
     };
   }
@@ -1105,6 +1184,54 @@ export class GameApp {
       this.audio.play('land');
     });
     return true;
+  }
+
+  /**
+   * Show one rewarded ad: sound muted and the game blocked while it plays, logged as an `ad` event.
+   * True only if it played to the end; an adapter that rejects (real SDKs do) counts as not finished.
+   */
+  private async watchRewarded(): Promise<boolean> {
+    const started = Date.now();
+    this.adShowing = true;
+    this.audio.setMuted('ad', true);
+    let completed = false;
+    try {
+      completed = await this.platform.showRewarded();
+    } catch (err) {
+      console.warn('Rewarded ad failed:', err);
+      completed = false;
+    } finally {
+      this.adShowing = false;
+      this.audio.setMuted('ad', false);
+    }
+    this.emit({ type: 'ad', kind: 'rewarded', completed, seconds: Math.round((Date.now() - started) / 1000) });
+    return completed;
+  }
+
+  /**
+   * The chapter card's "double it" (rewards plan): an optional rewarded ad that pays the chapter
+   * bonus once more. Only a finished ad pays; a cancelled one leaves the offer up. Once per card.
+   */
+  private async doubleChapterBonus(): Promise<void> {
+    if (!this.chapterCard.isOpen || !this.platform.rewardedAds || this.adShowing) return;
+    const run = this.chapterRun;
+    this.chapterCard.doubling(true);
+    const completed = await this.watchRewarded();
+    if (run !== this.chapterRun || !this.chapterCard.isOpen) {
+      // The sequence moved on meanwhile: a garden that opened under the ad gets its clock back.
+      this.resumeClock();
+      return;
+    }
+    if (!completed) {
+      this.chapterCard.doubling(false);
+      return;
+    }
+    this.wallet.creditDoubler();
+    const bonus = this.wallet.economy.chapterBonus ?? 0;
+    this.chapterCard.doubled(bonus * 2, this.wallet.coins);
+    this.mapScreen.setCoins(this.wallet.coins);
+    this.screen.announce(`Chapter bonus doubled: ${bonus * 2} coins.`);
+    this.flushSave();
   }
 
   /** Animate a firefly between the jar and a tile. False when skipped (reduced motion, no layout). */

@@ -23,6 +23,11 @@ export const FIREFLY_SVG = '<svg viewBox="0 0 30 30">'
   + '<path class="ff-flier-feelers" d="M14.3 9 q-0.8 -3 -3 -3.4 q-1 0 -0.6 0.8 M15.7 9 q0.8 -3 3 -3.4 q1 0 0.6 0.8"></path>'
   + '</svg>';
 
+// Constant markup, never game or player data: the coin icon (icons.ts), styled by its classes.
+const COIN_SVG = '<svg viewBox="0 0 24 24" class="ff-coin">'
+  + '<circle class="ff-coin-disc" cx="12" cy="12" r="10"></circle><circle class="ff-coin-rim" cx="12" cy="12" r="7.6"></circle>'
+  + '<path class="ff-coin-spiral" d="M12 12 m-0.8 0 a1.2 1.2 0 1 1 2 1 a2.4 2.4 0 1 1 -3.7 -2.1 a3.7 3.7 0 1 1 5.5 3.5"></path></svg>';
+
 const live = new Set<Animation>();
 
 /** Stop every flight now (level change, resize): their screen positions no longer apply. */
@@ -44,9 +49,47 @@ export function release(layer: HTMLElement, from: Point, to: Point, gold: boolea
   // Leave the tile at the board firefly's size (its drawing spans about 0.75 of a cell, the
   // flier's 34 px box about 0.9 of its own), and shrink to a small light by the track.
   const start = Math.max(1, (cellPx * 0.75) / (34 * 0.9)), end = 0.35;
-  const path = releasePath(from, to, phase);
+  flyAlong(layer, releasePath(from, to, phase), RELEASE_MS, gold, (f) => start + (end - start) * Math.pow(f, 0.6), arrive);
+}
+
+/** A firefly crossing the night sky with its trail (tap the moon), viewport pixels. */
+export const SKY_MS = 2600;
+export function crossSky(layer: HTMLElement, from: Point, to: Point, done: () => void): void {
+  flyAlong(layer, flightPath(from, to, 28, 60), SKY_MS, false, () => 0.75, done, true, done);
+}
+
+/** Three coins hop from the complete card's chip into the coin pill, one after another. */
+export function coinFlight(layer: HTMLElement, from: Point, to: Point, duration: number): void {
+  for (let k = 0; k < 3; k++) {
+    const sprite = document.createElement('div');
+    sprite.className = 'ff-coin-flier';
+    sprite.setAttribute('aria-hidden', 'true');
+    // Constant markup (the coin icon), never game or player data.
+    sprite.innerHTML = COIN_SVG;
+    layer.append(sprite);
+    const path = flightPath({ x: from.x + (k - 1) * 8, y: from.y }, to, 16, 70 + k * 12);
+    const last = path.length - 1;
+    const frames = path.map((p, i) => ({
+      transform: `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) scale(${(1 - 0.3 * (i / last)).toFixed(2)})`,
+      opacity: i === 0 ? 0 : i === last ? 0.2 : 1,
+    }));
+    const a = sprite.animate(frames, { duration: duration - 2 * 70, delay: k * 70, easing: 'cubic-bezier(0.5, 0, 0.75, 0.6)', fill: 'both' });
+    track(a, () => sprite.remove());
+    setTimeout(() => sprite.remove(), duration + 600);
+  }
+}
+
+/**
+ * One firefly along `path` with a comet trail of glints behind it. `scale(f)` sizes it at each
+ * point (f from 0 to 1); it fades out at the end (and in at the start if `fadeIn`). `arrive` runs
+ * when it finishes (not when cancelled). Every sprite removes itself.
+ */
+function flyAlong(
+  layer: HTMLElement, path: Point[], duration: number, gold: boolean, scale: (f: number) => number, arrive: () => void, fadeIn = false,
+  cancelled?: () => void,
+): void {
   const last = path.length - 1;
-  const at = (p: Point, scale: number) => `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) scale(${scale.toFixed(2)})`;
+  const at = (p: Point, sc: number) => `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) scale(${sc.toFixed(2)})`;
   const sprites: HTMLElement[] = [];
   const easing = 'cubic-bezier(0.45, 0, 0.55, 1)';
   for (let k = TRAIL; k >= 1; k--) {
@@ -60,7 +103,7 @@ export function release(layer: HTMLElement, from: Point, to: Point, gold: boolea
       transform: at(p, (1 - k / (TRAIL + 2)) * (i === last ? 0.4 : 1)),
       opacity: i === 0 || i === last ? 0 : fade,
     }));
-    const a = glint.animate(frames, { duration: RELEASE_MS, delay: k * 38, easing, fill: 'both' });
+    const a = glint.animate(frames, { duration, delay: k * 38, easing, fill: 'both' });
     track(a, () => glint.remove());
   }
   const sprite = document.createElement('div');
@@ -71,14 +114,15 @@ export function release(layer: HTMLElement, from: Point, to: Point, gold: boolea
   layer.append(sprite);
   sprites.push(sprite);
   const frames = path.map((p, i) => ({
-    transform: at(p, start + (end - start) * Math.pow(i / last, 0.6)),
-    opacity: i === last ? 0 : 1,
+    transform: at(p, scale(i / last)),
+    opacity: i === last || (fadeIn && i === 0) ? 0 : 1,
   }));
-  const anim = sprite.animate(frames, { duration: RELEASE_MS, easing });
+  const anim = sprite.animate(frames, { duration, easing });
   anim.onfinish = () => arrive();
+  if (cancelled) anim.oncancel = () => cancelled();
   track(anim, () => sprite.remove());
   // Backstop: a hidden tab can hold the animation timeline; never leave a sprite behind.
-  setTimeout(() => sprites.forEach((s) => s.remove()), RELEASE_MS + TRAIL * 38 + 600);
+  setTimeout(() => sprites.forEach((s) => s.remove()), duration + TRAIL * 38 + 600);
 }
 
 /** Keep `anim` cancellable by `cancelFlights`, running `done` once it finishes or is cancelled. */

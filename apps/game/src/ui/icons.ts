@@ -24,6 +24,8 @@ const ICONS = {
   locked: '<rect x="6" y="11" width="12" height="9" rx="2" stroke-width="1.9"></rect><path d="M8.5 11 V8.5 a3.5 3.5 0 0 1 7 0 V11" stroke-width="1.9"></path><circle class="ff-i-ink" cx="12" cy="15.5" r="1.3"></circle>',
   motion: '<path d="M4 16 C6 8 10 8 11 12 C12 16 16 16 18 9" stroke-width="1.9"></path><circle class="ff-i-gold" cx="19" cy="7.5" r="2.2" stroke-width="1.4"></circle>',
   log: '<path d="M6 3.5 H14.5 L18.5 7.5 V20.5 H6 Z" stroke-width="1.9"></path><path d="M14.5 3.5 V7.5 H18.5 M9 12 H15.5 M9 15.5 H14" stroke-width="1.7"></path>',
+  // Not one of the twelve: the garden code's tag (settings).
+  code: '<path d="M4 9.5 L9.5 4 H20 V14.5 L14.5 20 H4 Z" stroke-width="1.9"></path><circle class="ff-i-gold" cx="15" cy="9" r="2.1" stroke-width="1.4"></circle><path d="M7.5 13.5 H12.5 M7.5 16.5 H10.5" stroke-width="1.7"></path>',
   // Not one of the twelve: the hint sheet's rewarded-video button.
   video: '<rect x="3" y="5" width="18" height="14" rx="3" stroke-width="1.9"></rect><path class="ff-i-ink" d="M10 9 L15 12 L10 15 Z"></path>',
 } as const;

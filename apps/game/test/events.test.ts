@@ -63,3 +63,19 @@ describe('event log', () => {
     expect(parseEventLog('[' + ' '.repeat(MAX_LOG_CHARS) + ']', LEVELS, INSTALL)).toEqual({ events: [], dropped: 1 });
   });
 });
+
+describe('a hostile stored event log', () => {
+  it('never throws: objects that refuse to become strings, prototype keys, junk', () => {
+    const hostile = [
+      { v: 1, type: { toString: 1 } },
+      { v: { toString: 1, valueOf: 1 }, type: 'coins' },
+      { v: 1, type: [{ toString: 1 }], install: { toString: 1 } },
+      { v: 1, type: 'coins', delta: { valueOf: 1 }, balance: { toString: 1 }, why: { toString: 1 } },
+      { __proto__: { type: 'coins' } },
+      'x', 7, null, [],
+    ];
+    const raw = JSON.stringify(hostile);
+    expect(() => parseEventLog(raw, new Set(['c1-01']), '3f9a1c0e7b2d4a55')).not.toThrow();
+    expect(parseEventLog(raw, new Set(['c1-01']), '3f9a1c0e7b2d4a55').events).toEqual([]);
+  });
+});

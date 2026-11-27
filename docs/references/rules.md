@@ -98,11 +98,11 @@ places one correct firefly or removes one wrong one, with a one-line reason
 granted by a rewarded ad; one ad grants **3 hints** (one used now, two saved),
 because a single firefly is thin pay for a 30 to 60 second video.
 
-**Presentation (Phase 2 requirement).** A firefly placed by a hint is locked:
-the player cannot remove it, and it looks different from both their own
-fireflies and lanterns (for example a gold ring or a small sparkle), so it is
-always clear which move came from the hint. A "fix a wrong firefly" hint
-animates the removal so the player sees what changed.
+**Presentation (built in Phase 2).** A firefly placed by a hint is locked:
+the player cannot remove it, and it is drawn gold with a ring, unlike both their own
+fireflies and lanterns, so it is always clear which move came from the hint. It
+flies out of the jar to its tile. A "fix a wrong firefly" hint flies the wrong
+firefly home to the jar so the player sees what changed.
 
 **As implemented (`packages/core/src/hints.ts`).** `hint(board, solution, placed, locked)`:
 
@@ -163,8 +163,12 @@ its own counters. A quit detour is never served again, so its board is not parke
   level's unique solution, and the bank is a small non-negative integer. A corrupt or
   edited save must never lock wrong cells or grant unlimited hints.
 - Undo and reset never remove a locked hint firefly; a paid hint is never lost.
-- Hints are credited only after `Platform.showRewarded()` resolves `true` (the ad
-  finished). A failed or skipped ad credits nothing and charges nothing.
+- Hints, and the chapter card's bonus double, are credited only after
+  `Platform.showRewarded()` resolves `true` (the ad finished). A failed, skipped or rejected ad
+  credits nothing and charges nothing. Nothing on the chapter card can start the next garden
+  while its ad plays.
+- Phase 3: a portal adapter must resolve `showRewarded()` (false on a timeout) rather than hang;
+  the game blocks play while an ad is up, so an ad that never resolves would freeze it.
 
 ## Saved progress and the next-level policy (Phase 2 requirements)
 
@@ -186,6 +190,19 @@ progress, which is untrusted. Before calling it the game must:
 - fall back to the next unsolved main-path level if validation fails.
 - `tips` (one-time tips already shown, e.g. `cross` for "Light can cross") holds only known tip
   ids; anything else is dropped, and a missing field means none were shown.
+
+**The garden code (`state/gardenCode.ts`).** A player can carry their garden to another device
+as one line of text: `FG1.<payload>.<check>`, where the payload is the save's JSON (deflated,
+base64url) and the check an FNV-1a hash of the payload. A code is untrusted input exactly like a
+save: at most 20,000 characters, the check must match before anything is decoded, inflation stops
+past the save's size limit (256,000), and the result goes through `parseSave`. A code never
+carries the install id, the sitting count or the settings; loading keeps this device's. A code
+with no gardens is refused, and play times travel only to the day (a code may be posted publicly).
+Loading asks first (and warns when the code has fewer gardens), keeps this device's garden in the
+`progress-backup` slot, writes the new save, reads it back, and only then reloads, so the game
+opens it through the normal load path; nothing else may save in between. If storage refuses the
+write, nothing reloads and the garden is unchanged. Known limit: a second tab of the game still
+open will save its old garden over the new one; close other tabs first.
 
 Light crossing light is allowed: a path tile lit by a row beam and a column beam is fine (only
 fireflies may not see each other). `crossings` (core) finds those tiles and `conflictPairs` the

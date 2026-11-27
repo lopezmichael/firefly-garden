@@ -69,6 +69,12 @@ export class Wallet {
     this.change(this.economy.coinsPerSolve, 'solve');
   }
 
+  /** The chapter card's rewarded double (an ad that finished): the chapter bonus once more. */
+  creditDoubler(): void {
+    const bonus = this.economy.chapterBonus ?? 0;
+    if (bonus > 0) this.change(bonus, 'doubler');
+  }
+
   /** A chapter's main path is finished: the chapter card's bonus (none if the economy has none). */
   creditChapter(): void {
     const bonus = this.economy.chapterBonus ?? 0;
