@@ -49,6 +49,19 @@ describe('catalog', () => {
     expect(() => createCatalog({ ...DATA, manifest: { chapters: [{ id: 'c1' }] } }, ['c1'])).toThrow(CatalogError);
     expect(() => createCatalog({ ...DATA, launch: {} }, ['c1'])).toThrow(CatalogError);
   });
+
+  it('reads each chapter\'s intro, and refuses one too long for the status card', () => {
+    expect(catalog.chapters[0]!.intro).toBeNull(); // chapter 1 debuts nothing; the first garden teaches
+    expect(catalog.chapters[1]!.intro?.title).toMatch(/^New: /);
+    const manifest = DATA.manifest as { chapters: Record<string, unknown>[] };
+    const withIntro = (intro: unknown) => ({ ...DATA, manifest: { chapters: manifest.chapters.map((c) => (c.id === 'c2' ? { ...c, intro } : c)) } });
+    expect(() => createCatalog(withIntro({ title: 'x'.repeat(30), sub: 'fine' }), CHAPTERS)).toThrow(CatalogError);
+    expect(() => createCatalog(withIntro({ title: 'New: x', sub: 'y'.repeat(73) }), CHAPTERS)).toThrow(CatalogError);
+    expect(() => createCatalog(withIntro({ title: 7, sub: 'y' }), CHAPTERS)).toThrow(CatalogError);
+    expect(() => createCatalog(withIntro({ title: 'New: x', sub: '   ' }), CHAPTERS)).toThrow(CatalogError);
+    expect(() => createCatalog(withIntro('New: x'), CHAPTERS)).toThrow(CatalogError);
+    expect(createCatalog(withIntro(null), CHAPTERS).chapters[1]!.intro).toBeNull();
+  });
 });
 
 describe('play', () => {

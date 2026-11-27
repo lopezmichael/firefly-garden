@@ -300,3 +300,54 @@ test('a reload on the chapter card opens the map and plays the flight once', asy
   await page.waitForTimeout(1200);
   await expect(page.locator('.ff-map-flier')).toHaveCount(0);
 });
+
+test('opening lines: the first garden teaches the goal, a chapter\'s first garden says what it brings', async ({ page }) => {
+  await open(page);
+  await expect(page.locator('.ff-status-title')).toHaveText('Light up every dark path');
+  await tapCell(page, (await level(page)).answer[0]!);
+  await expect(page.locator('.ff-status-title')).not.toHaveText('Light up every dark path');
+  const chapters = await page.evaluate(() => window.__ff.chapters());
+  await page.evaluate((id) => window.__ff.openLevel(id), chapters[1]![0]!);
+  await expect(page.locator('.ff-status-title')).toHaveText(/^New: /);
+});
+
+test('a returning player is welcomed on the map, and a garden left unfinished is marked waiting', async ({ page }) => {
+  await open(page);
+  await tapCell(page, (await level(page)).answer[0]!);
+  await page.locator('.ff-top .ff-gear[aria-label="Garden map"]').click();
+  await expect(page.locator('.ff-map-bed[data-waiting="true"]')).toContainText('a garden is waiting');
+  await page.reload();
+  await expect(page.locator('.ff-map-note')).toContainText('Welcome back.');
+});
+
+test('the build\'s last chapter ends on the ending card, then the finished map', async ({ page }) => {
+  await open(page);
+  const chapters = await page.evaluate(() => window.__ff.chapters());
+  const all = chapters.flat();
+  const last = all[all.length - 1]!;
+  await page.evaluate(({ ids, id }) => {
+    window.__ff.markSolved(ids);
+    window.__ff.openLevel(id);
+  }, { ids: all.slice(0, -1), id: last });
+  await expect.poll(async () => (await level(page)).id).toBe(last);
+  for (const c of (await level(page)).answer) await tapCell(page, c);
+  await page.locator('.ff-complete-next').click();
+  const card = page.locator('.ff-chapter-card');
+  await expect(card).toContainText('Every garden is glowing');
+  await expect(card).toContainText('Thank you for playing');
+  await page.locator('.ff-chapter-go').click();
+  await expect(card).toBeHidden();
+  await expect(page.locator('.ff-map')).toBeVisible();
+  await expect(page.locator('.ff-map-flier')).toHaveCount(0);
+  await expect(page.locator('.ff-map-top .ff-gear')).toBeFocused();
+});
+
+test('every voice makes a sound and none clips (rendered offline)', async ({ page }) => {
+  await open(page);
+  const voices = await page.evaluate(() => window.__ff.voices());
+  expect(Object.keys(voices)).toHaveLength(10);
+  for (const [name, v] of Object.entries(voices)) {
+    expect(v.rms, `${name} is silent`).toBeGreaterThan(0.001);
+    expect(v.peak, `${name} clips`).toBeLessThan(0.9);
+  }
+});

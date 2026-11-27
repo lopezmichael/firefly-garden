@@ -14,7 +14,7 @@ import { Session } from '../state/session.ts';
 import { cuesFor } from '../state/cues.ts';
 import type { Cue, Move } from '../state/cues.ts';
 import { describeCell } from '../state/describe.ts';
-import { boardStatus, completeLine, finishedStatus, noticeStatus } from '../state/status.ts';
+import { boardStatus, completeLine, finishedStatus, FIRST_GARDEN, introStatus, noticeStatus, opensUntouched } from '../state/status.ts';
 import type { Notice, StatusText } from '../state/status.ts';
 import { conflictWords, crossTipDue } from '../state/teach.ts';
 import type { TipId } from '../state/teach.ts';
@@ -45,7 +45,7 @@ const SAVE_DELAY_MS = 300;
 
 /** Which voice each cue plays (placeholder sounds; the voices live in audio/engine.ts). */
 const VOICE: { readonly [K in Cue['kind']]: Voice } = {
-  place: 'chime', hint: 'sparkle', lift: 'lift', bush: 'bell', conflict: 'buzz', solve: 'flourish', empty: 'bump',
+  place: 'place', hint: 'hint', lift: 'lift', bush: 'bush', conflict: 'conflict', solve: 'solve', empty: 'empty',
 };
 
 /** What the end-to-end tests read and drive (built only with `--mode e2e`). */
@@ -69,6 +69,8 @@ export interface E2EHooks {
   events(): Record<string, unknown>[];
   /** Each chapter's level ids, in order. */
   chapters(): string[][];
+  /** Render every voice offline: its peak and RMS level (each voice must sound, and never clip). */
+  voices(): Promise<Record<string, { peak: number; rms: number }>>;
   /** Record these gardens as solved (to reach a chapter's last garden quickly), and save. */
   markSolved(ids: string[]): void;
   platform: TestPlatform;
@@ -98,6 +100,8 @@ export class GameApp {
   private attempt = 1;
   private transform: Transform = 'identity';
   private notice: Notice | null = null;
+  /** The untouched board's opening line (first garden, or a chapter's debut), or null. */
+  private opening: StatusText | null = null;
   /** When (Date.now()) the current garden was solved, until the player moves on (for `continue`). */
   private solvedAt: number | null = null;
   private readonly chapterCard = new ChapterCard(() => void this.startNextChapter());
@@ -209,7 +213,7 @@ export class GameApp {
     const saved = stored.save?.current;
     if (!(saved && !this.session.isSolved(saved.levelId) && this.resume(saved))) {
       if (this.session.progress.history.length === 0) this.advance();
-      else this.showMap();
+      else this.showMap({ welcome: true });
     }
     // Write back at once, so storage holds the validated version, not whatever was loaded.
     this.scheduleSave();
@@ -497,14 +501,15 @@ export class GameApp {
     this.flushSave();
   }
 
-  private showMap(opts: { holdFlight?: number } = {}): void {
+  private showMap(opts: { holdFlight?: number; welcome?: boolean } = {}): void {
     const solved = (id: string) => this.session.isSolved(id);
     const nextMain = this.catalog.mainPath.find((id) => !solved(id));
     const nextPlace = nextMain ? this.catalog.place(nextMain) : undefined;
     const beds: BedView[] = this.catalog.chapters.map((ch, i) => {
       const done = ch.levels.filter(solved).length;
       const state = done === ch.levels.length ? 'done' : nextPlace?.chapter.id === ch.id ? 'now' : 'dark';
-      return { title: `Chapter ${i + 1}`, solved: done, total: ch.levels.length, state };
+      const waiting = this.parked.some((p) => ch.levels.includes(p.levelId));
+      return { title: `Chapter ${i + 1}`, solved: done, total: ch.levels.length, state, waiting };
     });
     const chapterNo = nextPlace ? this.catalog.chapters.findIndex((c) => c.id === nextPlace.chapter.id) + 1 : 0;
     // A chapter finished since the map last showed it: one firefly flies on to the next stop.
@@ -523,6 +528,8 @@ export class GameApp {
       continueLabel: nextMain ? 'Continue' : 'Every garden is glowing',
       continueSub: nextPlace ? `Chapter ${chapterNo} · Garden ${nextPlace.index + 1}` : 'More gardens are on the way',
       finished: !nextMain,
+      // A returning player is welcomed back, with where they left off.
+      ...(opts.welcome ? { note: nextPlace ? `Welcome back. Chapter ${chapterNo} · Garden ${nextPlace.index + 1} is waiting.` : 'Welcome back. Every garden is glowing.' } : {}),
       flyFrom: unlock.from,
       motion: !this.reducedMotion(),
     });
@@ -565,18 +572,36 @@ export class GameApp {
     const chapter = this.catalog.chapters[index]!;
     const totals = chapterTotals(chapter, this.session.progress.history);
     const last = index === this.catalog.chapters.length - 1;
-    this.chapterCard.show({
-      title: `Chapter ${index + 1} complete`,
-      line: chapterLine(chapter.id),
-      gardens: totals.gardens,
-      time: formatDuration(totals.seconds),
-      hints: totals.hints,
-      bonus: this.wallet.economy.chapterBonus ?? 0,
-      action: last ? 'See the garden map' : `Start chapter ${index + 2}`,
-    });
+    const bonus = this.wallet.economy.chapterBonus ?? 0;
+    // The build's last chapter ends on the ending card (moment 8): the whole build, and thanks.
+    // Its figures are build-wide (the play history keeps only the most recent plays).
+    const view = last
+      ? {
+        title: 'Every garden is glowing',
+        line: `You lit all ${this.catalog.mainPath.length} gardens in this build. Thank you for playing; more gardens are on the way.`,
+        stats: [
+          { value: String(this.catalog.mainPath.length), label: 'gardens grown' },
+          { value: String(this.catalog.chapters.length), label: 'chapters' },
+          { value: String(this.wallet.coins), label: 'coins saved' },
+        ] as const,
+        bonus,
+        action: 'See the garden map',
+      }
+      : {
+        title: `Chapter ${index + 1} complete`,
+        line: chapterLine(chapter.id),
+        stats: [
+          { value: String(totals.gardens), label: 'gardens grown' },
+          { value: formatDuration(totals.seconds), label: 'in the garden' },
+          { value: String(totals.hints), label: 'hints used' },
+        ] as const,
+        bonus,
+        action: `Start chapter ${index + 2}`,
+      };
+    this.chapterCard.show(view);
     this.chapterIndex = index;
-    this.audio.play(VOICE.solve, 0.5);
-    this.screen.announce(`Chapter ${index + 1} complete. ${chapterLine(chapter.id)} ${totals.gardens} gardens grown.`);
+    this.audio.play('chapter');
+    this.screen.announce(`${view.title}. ${view.line}`);
   }
 
   /** The chapter the open card belongs to. */
@@ -602,7 +627,7 @@ export class GameApp {
       this.mapScreen.focusContinue();
       return;
     }
-    this.audio.play(VOICE.hint, 0.7);
+    this.audio.play('opens');
     await this.mapScreen.playFlight(index);
     if (run !== this.chapterRun || !this.mapScreen.isOpen) return;
     await this.mapScreen.zoomInto(index + 1);
@@ -637,6 +662,9 @@ export class GameApp {
 
   private show(next: NextLevel, play: Play): void {
     cancelFlights();
+    const opens = this.catalog.place(next.id);
+    this.opening = next.id === this.catalog.mainPath[0] ? FIRST_GARDEN
+      : opens && opens.index === 0 && opens.chapter.intro ? introStatus(opens.chapter.intro) : null;
     this.solvedAt = null;
     this.chapterMoment = null;
     this.chapterRun++;
@@ -1034,6 +1062,26 @@ export class GameApp {
       frames: () => this.board.frameStats(),
       events: () => this.log.events.map((e) => ({ ...e })),
       chapters: () => this.catalog.chapters.map((c) => [...c.levels]),
+      voices: async () => {
+        const out: Record<string, { peak: number; rms: number }> = {};
+        const all: Voice[] = ['place', 'lift', 'bush', 'hint', 'conflict', 'empty', 'solve', 'land', 'chapter', 'opens'];
+        for (const v of all) {
+          const off = new OfflineAudioContext(2, 44_100 * 3, 44_100);
+          // The engine plays only into a running context; an offline one runs once rendering starts.
+          Object.defineProperty(off, 'state', { get: () => 'running' });
+          const engine = new AudioEngine(() => off as unknown as AudioContext);
+          engine.unlock();
+          engine.play(v);
+          const d = (await off.startRendering()).getChannelData(0);
+          let peak = 0, sum = 0;
+          for (const x of d) {
+            peak = Math.max(peak, Math.abs(x));
+            sum += x * x;
+          }
+          out[v] = { peak, rms: Math.sqrt(sum / d.length) };
+        }
+        return out;
+      },
       markSolved: (ids) => {
         for (const id of ids) this.session.record({ levelId: id, reason: 'main', solved: true, seconds: 20, hints: 0, endedAt: Date.now() });
         this.flushSave();
@@ -1052,7 +1100,10 @@ export class GameApp {
     if (this.reducedMotion() || this.blocked()) return false;
     const to = this.screen.progressTarget();
     if (!to) return false;
-    release(this.screen.root, from, to, gold, phase, cellPx, () => this.screen.lightProgress(true));
+    release(this.screen.root, from, to, gold, phase, cellPx, () => {
+      this.screen.lightProgress(true);
+      this.audio.play('land');
+    });
     return true;
   }
 
@@ -1080,9 +1131,16 @@ export class GameApp {
       ruledOut: new Set(shown?.kind === 'place' ? shown.ruledOut : []),
       solved: ev.solved,
     }, { quiet, removed, arriving, arrivalMs: FLIGHT_MS - 80 });
-    const status = ev.solved || !this.notice
-      ? boardStatus(ev, play.placements === 0 && play.locked.size === 0, PLAYER_CONFIG.economy.coinsPerSolve, play.remaining)
-      : noticeStatus(this.notice, ev);
+    const untouched = play.placements === 0 && play.locked.size === 0;
+    // An untouched board may open with its own line: the first garden's teaching, or what a
+    // chapter brings on its first garden (flow plan C).
+    const opening = this.opening && opensUntouched({
+      placed: play.placed.size, locked: play.locked.size, placements: play.placements, solved: ev.solved, notice: this.notice !== null,
+    }) ? this.opening : null;
+    const status = opening ? opening
+      : ev.solved || !this.notice
+        ? boardStatus(ev, untouched, PLAYER_CONFIG.economy.coinsPerSolve, play.remaining)
+        : noticeStatus(this.notice, ev);
     this.screen.setStatus(status);
     this.screen.setJar(play.remaining, play.jarSize);
     this.screen.setMoves(play.canUndo, play.placed.size > 0, ev.solved);

@@ -298,8 +298,10 @@ the same transitions are tested in Node and in Playwright.
 
 ### F. Audio (`audio/`)
 
-- [ ] Synthesized with Web Audio (no audio files, nothing added to the bundle). Still open:
-      the voices are tuned in the sound design pass. Planned voices: placement
+- [x] Synthesized with Web Audio (no audio files, nothing added to the bundle). *Voices designed
+      2026-11-27* on the sound audition page: ten voices, listed with their moments in
+      `docs/design/assets.md` ("Sound"); the smoke test renders each offline (silence or clipping
+      fails). Earlier notes: Planned voices: placement
       chime pitched by row, bush-satisfied chime, solve flourish, soft conflict tone.
       *Plumbing done, voices are placeholders (milestone 3):* `state/cues.ts` decides which moment
       gets which sound (tested), `audio/engine.ts` synthesizes seven voices; tuning waits for the
@@ -312,7 +314,8 @@ the same transitions are tested in Node and in Playwright.
       activates only on the former, and iOS unlocks audio only from touchend or click. Headless
       Chromium doesn't enforce that rule, so **this needs a real phone check (iPhone Safari,
       Android Chrome) before the playtest**.
-- [ ] Stretch: ambient night loop (crickets, wind), off by default.
+- [ ] Stretch: ambient night loop (crickets, wind), off by default. *Auditioned 2026-11-27 and left
+      off by Michael.*
 
 ### G. Analytics, logged locally (`state/events.ts`)
 
