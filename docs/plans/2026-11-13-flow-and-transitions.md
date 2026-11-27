@@ -54,24 +54,29 @@ Michael's direction:
 
 ## A. Tap to continue (garden solved)
 
-- [ ] Remove the auto-advance and its countdown bar (`ff-complete-bar`, `AUTO_ADVANCE_MS`,
+- [x] Remove the auto-advance and its countdown bar (`ff-complete-bar`, `AUTO_ADVANCE_MS`,
       `screen.countdown`), plus the code that pauses and restarts the countdown for sheets and
       hidden tabs.
-- [ ] The card keeps its content (garden, time, hints, the +10 chip). **Next garden** is the
+- [x] The card keeps its content (garden, time, hints, the +10 chip). **Next garden** is the
       seal-red primary action and takes focus once the card appears; **Garden map** stays
       secondary.
-- [ ] Show the card when the bloom starts, not when it ends, so a player who taps straight away
-      isn't kept waiting. The bloom is only decoration.
-- [ ] A tap anywhere on the board after the solve does nothing, so a stray tap can't skip
+- [x] Show the card when the bloom starts, not when it ends, so a player who taps straight away
+      isn't kept waiting. The bloom is only decoration. *Built 2026-11-27 with the solve
+      celebration (`docs/plans/2026-11-27-solve-celebration.md`):* the card rises in with the
+      bloom (`CELEBRATION.cardDelay`, 0.5 s) and is inert until the fireflies lift off
+      (`cardReady`, 1.1 s), so a stray tap can't skip the flash and the release.
+- [x] A tap anywhere on the board after the solve does nothing, so a stray tap can't skip
       ahead. Only the card's buttons, Enter and Space continue.
-- [ ] The card shows the coins landing in the coin pill as it opens (ink and wash already animates
+- [x] The card shows the coins landing in the coin pill as it opens (ink and wash already animates
       the chip). Reduced motion: the total updates in place.
-- [ ] Ad pacing: the portal's midgame break, when one is due by `PLAYER_CONFIG` pacing, runs on
+- [x] Ad pacing: the portal's midgame break, when one is due by `PLAYER_CONFIG` pacing, runs on
       the Next tap. That code belongs in the Phase 3 adapter; here we only make sure the tap is the
-      single hand-off point.
-- [ ] Analytics: log the wait from solve to tap (`level_end` already exists; add the tap delay)
-      so the playtest shows whether people linger or rush.
-- [ ] Tests: the e2e solve test taps Next (it no longer waits out the countdown); the motion-css
+      single hand-off point. *Done:* `logContinue` in `app.ts` runs on Next and on the map from a
+      solved garden; the Phase 3 break hooks in there.
+- [x] Analytics: log the wait from solve to tap (`level_end` already exists; add the tap delay)
+      so the playtest shows whether people linger or rush. *Done:* a `continue` event (level,
+      choice, seconds), validated by the core schema.
+- [x] Tests: the e2e solve test taps Next (it no longer waits out the countdown); the motion-css
       and status/complete height ratchets keep passing.
 
 ## B. Chapter finished

@@ -12,6 +12,7 @@ describe('validateEvent', () => {
     { ...base, type: 'hint', level: 'c02-l04', source: 'bank', step: 6 },
     { ...base, type: 'ad', kind: 'rewarded', completed: true, seconds: 31 },
     { ...base, type: 'coins', delta: -30, balance: 40, why: 'hint' },
+    { ...base, type: 'continue', level: 'c02-l04', choice: 'next', seconds: 2.4 },
   ];
 
   it.each(good.map((e) => [e.type, e] as const))('accepts a well-formed %s', (_t, e) => {
@@ -22,6 +23,7 @@ describe('validateEvent', () => {
     ['not an object', 'x', /not an object/],
     ['a wrong version', { ...good[0], v: 2 }, /v must be/],
     ['an unknown type', { ...base, type: 'level_won' }, /unknown event type/],
+    ['an unknown continue choice', { ...base, type: 'continue', level: 'c02-l04', choice: 'skip', seconds: 1 }, /choice must be/],
     ['a negative count', { ...good[3], undos: -1 }, /undos must be a count/],
     ['an infinite duration', { ...good[1], seconds: Infinity }, /seconds must be seconds/],
     ['an unknown policy reason', { ...good[2], reason: 'bonus' }, /reason must be/],

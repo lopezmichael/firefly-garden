@@ -42,6 +42,7 @@ export class PlayScreen {
   private readonly chapterLabel = el('div', 'ff-chapter-label');
   private readonly dots = el('div', 'ff-dots');
   private readonly coins = el('span');
+  private coinTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly title = el('h1', 'ff-title');
   private readonly status = el('div', 'ff-status');
   private readonly statusTitle = el('div', 'ff-status-title');
@@ -236,7 +237,31 @@ export class PlayScreen {
     dot.dataset.arrive = 'true';
   }
 
+  /**
+   * The solve's coins land in the coin pill: it keeps showing `before` until `afterMs` (as the
+   * card's +10 chip rises), then shows the new total with a small bump. 0 lands it now, still.
+   */
+  landCoins(before: number, afterMs: number): void {
+    if (this.coinTimer !== null) clearTimeout(this.coinTimer);
+    this.coinTimer = null;
+    const after = this.coins.textContent ?? '';
+    if (afterMs <= 0) return;
+    this.coins.textContent = String(before);
+    this.coinTimer = setTimeout(() => {
+      this.coinTimer = null;
+      this.coins.textContent = after;
+      const pill = this.coins.parentElement;
+      if (!pill) return;
+      delete pill.dataset.bump;
+      void pill.offsetWidth;
+      pill.dataset.bump = 'true';
+    }, afterMs);
+  }
+
   setCoins(coins: number, hintCost: number, bank: number): void {
+    // A pending landing is superseded by the real balance.
+    if (this.coinTimer !== null) clearTimeout(this.coinTimer);
+    this.coinTimer = null;
     this.coins.textContent = String(coins);
     this.hintCost.textContent = bank > 0 ? `${bank} saved` : String(hintCost);
     this.hintButton.setAttribute('aria-label', bank > 0 ? `Hint, ${bank} saved` : `Hint, ${hintCost} coins`);
@@ -250,12 +275,12 @@ export class PlayScreen {
 
   /**
    * Swap the status card and moves for the level-complete card. The celebration itself is the
-   * board's solve moment, so the card only slides in, `delayMs` later (it keeps its space
-   * meanwhile, so the board does not resize mid-celebration).
+   * board's solve moment, so the card only rises in, `enterMs` later, and takes taps from
+   * `readyMs` (it keeps its space meanwhile, so the board does not resize mid-celebration).
    */
-  showComplete(view: CompleteView, delayMs = 0): void {
+  showComplete(view: CompleteView, enterMs = 0, readyMs = enterMs): void {
     this.root.dataset.complete = 'true';
-    this.complete.show(view, delayMs);
+    this.complete.show(view, enterMs, readyMs);
   }
 
   hideComplete(): void {
@@ -263,13 +288,6 @@ export class PlayScreen {
     this.complete.hide();
   }
 
-  countdown(ms: number, delayMs = 0): void {
-    this.complete.countdown(ms, delayMs);
-  }
-
-  holdCountdown(): void {
-    this.complete.holdCountdown();
-  }
 
   /** The jar's count: one slot per firefly the garden needs, lit while it is still in the jar. */
   setJar(remaining: number, size: number): void {

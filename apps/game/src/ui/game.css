@@ -72,6 +72,10 @@
 .ff-dot { width: 16px; height: 4px; border-radius: 2px; background: var(--ff-dusk-quiet); }
 .ff-dot[data-state='done'] { background: var(--ff-gold); }
 .ff-dot[data-state='now'] { background: var(--ff-paper); }
+/* The solve's coins land in the pill (screen.landCoins): a small bump as the total changes. */
+.ff-coins[data-bump] { animation: ff-coin-bump 420ms ease-out; }
+@keyframes ff-coin-bump { 0% { transform: scale(1); } 35% { transform: scale(1.12); } 100% { transform: scale(1); } }
+.ff-app[data-motion='reduced'] .ff-coins[data-bump] { animation: none; }
 /* A released firefly lands on the solved garden's dash: it flares and glows, then settles gold. */
 .ff-dot[data-arrive] { animation: ff-dot-glint 650ms ease-out; }
 @keyframes ff-dot-glint {
@@ -401,8 +405,8 @@
 }
 /* The card has exactly the height the status card and moves leave (188 to 211 px on phones,
    measured). Where the canvas layout (title wrapping beside the badge, plus the note) would
-   overflow it, the title takes one line, the sub-line and badge share the next, and the bar alone
-   says the next garden is coming. Each rule is scoped under .ff-complete so it outranks the base
+   overflow it, the title takes one line, the sub-line and badge share the next, and the note
+   goes (only the last garden has one). Each rule is scoped under .ff-complete so it outranks the base
    rule whatever the order in this file. */
 .ff-app[data-band='tall'] .ff-complete, .ff-app[data-band='square'] .ff-complete { container: ff-complete / size; }
 @container ff-complete (max-height: 240px) {
@@ -438,15 +442,9 @@
 }
 .ff-complete-map { color: var(--ff-sumi); background: var(--ff-paper-texture, none) 0 0 / 128px 128px, var(--ff-paper); }
 .ff-complete-next { background: var(--ff-seal); color: var(--ff-on-seal); }
-.ff-complete-foot { display: flex; flex-direction: column; gap: 6px; }
-.ff-complete-track { height: 4px; border-radius: 2px; background: var(--ff-paper-track); overflow: hidden; }
-.ff-complete[data-more='false'] .ff-complete-track { display: none; }
-.ff-complete-bar { width: 100%; height: 100%; background: var(--ff-seal); transform-origin: left center; transform: scaleX(0); }
-.ff-counting.ff-complete-bar { animation: ff-count var(--ff-countdown, 3000ms) linear var(--ff-countdown-delay, 0ms) both; }
-@keyframes ff-count { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .ff-complete-note { margin: 0; font-size: 13px; color: var(--ff-sumi-quiet); }
 /* Wide band: the side panel is short on a landscape phone. The area title goes (the card's line
-   names the garden), the note goes (the bar says it), and Garden map shows its icon alone. */
+   names the garden), the note goes, and Garden map shows its icon alone. */
 .ff-app[data-band='wide'][data-complete] .ff-title { display: none; }
 .ff-app[data-band='wide'][data-complete] .ff-status { display: none; }
 .ff-app[data-band='wide'] .ff-complete { margin-top: auto; }
@@ -466,8 +464,6 @@
 @keyframes ff-card-in { from { transform: translateY(18px); opacity: 0; } to { transform: none; opacity: 1; } }
 .ff-enter .ff-complete-chip { animation: ff-coin-up 700ms ease-out calc(var(--ff-complete-delay, 0ms) + 400ms) both; }
 @keyframes ff-coin-up { 0% { transform: translateY(16px); opacity: 0; } 30% { transform: translateY(-4px); opacity: 1; } 100% { transform: none; opacity: 1; } }
-/* Reduced motion: the bar shows the wait without moving (it stays empty until the garden opens). */
-.ff-app[data-motion='reduced'] .ff-counting.ff-complete-bar,
 .ff-app[data-motion='reduced'] .ff-enter .ff-complete-panel,
 .ff-app[data-motion='reduced'] .ff-enter .ff-complete-chip { animation: none; }
 .ff-complete :focus-visible { outline-color: var(--ff-sumi); }

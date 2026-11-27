@@ -38,7 +38,7 @@ async function tapCell(page: Page, cell: number): Promise<void> {
 /** Answer cells the player places (lanterns are already on the board and can't be tapped). */
 const answerCells = async (page: Page) => (await level(page)).answer;
 
-test('solves the first garden by tapping its answer, and the complete card credits the coins', async ({ page }) => {
+test('solves the first garden by tapping its answer, the complete card credits the coins, and Next moves on', async ({ page }) => {
   await open(page);
   expect((await page.evaluate(() => window.__ff.audio())).context).toBe('none'); // no sound before a gesture
   const start = await page.evaluate(() => window.__ff.wallet());
@@ -61,6 +61,13 @@ test('solves the first garden by tapping its answer, and the complete card credi
   const audio = await page.evaluate(() => window.__ff.audio());
   expect(audio.context).toBe('running');
   expect(audio.played).toBeGreaterThan(0);
+  // Tap to continue: nothing moves on by itself, Next does, and the wait is logged.
+  await page.waitForTimeout(4500);
+  expect((await level(page)).id).toBe(l.id);
+  await page.locator('.ff-complete-next').click();
+  await expect.poll(async () => (await level(page)).id).not.toBe(l.id);
+  const moves = (await page.evaluate(() => window.__ff.events())).filter((e) => e.type === 'continue');
+  expect(moves).toEqual([expect.objectContaining({ level: l.id, choice: 'next' })]);
 });
 
 test('buys a hint with coins; a cancelled ad credits nothing and is silent; a finished ad credits hints', async ({ page }) => {

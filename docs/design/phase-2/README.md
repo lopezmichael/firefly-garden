@@ -13,7 +13,7 @@ behaviour are locked, the look is not.
 - Every tile and bush state, and that hint fireflies differ by shape (ring and sparkle),
   not only color
 - The hint flow: sheet, locked fireflies, dashed reason outlines, ruled-out marks
-- The screen flow: map → play → complete → auto-advance; settings and play log
+- The screen flow: map → play → complete → tap to continue (auto-advance until 2026-11-27); settings and play log
 - What reduced motion keeps and drops (the motion table on the state sheet)
 
 **Open** (expected to change, cheaply, through `apps/game/src/theme.css` tokens):

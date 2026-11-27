@@ -589,7 +589,7 @@ export class BoardView {
     const w = this.board.w;
     const spread = origin === undefined ? null
       : rippleDelays(this.cells.filter((v) => v.kind === 'path').map((v) => v.cell), origin, w, MOTION_TIMING.spreadPerCell, true, true);
-    // The solve ripple's timing for every bush at once, so it can be fitted before the auto-advance.
+    // The solve ripple's timing for every bush at once, so the whole bloom fits the solve's moment.
     const solvingNow = animate && origin !== undefined && state.solved && !(prev?.solved ?? false);
     const bloomAt = solvingNow
       ? bloomDelays(this.cells.filter((v) => v.kind === 'bush').map((v) => v.cell), origin, w, true) : null;

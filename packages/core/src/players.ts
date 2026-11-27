@@ -101,7 +101,10 @@ export const PLAYER_CONFIG = {
     midgameAfterLevels: 5,
     /** Portal cap on midgame ads (CrazyGames: at most one per three minutes). */
     midgameMinGapSeconds: 180,
-    /** Seconds between levels (celebration, auto-advance). */
+    /**
+     * Seconds between levels (the solve's celebration, then the player's tap to continue). An
+     * assumption since tap to continue: refit from the playtest's `continue` event seconds.
+     */
     levelTransitionSeconds: 5,
     /** Seconds a midgame ad takes. */
     midgameSeconds: 15,

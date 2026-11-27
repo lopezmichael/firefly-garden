@@ -46,8 +46,9 @@ that lands the state, a still board draws no frames, the status/complete card he
 - [x] Reviews of the track flight: a cut-short celebration (reduced motion switched on, a resize
       cancelling the flights) could leave the dash white, so a backstop lights it once the last
       flier is due; fliers no longer launch over the map, a sheet or an ad. Security: clean.
-- [x] 1.5 s: the complete card rises in (counted from the landing, so after the jar flight);
-      the next garden opens 3 s after that.
+- [x] ~~1.5 s: the complete card rises in; the next garden opens 3 s after that.~~ Superseded the
+      same day by tap to continue (flow plan A): the card rises in with the bloom (0.5 s) and
+      takes taps from 1.1 s; nothing moves on until the player taps.
 
 Reduced motion: no flash, wave or flight; the roses, the afterglow and the card land at once and
 the fireflies stay on their tiles.

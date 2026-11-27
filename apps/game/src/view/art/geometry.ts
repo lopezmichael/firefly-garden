@@ -125,8 +125,9 @@ export const MOTION_TIMING = {
  * The solve's moments (docs/plans/2026-11-27-solve-celebration.md), in ms after the last
  * firefly lands: every firefly flashes together twice, a warm halo swells behind the board and
  * settles into an afterglow, a wave of light rolls out in rings, the roses open (MOTION_TIMING),
- * then the fireflies lift off and drift up into the night. The complete card comes in at
- * `cardDelay`, and the next garden opens `advanceAfterCard` later.
+ * then the fireflies lift off to the progress track. The complete card comes in with the bloom
+ * (`cardDelay`) and takes taps once the fireflies lift off (`cardReady`); nothing moves on until
+ * the player taps (docs/plans/2026-11-13-flow-and-transitions.md, A).
  */
 export const CELEBRATION = {
   flashStart: 120, flashDur: 900,
@@ -134,7 +135,7 @@ export const CELEBRATION = {
   waveStart: 300, wavePerCell: 90, waveSpan: 600, waveDur: 500,
   releaseStart: 1100, releasePerCell: 70, releaseSpan: 450, flight: 1700,
   trailEvery: 45, trailLife: 650, trailCap: 160,
-  cardDelay: 1500, advanceAfterCard: 3000,
+  cardDelay: 500, cardReady: 1100,
 } as const;
 
 /** The fireflies' synchronised flash over 0..1: two bright beats, dark between and after. */

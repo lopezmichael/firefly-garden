@@ -124,7 +124,7 @@ noise). Every sound mutable (the settings toggle and the sound on/off icon drive
 | Bush satisfied | Roses open (mushrooms: spores puff) | Roses shown open |
 | Too many | Bush slumps and drops petals | Shown slumped |
 | Conflict | Slow uneasy sway | Still; shiver lines and hatching stay |
-| Solve | Sync flash, halo swells, light wave, bloom ripple with petals and motes, fireflies fly to the progress track and its dash turns gold; the card rises in at 1.5 s | Roses open, afterglow shown, fireflies stay on their tiles, the dash turns gold; card appears at once |
+| Solve | Sync flash, halo swells, light wave, bloom ripple with petals and motes, fireflies fly to the progress track and its dash turns gold; the card rises in with the bloom and takes taps from 1.1 s | Roses open, afterglow shown, fireflies stay on their tiles, the dash turns gold; card appears at once |
 | Ambient | Motes drift over the hills; ripples and koi in ponds | Still |
 | Map | Fireflies circle finished chapters; unlock flight along the path | Still; the new stop appears lit |
 

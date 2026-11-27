@@ -178,16 +178,19 @@ describe('the solve bloom finishes before the next garden', () => {
     expect(order[0]).toBe(0);
   });
 
-  it('lands the last rose before the complete card, even on the farthest bush', () => {
+  it('opens the last rose within the moment, even on the farthest bush', () => {
     const big = bloomDelays(Array.from({ length: 400 }, (_, i) => i), 0, 20, true);
     const lastRose = MOTION_TIMING.bloomStart + Math.max(...big.values()) + MOTION_TIMING.roseOpen + 2 * MOTION_TIMING.roseStagger;
-    expect(lastRose).toBeLessThan(CELEBRATION.cardDelay + CELEBRATION.advanceAfterCard);
+    expect(lastRose).toBeLessThan(MOMENT_MS);
   });
 
   it('is all at once without motion', () => {
     expect([...bloomDelays([0, 99], 0, 10, false).values()]).toEqual([0, 0]);
   });
 });
+
+/** A solved garden's whole moment stays short: everything on the board lands within this. */
+const MOMENT_MS = 3500;
 
 describe('the solve celebration', () => {
   const T = CELEBRATION;
@@ -230,12 +233,17 @@ describe('the solve celebration', () => {
     }
   });
 
-  it('releases every firefly and lands the last one before the next garden opens', () => {
+  it('releases every firefly and lands the last one within the moment', () => {
     const order = cappedRipple(Array.from({ length: 100 }, (_, i) => i), 0, 10, T.releasePerCell, T.releaseSpan, true);
     const lastLanding = T.releaseStart + Math.max(...order.values()) + T.flight;
-    expect(lastLanding).toBeLessThan(T.cardDelay + T.advanceAfterCard);
-    // The card comes after the flash and the wave, so it never pulls the eye mid-moment.
-    expect(T.cardDelay).toBeGreaterThan(T.flashStart + T.flashDur);
-    expect(T.cardDelay).toBeGreaterThan(T.waveStart + T.waveSpan + T.waveDur);
+    expect(lastLanding).toBeLessThan(MOMENT_MS);
+  });
+
+  it('brings the card in with the bloom and lets it take taps once the fireflies lift off', () => {
+    // Shown as the bloom starts (flow plan A: a player who taps straight away isn't kept waiting
+    // for decoration), but a stray tap can't skip the flash and the release.
+    expect(T.cardDelay).toBe(MOTION_TIMING.bloomStart);
+    expect(T.cardReady).toBe(T.releaseStart);
+    expect(T.cardReady).toBeGreaterThan(T.flashStart + T.flashDur);
   });
 });

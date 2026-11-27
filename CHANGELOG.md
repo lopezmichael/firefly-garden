@@ -5,6 +5,12 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Changed
+- Tap to continue (flow plan `docs/plans/2026-11-13-flow-and-transitions.md`, A): a solved
+  garden waits for the player. The auto-advance, its countdown bar and the code that paused and
+  re-armed it for sheets and hidden tabs are gone; Next garden (seal red, focused once the card
+  is ready) or Garden map moves on. The solve's +10 lands in the coin pill as the card's chip
+  rises (a small bump; reduced motion updates it in place). A new `continue` event logs the
+  choice and the seconds from solve to tap, so the playtest shows whether people linger or rush.
 - The solve celebration and the light (plan `docs/plans/2026-11-27-solve-celebration.md`). A win
   now plays out on the board before the complete card arrives: every firefly flashes together
   twice, a warm halo swells round the board's edge and settles into an afterglow, a soft wave of
@@ -14,8 +20,8 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
   lift off one by one and fly to the garden progress track in the top bar (above the board on
   phones, in the side panel on desktop) with comet trails; the solved garden's dash turns gold as
   the first lands and glints for each one after, while the garden keeps glowing. The board's
-  halo is skipped where it has no room to glow softly (a desktop board filling its canvas). The complete card rises in at 1.5 s and the next garden opens 3 s after it (was: card
-  at once, 3 s); until it rises it is inert, so a stray tap can't skip the garden. Reduced motion lands the roses, the afterglow and the card at once and keeps
+  halo is skipped where it has no room to glow softly (a desktop board filling its canvas). The complete card rises in with the bloom and takes taps once the fireflies lift off,
+  so a stray tap can't skip the garden mid-celebration. Reduced motion lands the roses, the afterglow and the card at once and keeps
   the fireflies on their tiles. Lit tiles in play read as paper lit from within (a luminous
   centre, gold pooling at the edge), a firefly's glow is additive so its tile is the light's
   source, and tiles lit by two or more beams are a touch brighter (from the 2026-11-12 feedback).
