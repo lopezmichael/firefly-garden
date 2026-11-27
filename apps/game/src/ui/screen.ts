@@ -42,6 +42,7 @@ export class PlayScreen {
   private readonly chapterLabel = el('div', 'ff-chapter-label');
   private readonly dots = el('div', 'ff-dots');
   private readonly coins = el('span');
+  private coinTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly title = el('h1', 'ff-title');
   private readonly status = el('div', 'ff-status');
   private readonly statusTitle = el('div', 'ff-status-title');
@@ -217,7 +218,53 @@ export class PlayScreen {
     }));
   }
 
+  /** The current garden's dash in the progress track (viewport pixels), or null when there is none. */
+  progressTarget(): { x: number; y: number } | null {
+    const dot = this.dots.querySelector<HTMLElement>('.ff-dot[data-state="now"], .ff-dot[data-lit]');
+    const r = dot?.getBoundingClientRect();
+    return r && r.width > 0 ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
+  }
+
+  /** The solved garden's dash turns gold; `glint` flashes it (a released firefly landing). */
+  lightProgress(glint: boolean): void {
+    const dot = this.dots.querySelector<HTMLElement>('.ff-dot[data-state="now"], .ff-dot[data-lit]');
+    if (!dot) return;
+    dot.dataset.state = 'done';
+    dot.dataset.lit = 'true';
+    if (!glint) return;
+    delete dot.dataset.arrive;
+    void dot.offsetWidth; // restart the glint for each firefly that lands
+    dot.dataset.arrive = 'true';
+  }
+
+  /**
+   * The solve's coins land in the coin pill: it shows `before` until `afterMs` (as the card's +10
+   * chip rises), then `after` with a small bump. 0 shows `after` now, still. (A chapter's bonus is
+   * shown on its card and the map; the pill catches up at the next refresh.)
+   */
+  landCoins(before: number, after: number, afterMs: number): void {
+    if (this.coinTimer !== null) clearTimeout(this.coinTimer);
+    this.coinTimer = null;
+    if (afterMs <= 0) {
+      this.coins.textContent = String(after);
+      return;
+    }
+    this.coins.textContent = String(before);
+    this.coinTimer = setTimeout(() => {
+      this.coinTimer = null;
+      this.coins.textContent = String(after);
+      const pill = this.coins.parentElement;
+      if (!pill) return;
+      delete pill.dataset.bump;
+      void pill.offsetWidth;
+      pill.dataset.bump = 'true';
+    }, afterMs);
+  }
+
   setCoins(coins: number, hintCost: number, bank: number): void {
+    // A pending landing is superseded by the real balance.
+    if (this.coinTimer !== null) clearTimeout(this.coinTimer);
+    this.coinTimer = null;
     this.coins.textContent = String(coins);
     this.hintCost.textContent = bank > 0 ? `${bank} saved` : String(hintCost);
     this.hintButton.setAttribute('aria-label', bank > 0 ? `Hint, ${bank} saved` : `Hint, ${hintCost} coins`);
@@ -231,11 +278,12 @@ export class PlayScreen {
 
   /**
    * Swap the status card and moves for the level-complete card. The celebration itself is the
-   * board's solve moment (the bloom ripple), so the card only slides in.
+   * board's solve moment, so the card only rises in, `enterMs` later, and takes taps from
+   * `readyMs` (it keeps its space meanwhile, so the board does not resize mid-celebration).
    */
-  showComplete(view: CompleteView): void {
+  showComplete(view: CompleteView, enterMs = 0, readyMs = enterMs): void {
     this.root.dataset.complete = 'true';
-    this.complete.show(view);
+    this.complete.show(view, enterMs, readyMs);
   }
 
   hideComplete(): void {
@@ -243,13 +291,6 @@ export class PlayScreen {
     this.complete.hide();
   }
 
-  countdown(ms: number): void {
-    this.complete.countdown(ms);
-  }
-
-  holdCountdown(): void {
-    this.complete.holdCountdown();
-  }
 
   /** The jar's count: one slot per firefly the garden needs, lit while it is still in the jar. */
   setJar(remaining: number, size: number): void {

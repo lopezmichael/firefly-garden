@@ -59,6 +59,8 @@ export interface Economy {
   readonly hintCost: number;
   /** Hints one rewarded ad grants: one used now, the rest saved for later. */
   readonly hintsPerAd: number;
+  /** Coins for finishing a chapter's main path (the chapter card's bonus); none when absent. */
+  readonly chapterBonus?: number;
 }
 
 export const PLAYER_CONFIG = {
@@ -94,14 +96,17 @@ export const PLAYER_CONFIG = {
    * price that still makes a hint cost three solves. Retention first; see the
    * difficulty report for the rewarded-ad tradeoff.
    */
-  economy: { startingCoins: 60, coinsPerSolve: 10, hintCost: 30, hintsPerAd: 3 } as Economy,
+  economy: { startingCoins: 60, coinsPerSolve: 10, hintCost: 30, hintsPerAd: 3, chapterBonus: 30 } as Economy,
   /** Ad pacing from the project plan (Monetization, Ad placements). */
   ads: {
     /** No midgame ad until this many levels are complete (first session protection). */
     midgameAfterLevels: 5,
     /** Portal cap on midgame ads (CrazyGames: at most one per three minutes). */
     midgameMinGapSeconds: 180,
-    /** Seconds between levels (celebration, auto-advance). */
+    /**
+     * Seconds between levels (the solve's celebration, then the player's tap to continue). An
+     * assumption since tap to continue: refit from the playtest's `continue` event seconds.
+     */
     levelTransitionSeconds: 5,
     /** Seconds a midgame ad takes. */
     midgameSeconds: 15,
@@ -215,6 +220,8 @@ export function simulate(levels: readonly SimLevel[], profile: PlayerProfile, ec
           t.solved++;
           t.solveSeconds += r.seconds;
           state.coins += economy.coinsPerSolve;
+          // The last level of a chapter finishes it: the chapter card's bonus.
+          if (levels[i + 1]?.chapter !== levels[i]!.chapter) state.coins += economy.chapterBonus ?? 0;
           completed++;
           // Midgame ad on the level-complete screen, paced by the portal cap.
           if (completed > ads.midgameAfterLevels && clock - lastMidgame >= ads.midgameMinGapSeconds) {
@@ -386,6 +393,8 @@ export function simulateWithPolicy(
   const policyLevels = new Map([...all.values()].map((l) => [l.id, toPolicyLevel(l)]));
   const reserve = options.reserve.map(toPolicyLevel);
   const mainPath = levels.map((l) => l.id);
+  const chapterMains = new Map<string, string[]>();
+  for (const l of levels) chapterMains.set(l.chapter, [...(chapterMains.get(l.chapter) ?? []), l.id]);
 
   const tallies: Tally[] = levels.map(() => ({
     reached: 0, plays: 0, solved: 0, quits: 0, churned: 0, hintedPlays: 0, coinHints: 0, adHints: 0, refusedHints: 0, bankedHints: 0,
@@ -398,6 +407,7 @@ export function simulateWithPolicy(
     const rng = createRng(deriveSeed(seed, run));
     const state: PlayerState = { skill: profile.skill, xp: 0, coins: economy.startingCoins, bank: 0 };
     const solved = new Set<string>();
+    const bonused = new Set<string>();
     const reached = new Set<number>();
     const quits = new Map<string, number>();
     const history: PlayRecord[] = [];
@@ -440,6 +450,11 @@ export function simulateWithPolicy(
       if (r.solved) {
         solved.add(level.id);
         state.coins += economy.coinsPerSolve;
+        // A main-path solve that finishes its chapter's main levels: the chapter card's bonus, once.
+        if (mi !== undefined && !bonused.has(level.chapter) && (chapterMains.get(level.chapter) ?? []).every((id) => solved.has(id))) {
+          bonused.add(level.chapter);
+          state.coins += economy.chapterBonus ?? 0;
+        }
         completed++;
         if (mi !== undefined) {
           tallies[mi]!.solved++;

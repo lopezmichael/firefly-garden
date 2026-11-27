@@ -2,8 +2,8 @@ import { coin, icon } from './icons.ts';
 /**
  * The level-complete card (design canvas: "Level complete"): it takes the
  * place of the status card and the move buttons once a garden is solved. Paper,
- * the title, what was solved and how fast, the coin badge, Garden map, Next
- * garden in seal red, and a thin bar that fills as the auto-advance comes.
+ * the title, what was solved and how fast, the coin badge, Garden map, and Next
+ * garden in seal red. Nothing moves on by itself: the player taps to continue.
  * Text is set with textContent; the only markup is the constant icons.
  */
 
@@ -11,8 +11,10 @@ export interface CompleteView {
   /** "Garden 6 of 10 in the Rose Bed. Solved in 0:48." */
   readonly sub: string;
   readonly coins: number;
-  /** Whether another garden follows (false on the last one: no Next, no countdown). */
+  /** Whether another garden follows (false on the last one: no Next). */
   readonly more: boolean;
+  /** The Next button's words, when not "Next garden" ("Finish the chapter"). */
+  readonly nextLabel?: string;
 }
 
 export interface CompleteHandlers {
@@ -36,10 +38,13 @@ export class CompleteCard {
   private readonly chipText = el('span');
   private readonly chipSr = el('span', 'ff-sr');
   private readonly mapButton = el('button', 'ff-complete-map');
-  /** The countdown: a thin bar that fills over the wait before the next garden opens. */
-  private readonly bar = el('div', 'ff-complete-bar');
   private readonly nextButton = el('button', 'ff-complete-next');
   private readonly note = el('p', 'ff-complete-note');
+  private readonly nextText = document.createTextNode('Next garden');
+  /** Until the card is ready it is inert (no taps, no focus); this ends the wait. */
+  private readyTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Focus asked for while the card was still waiting: given once it is ready. */
+  private focusWanted = false;
 
   constructor(handlers: CompleteHandlers) {
     this.root.hidden = true;
@@ -61,16 +66,11 @@ export class CompleteCard {
     map.append(icon('map'), el('span', 'ff-complete-map-label', 'Garden map'));
     map.addEventListener('click', () => handlers.map());
     this.nextButton.type = 'button';
-    this.nextButton.append(document.createTextNode('Next garden'), icon('next'));
+    this.nextButton.append(this.nextText, icon('next'));
     this.nextButton.addEventListener('click', () => handlers.next());
     buttons.append(map, this.nextButton);
 
-    const foot = el('div', 'ff-complete-foot');
-    const track = el('div', 'ff-complete-track');
-    track.setAttribute('aria-hidden', 'true');
-    track.append(this.bar);
-    foot.append(track, this.note);
-    this.panel.append(head, buttons, foot);
+    this.panel.append(head, buttons, this.note);
     this.root.append(this.panel);
   }
 
@@ -78,14 +78,30 @@ export class CompleteCard {
     return !this.root.hidden;
   }
 
-  show(view: CompleteView): void {
+  /**
+   * Show the card: it rises in after `enterMs` (with the board's bloom) and takes taps and focus
+   * from `readyMs` (once the fireflies lift off), so a tap where the moves were, or a second key
+   * press, can't skip the garden mid-celebration.
+   */
+  show(view: CompleteView, enterMs = 0, readyMs = enterMs): void {
+    this.root.style.setProperty('--ff-complete-delay', `${enterMs}ms`);
+    this.clearWait();
+    this.panel.inert = readyMs > 0;
+    if (readyMs > 0) {
+      this.readyTimer = setTimeout(() => {
+        this.readyTimer = null;
+        this.panel.inert = false;
+        if (this.focusWanted) this.focus();
+      }, readyMs);
+    }
     this.sub.textContent = view.sub;
     this.chipText.textContent = `+${view.coins}`;
     this.chipSr.textContent = `${view.coins} coins earned`;
     this.nextButton.hidden = !view.more;
-    this.note.textContent = view.more ? 'The next garden opens by itself in a moment.' : 'You lit every garden in this build.';
+    this.nextText.textContent = view.nextLabel ?? 'Next garden';
+    this.note.textContent = view.more ? '' : 'You lit every garden in this build.';
+    this.note.hidden = view.more;
     this.root.dataset.more = String(view.more);
-    this.bar.classList.remove('ff-counting');
     this.root.hidden = false;
     // Replay the entrance (the coin chip rises) each time a garden is solved.
     this.root.classList.remove('ff-enter');
@@ -95,24 +111,23 @@ export class CompleteCard {
 
   hide(): void {
     this.root.hidden = true;
-    this.bar.classList.remove('ff-counting');
+    this.clearWait();
+    this.panel.inert = false;
   }
 
-  /** Fill the bar over `ms` (restarted from empty each time the auto-advance is armed). */
-  countdown(ms: number): void {
-    this.bar.style.setProperty('--ff-countdown', `${ms}ms`);
-    this.bar.classList.remove('ff-counting');
-    void this.bar.getBoundingClientRect();
-    this.bar.classList.add('ff-counting');
-  }
-
-  /** The auto-advance is on hold (a sheet is open, the tab is hidden): the bar waits empty. */
-  holdCountdown(): void {
-    this.bar.classList.remove('ff-counting');
+  private clearWait(): void {
+    if (this.readyTimer !== null) clearTimeout(this.readyTimer);
+    this.readyTimer = null;
+    this.focusWanted = false;
   }
 
   /** Focus Next, or Garden map on the last garden. */
   focus(): void {
+    if (this.panel.inert) {
+      this.focusWanted = true;
+      return;
+    }
+    this.focusWanted = false;
     (this.nextButton.hidden ? this.mapButton : this.nextButton).focus({ preventScroll: true });
   }
 }

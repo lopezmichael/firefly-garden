@@ -61,34 +61,56 @@ export function drawDarkTile(ctx: CanvasRenderingContext2D, c: Css, cell: number
 }
 
 /**
- * Lit tile: paper rim, gold wash, warm centre, pooled edge, paper grain, ink
- * outline. One drawing however many fireflies light it.
+ * Lit tile: paper lit from within. A pale gold wash, a luminous warm-white centre
+ * that reaches most of the face, gold pooling only toward the wobbled edge, light
+ * grain, ink outline. `bright` is a tile two or more beams light: its centre is
+ * wider and whiter, so crossing reads as more light, never as a fault.
  */
-export function drawLitTile(ctx: CanvasRenderingContext2D, c: Css, cell: number): void {
+export function drawLitTile(ctx: CanvasRenderingContext2D, c: Css, cell: number, bright = false): void {
   inUnits(ctx, cell, () => {
     card(ctx, c.paper, c.goldEdge);
     wash(ctx, c.gold, 6, 6, 72, 66, 5, 1.6, 7);
-    // The warm centre: glow-warm fading through glow-soft to nothing (the canvas's cellglow).
-    const g = ctx.createRadialGradient(42, 6 + 66 * 0.46, 0, 42, 6 + 66 * 0.46, 72 * 0.55);
-    g.addColorStop(0, `${c.glowWarm}e6`);
-    g.addColorStop(0.6, `${c.glowSoft}59`);
-    g.addColorStop(1, `${c.glowSoft}00`);
-    ctx.fillStyle = g;
-    roundRect(ctx, 6, 6, 72, 66, 5);
-    ctx.fill();
-    ctx.globalAlpha = 0.8;
-    pooledEdge(ctx, c.goldPool, 6, 6, 72, 66, 5, 2.4, 1.6, 7);
-    ctx.globalAlpha = 1;
     ctx.save();
     wobblePath(ctx, 6, 6, 72, 66, 5, 1.6, 7);
     ctx.clip();
-    texturize(ctx, 'grain', c.paperGrain, 70, 31, 6, 6, 72, 66);
+    // The light inside: glow-soft over most of the face, warm white at the heart.
+    const cy = 6 + 66 * 0.48, reach = bright ? 0.82 : 0.72;
+    const g = ctx.createRadialGradient(42, cy, 0, 42, cy, 72 * reach);
+    g.addColorStop(0, bright ? c.glow : `${c.glowWarm}f2`);
+    g.addColorStop(bright ? 0.42 : 0.32, `${c.glowWarm}${bright ? 'e0' : 'c4'}`);
+    g.addColorStop(0.7, `${c.glowSoft}7a`);
+    g.addColorStop(1, `${c.glowSoft}00`);
+    ctx.fillStyle = g;
+    ctx.fillRect(6, 6, 72, 66);
+    texturize(ctx, 'grain', c.paperGrain, 46, 31, 6, 6, 72, 66);
     ctx.restore();
+    // Pigment pools at the rim: the gold is strongest where the light is weakest.
+    pooledEdge(ctx, c.goldPool, 6, 6, 72, 66, 5, 3, 1.6, 7);
     ctx.strokeStyle = c.sumi;
     ctx.lineWidth = 2;
     roundRect(ctx, 1, 1, 82, 76, 6);
     ctx.stroke();
   });
+}
+
+/**
+ * The solved garden's halo: warm light round the outside of a `w × h` rounded rect inset by
+ * `margin` (CSS pixels), baked once (a canvas shadow, never a live filter). The rect itself is
+ * cut out, so the gaps between tiles stay night and only the board's edge glows.
+ */
+export function drawHalo(ctx: CanvasRenderingContext2D, c: Css, w: number, h: number, margin: number, radius: number, blur: number): void {
+  const res = Math.hypot(ctx.getTransform().a, ctx.getTransform().b) || 1;
+  ctx.save();
+  ctx.shadowColor = c.glowSoft;
+  ctx.shadowBlur = blur * res;
+  ctx.fillStyle = c.gold;
+  roundRect(ctx, margin, margin, w, h, radius);
+  ctx.fill();
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.fill();
+  ctx.restore();
 }
 
 const BUSH_LINE = new Path2D('M11 60 C14 30 38 10 64 18 C76 26 78 48 73 64');
@@ -206,10 +228,14 @@ const ANTENNAE_CURLED = new Path2D('M40.8 35.6 q-1.4 -5 -5 -5.6 q-1.6 0 -1 1.4 M
 const ANTENNAE_STRAIGHT = new Path2D('M40.8 35.6 q-1.4 -5 -5 -5.6 M43.2 35.6 q1.4 -5 5 -5.6');
 const SHIVER = new Path2D('M23 38 q-4 7 0 14 M17 35 q-6 10 0 20 M61 38 q4 7 0 14 M67 35 q6 10 0 20');
 
-/** The light around a firefly: warm for yours and the hint's, rose for a conflict. */
+/**
+ * The light around a firefly: warm for yours and the hint's, rose for a conflict. The board
+ * blends it additively, so it brightens whatever it sits on: the firefly's own tile reads as
+ * the light's source.
+ */
 export function drawFlyGlow(ctx: CanvasRenderingContext2D, c: Css, cell: number, kind: FlyKind): void {
   inUnits(ctx, cell, () => {
-    const r = kind === 'hint' ? 22 : kind === 'conflict' ? 24 : 26;
+    const r = kind === 'hint' ? 24 : 27;
     const g = ctx.createRadialGradient(42, 46, 0, 42, 46, r);
     if (kind === 'conflict') {
       g.addColorStop(0, c.warnGlow);
@@ -217,8 +243,9 @@ export function drawFlyGlow(ctx: CanvasRenderingContext2D, c: Css, cell: number,
       g.addColorStop(1, `${c.warn}00`);
     } else {
       g.addColorStop(0, c.glow);
-      g.addColorStop(0.35, `${c.glowSoft}b3`);
-      g.addColorStop(1, `${c.gold}00`);
+      g.addColorStop(0.25, `${c.glow}c8`);
+      g.addColorStop(0.6, `${c.glowSoft}55`);
+      g.addColorStop(1, `${c.glowSoft}00`);
     }
     ctx.fillStyle = g;
     ctx.beginPath();
@@ -335,6 +362,23 @@ export function drawPetal(ctx: CanvasRenderingContext2D, c: Css, px: number): vo
   ctx.lineWidth = 0.6;
   ctx.stroke();
   ctx.restore();
+}
+
+/**
+ * A spark of light rising from a blooming bush, `px` CSS pixels wide: a small hard warm-white
+ * core in a short soft halo, so it reads as a point of light (the board blends it additively),
+ * not a smudge.
+ */
+export function drawSpark(ctx: CanvasRenderingContext2D, c: Css, px: number): void {
+  const r = px / 2;
+  const g = ctx.createRadialGradient(r, r, 0, r, r, r);
+  g.addColorStop(0, c.glow);
+  g.addColorStop(0.14, c.glow);
+  g.addColorStop(0.24, `${c.glowSoft}a0`);
+  g.addColorStop(0.45, `${c.gold}1c`);
+  g.addColorStop(1, `${c.gold}00`);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, px, px);
 }
 
 /** A firefly mote: a small warm light that fades out at its edge. */

@@ -20,23 +20,24 @@ import { conflictWords, crossTipDue } from '../state/teach.ts';
 import type { TipId } from '../state/teach.ts';
 import { Wallet } from '../state/wallet.ts';
 import { BoardView } from '../view/board.ts';
+import { CELEBRATION } from '../view/art/geometry.ts';
 import { bandFor, canonicalCell, displayCell, displayDims, keepOrTurn, keyAction, orientFor, stepFocus } from '../view/layout.ts';
 import type { Palette } from '../view/theme.ts';
-import { cancelFlights, fly, FLIGHT_MS } from './flight.ts';
+import { cancelFlights, fly, FLIGHT_MS, release, RELEASE_MS } from './flight.ts';
 import { PlayScreen } from './screen.ts';
 import { HintSheet, SettingsSheet } from './sheets.ts';
 import { unlockToShow } from '../state/mapProgress.ts';
-import { MapScreen } from './map.ts';
+import { MapScreen, MOVE_MS } from './map.ts';
+import { ChapterCard } from './chapter.ts';
+import { chapterFinishedBy, chapterLine, chapterTotals, formatDuration } from '../state/chapters.ts';
 import type { BedView } from './map.ts';
 
 /**
  * The game controller: loads and validates saved progress, picks the next
  * level with the policy, runs a play, pays for hints, credits solves,
- * auto-advances, saves after every change and logs every analytics event.
+ * waits for a tap to move on, saves after every change and logs every analytics event.
  */
 
-/** Seconds the solved board stays up before the next garden opens by itself. */
-const AUTO_ADVANCE_MS = 3000;
 /** A return after this long hidden starts a new analytics session. */
 const SESSION_BREAK_MS = 30 * 60_000;
 /** Saves are batched this long after a change (and flushed when the tab hides). */
@@ -64,6 +65,12 @@ export interface E2EHooks {
   /** Open a garden directly (perf checks on the largest boards). */
   openLevel(id: string): void;
   frames(): { count: number; ms: number };
+  /** The analytics events logged so far (copies). */
+  events(): Record<string, unknown>[];
+  /** Each chapter's level ids, in order. */
+  chapters(): string[][];
+  /** Record these gardens as solved (to reach a chapter's last garden quickly), and save. */
+  markSolved(ids: string[]): void;
   platform: TestPlatform;
 }
 
@@ -91,9 +98,17 @@ export class GameApp {
   private attempt = 1;
   private transform: Transform = 'identity';
   private notice: Notice | null = null;
-  private advanceTimer: ReturnType<typeof setTimeout> | null = null;
-  /** Auto-advance waits for the tab to be visible, so a hidden tab never starts a level's clock. */
-  private advancePending = false;
+  /** When (Date.now()) the current garden was solved, until the player moves on (for `continue`). */
+  private solvedAt: number | null = null;
+  private readonly chapterCard = new ChapterCard(() => void this.startNextChapter());
+  /** The solve just finished this chapter (index): Next becomes Finish the chapter. */
+  private chapterMoment: number | null = null;
+  /** Bumped by anything that cuts the chapter sequence short (a new level, the map closing). */
+  private chapterRun = 0;
+  /** The board shrinking into its stop (tap 1); cancelled if the sequence is cut short. */
+  private boardMove: Animation | null = null;
+  /** Lights the solved garden's dash if no released firefly landed on it (a cut-short celebration). */
+  private progressTimer: ReturnType<typeof setTimeout> | null = null;
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
   /** Visible time in the current analytics session (hidden stretches excluded). */
   private sessionVisibleMs = 0;
@@ -131,7 +146,14 @@ export class GameApp {
         }
       }),
       hint: () => void this.hint(),
-      next: () => this.advance(),
+      next: () => {
+        if (this.chapterMoment !== null) {
+          void this.finishChapter(this.chapterMoment);
+          return;
+        }
+        this.logContinue('next');
+        this.advance();
+      },
       settings: () => this.openSettings(),
       map: () => this.openMap(),
     }, palette);
@@ -144,17 +166,14 @@ export class GameApp {
       motion: (m) => this.setMotion(m),
       copyLog: () => this.copyLog(),
     });
-    this.settingsSheet.onClose = () => {
-      this.resumeClock();
-      if (this.advancePending) this.scheduleAdvance();
-    };
+    this.settingsSheet.onClose = () => this.resumeClock();
   }
 
   async start(): Promise<void> {
     const stored = await this.loadStored();
     this.restoreState(stored);
     this.host.replaceChildren(this.screen.root);
-    this.screen.root.append(this.mapScreen.root, this.hintSheet.backdrop, this.settingsSheet.backdrop);
+    this.screen.root.append(this.mapScreen.root, this.chapterCard.root, this.hintSheet.backdrop, this.settingsSheet.backdrop);
     const behind = () => [...this.screen.root.children].filter(
       (c): c is HTMLElement => c instanceof HTMLElement && c !== this.hintSheet.backdrop && c !== this.settingsSheet.backdrop);
     this.hintSheet.background = behind;
@@ -164,6 +183,7 @@ export class GameApp {
       palette: this.palette,
       reducedMotion: this.reducedMotion(),
       onTap: (cell) => this.tap(cell),
+      onRelease: (from, gold, phase, cellPx) => this.releaseToTrack(from, gold, phase, cellPx),
     });
     this.applyMotion();
     this.reducedQuery.addEventListener('change', () => this.applyMotion());
@@ -281,7 +301,6 @@ export class GameApp {
       this.emit({ type: 'session_end', seconds: this.sessionSeconds() });
       if (this.visibleSince !== null) this.sessionVisibleMs += Date.now() - this.visibleSince;
       this.visibleSince = null;
-      this.holdAdvance();
       this.flushSave();
       return;
     }
@@ -297,7 +316,6 @@ export class GameApp {
     // A still board stopped drawing; the browser may have dropped its canvas while hidden.
     this.board.redraw();
     this.resumeClock();
-    if (this.advancePending) this.scheduleAdvance();
   }
 
   /** The level clock runs only while the board is visible and no sheet is open. */
@@ -336,7 +354,6 @@ export class GameApp {
   private openSettings(): void {
     if (this.adShowing || this.hintSheet.isOpen || this.settingsSheet.isOpen) return;
     this.play?.pause();
-    this.holdAdvance();
     const s = this.log.summary();
     this.settingsSheet.open({ sound: this.settings.sound, motion: this.settings.motion, played: s.played, solved: s.solved, hints: s.hints });
   }
@@ -374,34 +391,19 @@ export class GameApp {
 
   // ---------------------------------------------------------------- levels
 
-  /** Arm the auto-advance (the complete card's bar fills toward it), unless the tab is hidden or a
-   *  sheet is open: then it waits, and is re-armed from full when the player is back. */
-  private scheduleAdvance(): void {
-    if (this.advanceTimer !== null) clearTimeout(this.advanceTimer);
-    this.advanceTimer = null;
-    this.advancePending = false;
-    if (document.hidden || this.blocked()) {
-      this.advancePending = true;
-      this.screen.holdCountdown();
-      return;
-    }
-    this.advanceTimer = setTimeout(() => this.advance(), AUTO_ADVANCE_MS);
-    this.screen.countdown(AUTO_ADVANCE_MS);
-  }
-
-  /** Put an armed auto-advance on hold (the tab hid, a sheet opened). */
-  private holdAdvance(): void {
-    if (this.advanceTimer === null) return;
-    clearTimeout(this.advanceTimer);
-    this.advanceTimer = null;
-    this.advancePending = true;
-    this.screen.holdCountdown();
+  /**
+   * The player moves on from a solved garden (Next, or the map): log how long they stayed. The
+   * tap is also the one hand-off point for a portal's midgame break (Phase 3 adapter).
+   */
+  private logContinue(choice: 'next' | 'map'): void {
+    if (this.solvedAt === null || !this.current) return;
+    // Clamped to the schema's range: a clock moved back, or a card left up for days, still logs.
+    const seconds = Math.min(6 * 86_400, Math.max(0, Math.round((Date.now() - this.solvedAt) / 100) / 10));
+    this.solvedAt = null;
+    this.emit({ type: 'continue', level: this.current.id, choice, seconds });
   }
 
   private advance(): void {
-    if (this.advanceTimer !== null) clearTimeout(this.advanceTimer);
-    this.advanceTimer = null;
-    this.advancePending = false;
     const next = this.session.next(Date.now());
     if (!next) {
       this.finished();
@@ -456,9 +458,9 @@ export class GameApp {
   /** Leave the board for the map. An unsolved level counts as a quit; its board is parked. */
   private openMap(): void {
     if (this.blocked()) return;
-    if (this.advanceTimer !== null) clearTimeout(this.advanceTimer);
-    this.advanceTimer = null;
-    this.advancePending = false;
+    if (this.play?.solved) this.logContinue('map');
+    // Leaving for the map from a chapter's last garden skips its card; the map's own unlock flight plays.
+    this.chapterMoment = null;
     cancelFlights();
     this.cancelCues();
     const play = this.play, cur = this.current;
@@ -495,7 +497,7 @@ export class GameApp {
     this.flushSave();
   }
 
-  private showMap(): void {
+  private showMap(opts: { holdFlight?: number } = {}): void {
     const solved = (id: string) => this.session.isSolved(id);
     const nextMain = this.catalog.mainPath.find((id) => !solved(id));
     const nextPlace = nextMain ? this.catalog.place(nextMain) : undefined;
@@ -506,7 +508,8 @@ export class GameApp {
     });
     const chapterNo = nextPlace ? this.catalog.chapters.findIndex((c) => c.id === nextPlace.chapter.id) + 1 : 0;
     // A chapter finished since the map last showed it: one firefly flies on to the next stop.
-    const unlock = unlockToShow(this.catalog.chapters.map((c, i) => ({ id: c.id, finished: beds[i]!.state === 'done' })), this.mapSeen);
+    // The chapter card holds its chapter's flight for its Start button (`holdFlight`): not seen yet.
+    const unlock = unlockToShow(this.catalog.chapters.map((c, i) => ({ id: c.id, finished: beds[i]!.state === 'done' && i !== opts.holdFlight })), this.mapSeen);
     const changed = unlock.seen.size !== this.mapSeen.size || [...unlock.seen].some((c) => !this.mapSeen.has(c));
     this.mapSeen = unlock.seen;
     if (changed) this.scheduleSave();
@@ -525,7 +528,94 @@ export class GameApp {
     });
   }
 
+  // ---------------------------------------------------------------- chapter finished
+
+  /**
+   * Tap 1 (Finish the chapter): the solved board shrinks into its chapter's stop while the map
+   * opens around it, then the chapter card settles over the map. Reduced motion: a cut.
+   */
+  private async finishChapter(index: number): Promise<void> {
+    if (this.blocked() || this.chapterCard.isOpen) return;
+    const run = ++this.chapterRun;
+    this.logContinue('next');
+    cancelFlights();
+    this.cancelCues();
+    this.screen.hideComplete();
+    this.showMap({ holdFlight: index });
+    // The map stays inert through both taps' moves (no Continue, no gear): only the card acts.
+    this.mapScreen.root.inert = true;
+    const motion = !this.reducedMotion();
+    if (motion) {
+      const map = this.mapScreen.root.animate([{ opacity: 0 }, { opacity: 1 }], { duration: MOVE_MS, easing: 'ease-in-out' });
+      await this.mapScreen.whenDrawn();
+      if (run !== this.chapterRun || !this.mapScreen.isOpen) return;
+      const stop = this.mapScreen.stopCenter(index);
+      const host = this.screen.boardHost, r = host.getBoundingClientRect();
+      if (stop && r.width > 0) {
+        const dx = stop.x - (r.left + r.width / 2), dy = stop.y - (r.top + r.height / 2);
+        const s = Math.max(0.08, 60 / Math.max(r.width, r.height));
+        this.boardMove = host.animate(
+          [{ transform: 'none', opacity: 1 }, { transform: `translate(${dx.toFixed(0)}px, ${dy.toFixed(0)}px) scale(${s.toFixed(3)})`, opacity: 0.2 }],
+          { duration: MOVE_MS, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' },
+        );
+      }
+      await map.finished.catch(() => undefined);
+      if (run !== this.chapterRun || !this.mapScreen.isOpen) return;
+    }
+    const chapter = this.catalog.chapters[index]!;
+    const totals = chapterTotals(chapter, this.session.progress.history);
+    const last = index === this.catalog.chapters.length - 1;
+    this.chapterCard.show({
+      title: `Chapter ${index + 1} complete`,
+      line: chapterLine(chapter.id),
+      gardens: totals.gardens,
+      time: formatDuration(totals.seconds),
+      hints: totals.hints,
+      bonus: this.wallet.economy.chapterBonus ?? 0,
+      action: last ? 'See the garden map' : `Start chapter ${index + 2}`,
+    });
+    this.chapterIndex = index;
+    this.audio.play(VOICE.solve, 0.5);
+    this.screen.announce(`Chapter ${index + 1} complete. ${chapterLine(chapter.id)} ${totals.gardens} gardens grown.`);
+  }
+
+  /** The chapter the open card belongs to. */
+  private chapterIndex = 0;
+
+  /**
+   * Tap 2 (Start chapter N): the card folds away, a firefly flies the path to the next stop, which
+   * lights, and the view zooms into it as its first garden opens. Reduced motion: cuts. After the
+   * build's last chapter the card's button only shows the map.
+   */
+  private async startNextChapter(): Promise<void> {
+    if (!this.chapterCard.isOpen) return;
+    const run = ++this.chapterRun;
+    const index = this.chapterIndex;
+    this.chapterCard.hide();
+    // The chapter's flight is now seen: a reload from here on never replays it.
+    const unlock = unlockToShow(this.catalog.chapters.map((c) => ({ id: c.id, finished: c.levels.every((id) => this.session.isSolved(id)) })), this.mapSeen);
+    this.mapSeen = unlock.seen;
+    this.scheduleSave();
+    if (index === this.catalog.chapters.length - 1) {
+      // The build's last chapter: the finished map is where the player stays.
+      this.mapScreen.root.inert = false;
+      this.mapScreen.focusContinue();
+      return;
+    }
+    this.audio.play(VOICE.hint, 0.7);
+    await this.mapScreen.playFlight(index);
+    if (run !== this.chapterRun || !this.mapScreen.isOpen) return;
+    await this.mapScreen.zoomInto(index + 1);
+    if (run !== this.chapterRun || !this.mapScreen.isOpen) return;
+    this.leaveMap();
+  }
+
   private leaveMap(): void {
+    this.chapterRun++;
+    this.boardMove?.cancel();
+    this.boardMove = null;
+    this.chapterCard.hide();
+    this.mapScreen.root.inert = false;
     this.mapScreen.hide();
     for (const el of this.mapBackground()) el.inert = false;
     // An untouched board was left waiting behind the map: go back to it.
@@ -541,11 +631,19 @@ export class GameApp {
   /** The play screen under the map: inert while the map is open (focus and screen readers). */
   private mapBackground(): HTMLElement[] {
     return [...this.screen.root.children].filter((c): c is HTMLElement =>
-      c instanceof HTMLElement && c !== this.mapScreen.root && c !== this.hintSheet.backdrop && c !== this.settingsSheet.backdrop);
+      c instanceof HTMLElement && c !== this.mapScreen.root && c !== this.chapterCard.root
+      && c !== this.hintSheet.backdrop && c !== this.settingsSheet.backdrop);
   }
 
   private show(next: NextLevel, play: Play): void {
     cancelFlights();
+    this.solvedAt = null;
+    this.chapterMoment = null;
+    this.chapterRun++;
+    this.boardMove?.cancel();
+    this.boardMove = null;
+    if (this.progressTimer !== null) clearTimeout(this.progressTimer);
+    this.progressTimer = null;
     this.cancelCues();
     this.screen.hideComplete();
     this.current = next;
@@ -710,7 +808,13 @@ export class GameApp {
     this.platform.gameplayStop();
     this.platform.haptic?.('success');
     const before = this.wallet.coins;
+    // Asked before this solve is recorded: did it finish the chapter?
+    const chapter = chapterFinishedBy(this.catalog.chapters, cur.id, (id) => this.session.isSolved(id));
     this.wallet.creditSolve();
+    const garden = this.wallet.coins - before;
+    // The chapter bonus is credited (and saved) now, so a reload can't lose it; the chapter card shows it.
+    if (chapter !== null) this.wallet.creditChapter();
+    this.chapterMoment = chapter;
     this.session.record({ levelId: cur.id, reason: cur.reason, solved: true, seconds: play.seconds, hints: play.hints, endedAt: Date.now() });
     this.emit({
       type: 'level_end', level: cur.id, reason: cur.reason, attempt: this.attempt, outcome: 'solved', seconds: play.seconds,
@@ -719,13 +823,31 @@ export class GameApp {
     this.refresh();
     this.flushSave();
     const sub = this.solvedLine(cur.id, play.seconds, play.hints);
-    const coins = this.wallet.coins - before;
-    // The policy is pure: peek whether another garden follows (none after the last one).
-    const more = this.session.next(Date.now()) !== null;
-    this.screen.showComplete({ sub, coins, more });
+    const coins = garden;
+    // The policy is pure: peek whether another garden follows (none after the last one). A chapter's
+    // end always offers its card, the build's last chapter included.
+    const more = chapter !== null || this.session.next(Date.now()) !== null;
+    // With motion, the card rises in with the bloom and takes taps once the fireflies lift off.
+    const starts = this.board.celebrationStartsIn();
+    const cardDelay = starts === null ? 0 : Math.round(starts + CELEBRATION.cardDelay);
+    const cardReady = starts === null ? 0 : Math.round(starts + CELEBRATION.cardReady);
+    this.solvedAt = Date.now();
+    // The +10 lands in the coin pill as the card's chip rises (its CSS: 400 ms after the card).
+    this.screen.landCoins(before, before + garden, starts === null ? 0 : cardDelay + 700);
+    // Without a celebration no firefly flies to the progress track: the dash turns gold now. With
+    // one, it turns gold as the first lands; and once the last is due it is gold whatever happened
+    // (reduced motion switched on, a resize cancelling the flights, the map opened).
+    if (starts === null) this.screen.lightProgress(false);
+    else {
+      const due = starts + CELEBRATION.releaseStart + CELEBRATION.releaseSpan + RELEASE_MS + 300;
+      this.progressTimer = setTimeout(() => {
+        this.progressTimer = null;
+        this.screen.lightProgress(false);
+      }, due);
+    }
+    this.screen.showComplete({ sub, coins, more, ...(chapter !== null ? { nextLabel: 'Finish the chapter' } : {}) }, cardDelay, cardReady);
     this.screen.announce(`Solved! The garden is glowing. ${sub} ${coins} coins earned.`);
     this.screen.focusNext();
-    if (more) this.scheduleAdvance();
   }
 
   /** The complete card's line: which garden, how long, and any hints. */
@@ -910,8 +1032,28 @@ export class GameApp {
       refresh: () => this.refresh(),
       openLevel: (id) => this.show({ id, reason: 'main' }, new Play(this.catalog.board(id), this.catalog.solution(id), this.clock)),
       frames: () => this.board.frameStats(),
+      events: () => this.log.events.map((e) => ({ ...e })),
+      chapters: () => this.catalog.chapters.map((c) => [...c.levels]),
+      markSolved: (ids) => {
+        for (const id of ids) this.session.record({ levelId: id, reason: 'main', solved: true, seconds: 20, hints: 0, endedAt: Date.now() });
+        this.flushSave();
+      },
       platform: this.platform as TestPlatform,
     };
+  }
+
+  /**
+   * At the solve, a firefly flies from its tile up to the garden progress track, and the solved
+   * garden's dash turns gold as the first one lands. False when there's no track to fly to (a
+   * bonus garden) or motion is reduced: the board handles it.
+   */
+  private releaseToTrack(from: { x: number; y: number }, gold: boolean, phase: number, cellPx: number): boolean {
+    // Nothing flies over a sheet, an ad or the map (the board's own flier stays under them).
+    if (this.reducedMotion() || this.blocked()) return false;
+    const to = this.screen.progressTarget();
+    if (!to) return false;
+    release(this.screen.root, from, to, gold, phase, cellPx, () => this.screen.lightProgress(true));
+    return true;
   }
 
   /** Animate a firefly between the jar and a tile. False when skipped (reduced motion, no layout). */

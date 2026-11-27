@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bushLayout, dotPositions, FACE_CENTER_Y, FLY_BOXES, bloomDelays, MOTION_TIMING, outlinePolylines, rippleDelays, ROSE_SLOTS, ROSE_VARIANTS, roseVariants, UNIT } from '../src/view/art/geometry.ts';
+import { bushLayout, cappedRipple, CELEBRATION, dotPositions, FACE_CENTER_Y, flightAt, FLY_BOXES, bloomDelays, haloStrength, MOTION_TIMING, syncFlash, outlinePolylines, rippleDelays, ROSE_SLOTS, ROSE_VARIANTS, roseVariants, UNIT } from '../src/view/art/geometry.ts';
 
 const DOT_R = 3.6;
 
@@ -178,13 +178,72 @@ describe('the solve bloom finishes before the next garden', () => {
     expect(order[0]).toBe(0);
   });
 
-  it('lands the last rose before the auto-advance, even on the farthest bush', () => {
+  it('opens the last rose within the moment, even on the farthest bush', () => {
     const big = bloomDelays(Array.from({ length: 400 }, (_, i) => i), 0, 20, true);
-    const lastRose = 480 + MOTION_TIMING.bloomStart + Math.max(...big.values()) + MOTION_TIMING.roseOpen + 2 * MOTION_TIMING.roseStagger;
-    expect(lastRose).toBeLessThan(3000);
+    const lastRose = MOTION_TIMING.bloomStart + Math.max(...big.values()) + MOTION_TIMING.roseOpen + 2 * MOTION_TIMING.roseStagger;
+    expect(lastRose).toBeLessThan(MOMENT_MS);
   });
 
   it('is all at once without motion', () => {
     expect([...bloomDelays([0, 99], 0, 10, false).values()]).toEqual([0, 0]);
+  });
+});
+
+/** A solved garden's whole moment stays short: everything on the board lands within this. */
+const MOMENT_MS = 3500;
+
+describe('the solve celebration', () => {
+  const T = CELEBRATION;
+
+  it('flashes twice, together, and is dark at the start and end', () => {
+    expect(syncFlash(0)).toBe(0);
+    expect(syncFlash(1)).toBe(0);
+    expect(syncFlash(0.25)).toBeCloseTo(1);
+    expect(syncFlash(0.75)).toBeCloseTo(1);
+    expect(syncFlash(0.5)).toBeCloseTo(0);
+  });
+
+  it('swells the halo to full, then settles on the afterglow it keeps', () => {
+    expect(haloStrength(0)).toBe(0);
+    expect(haloStrength(T.haloRise)).toBeCloseTo(1);
+    expect(haloStrength(T.haloRise + T.haloSettle)).toBeCloseTo(T.afterglow);
+    expect(haloStrength(60_000)).toBe(T.afterglow);
+    // Never brighter than full, never darker than the afterglow once risen.
+    for (let ms = T.haloRise; ms < T.haloRise + T.haloSettle; ms += 50) {
+      expect(haloStrength(ms)).toBeLessThanOrEqual(1);
+      expect(haloStrength(ms)).toBeGreaterThanOrEqual(T.afterglow - 1e-9);
+    }
+  });
+
+  it('flies each firefly up and out: it starts where it sat and ends gone above', () => {
+    const start = flightAt(0, 1.3, 6);
+    expect(start.x).toBeCloseTo(0);
+    expect(start.y).toBeCloseTo(0);
+    expect(start.scale).toBe(1);
+    expect(start.alpha).toBe(1);
+    const end = flightAt(1, 1.3, 6);
+    expect(end.y).toBeCloseTo(-6);
+    expect(end.alpha).toBe(0);
+    // Always climbing after a gentle start.
+    let y = 0;
+    for (let t = 0.05; t <= 1; t += 0.05) {
+      const p = flightAt(t, 0.4, 6);
+      expect(p.y).toBeLessThan(y);
+      y = p.y;
+    }
+  });
+
+  it('releases every firefly and lands the last one within the moment', () => {
+    const order = cappedRipple(Array.from({ length: 100 }, (_, i) => i), 0, 10, T.releasePerCell, T.releaseSpan, true);
+    const lastLanding = T.releaseStart + Math.max(...order.values()) + T.flight;
+    expect(lastLanding).toBeLessThan(MOMENT_MS);
+  });
+
+  it('brings the card in with the bloom and lets it take taps once the fireflies lift off', () => {
+    // Shown as the bloom starts (flow plan A: a player who taps straight away isn't kept waiting
+    // for decoration), but a stray tap can't skip the flash and the release.
+    expect(T.cardDelay).toBe(MOTION_TIMING.bloomStart);
+    expect(T.cardReady).toBe(T.releaseStart);
+    expect(T.cardReady).toBeGreaterThan(T.flashStart + T.flashDur);
   });
 });

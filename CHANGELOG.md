@@ -4,7 +4,37 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+- Chapter finished (flow plan B), in two taps. A chapter's last garden offers **Finish the
+  chapter**: the board shrinks into its chapter's stop as the map opens around it, and a chapter
+  card settles over the map (an ink seal, a line about what the chapter taught, gardens, time and
+  hints, and a **+30 chapter bonus**). **Start chapter N** flies a firefly along the path, lights
+  the next stop and zooms into it as its first garden opens. Reduced motion uses cuts; a reload on
+  the card goes to the map and plays the flight once. The bonus is `PLAYER_CONFIG.economy.chapterBonus`,
+  credited and saved at the solve, logged as a `coins` event (`why: 'chapter'`), and simulated by
+  both player simulators (the economy ratchets hold; `reports/` regenerated).
+
 ### Changed
+- Tap to continue (flow plan `docs/plans/2026-11-13-flow-and-transitions.md`, A): a solved
+  garden waits for the player. The auto-advance, its countdown bar and the code that paused and
+  re-armed it for sheets and hidden tabs are gone; Next garden (seal red, focused once the card
+  is ready) or Garden map moves on. The solve's +10 lands in the coin pill as the card's chip
+  rises (a small bump; reduced motion updates it in place). A new `continue` event logs the
+  choice and the seconds from solve to tap, so the playtest shows whether people linger or rush.
+- The solve celebration and the light (plan `docs/plans/2026-11-27-solve-celebration.md`). A win
+  now plays out on the board before the complete card arrives: every firefly flashes together
+  twice, a warm halo swells round the board's edge and settles into an afterglow, a soft wave of
+  light rolls across the lit tiles, the bushes bloom (petals burst from the roses and tumble down
+  turning over; small sparks of light rise from the leaves and twinkle out, replacing the milky
+  motes and the row of rising petals), then the fireflies
+  lift off one by one and fly to the garden progress track in the top bar (above the board on
+  phones, in the side panel on desktop) with comet trails; the solved garden's dash turns gold as
+  the first lands and glints for each one after, while the garden keeps glowing. The board's
+  halo is skipped where it has no room to glow softly (a desktop board filling its canvas). The complete card rises in with the bloom and takes taps once the fireflies lift off,
+  so a stray tap can't skip the garden mid-celebration. Reduced motion lands the roses, the afterglow and the card at once and keeps
+  the fireflies on their tiles. Lit tiles in play read as paper lit from within (a luminous
+  centre, gold pooling at the edge), a firefly's glow is additive so its tile is the light's
+  source, and tiles lit by two or more beams are a touch brighter (from the 2026-11-12 feedback).
 - Look pass 2: the ink and wash theme (plan `docs/plans/2026-11-12-ink-wash-theme.md`, design
   canvas "Firefly Garden · Character"). A theme change only: game logic, levels, layout bands and
   the screen flow are as they were.

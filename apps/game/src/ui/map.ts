@@ -45,6 +45,10 @@ export interface MapHandlers {
 const SVG_NS = 'http://www.w3.org/2000/svg';
 /** Unlock flight timing: the firefly travels, then the stop it lands on rings gold. */
 const FLIGHT = { delay: 500, travel: 2600, land: 900 } as const;
+/** The same flight when the player asked for it (Start chapter N): no wait, a quicker trip. */
+const FLIGHT_ASKED = { delay: 150, travel: 1500, land: 900 } as const;
+/** The moves between the board and the map at a chapter's end (the board shrinking in, the zoom out). */
+export const MOVE_MS = 900;
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
@@ -103,12 +107,22 @@ export class MapScreen {
   private readonly continueButton = el('button', 'ff-map-continue');
   private readonly continueSub = el('span', 'ff-map-continue-sub');
   private readonly continueLabel = el('span');
+  private readonly gear = el('button', 'ff-gear');
   private view: MapView | null = null;
   private frame = 0;
   private flight: Animation | null = null;
   private flightTimer: ReturnType<typeof setTimeout> | null = null;
   /** The unlock flight has started for this open: a redraw (a resize) must never replay it. */
   private flown = false;
+  /** The last layout's stops and path segments (field pixels), for flights and the moves in and out. */
+  private stops: readonly Point[] = [];
+  private segments: readonly MapSegment[] = [];
+  /** Callbacks waiting for the next draw (the move into the map needs the stops' positions). */
+  private drawWaiters: (() => void)[] = [];
+  /** A running zoom into a stop (the move out to a new chapter); cancelled on hide. */
+  private zoom: Animation | null = null;
+  /** Called once the on-demand flight is over: landed, or stopped (closed, motion turned off). */
+  private landed: (() => void) | null = null;
 
   constructor(handlers: MapHandlers, private readonly palette: Palette) {
     this.root.setAttribute('aria-labelledby', 'ff-map-title');
@@ -122,7 +136,7 @@ export class MapScreen {
     title.id = 'ff-map-title';
     const coinBox = el('div', 'ff-coins');
     coinBox.append(coin(), this.coins);
-    const gear = el('button', 'ff-gear');
+    const gear = this.gear;
     gear.type = 'button';
     gear.setAttribute('aria-label', 'Settings');
     gear.append(icon('settings'));
@@ -191,6 +205,66 @@ export class MapScreen {
   hide(): void {
     this.root.hidden = true;
     this.stopFlight();
+    this.zoom?.cancel();
+    this.zoom = null;
+    for (const w of this.drawWaiters.splice(0)) w();
+  }
+
+  /**
+   * Focus the map's Continue button (after the chapter card closes on the build's last chapter),
+   * or Settings when Continue is disabled because every garden is glowing.
+   */
+  focusContinue(): void {
+    (this.continueButton.disabled ? this.gear : this.continueButton).focus({ preventScroll: true });
+  }
+
+  /** Resolves once the map has been laid out and drawn for this open (or is closed). */
+  whenDrawn(): Promise<void> {
+    if (this.root.hidden) return Promise.resolve();
+    return new Promise((resolve) => {
+      this.drawWaiters.push(resolve);
+      this.queue();
+    });
+  }
+
+  /** A chapter stop's centre in viewport pixels, or null before the map has been drawn. */
+  stopCenter(index: number): Point | null {
+    const p = this.stops[index];
+    if (!p) return null;
+    const r = this.field.getBoundingClientRect();
+    return { x: r.left + p.x, y: r.top + p.y };
+  }
+
+  /**
+   * The unlock flight on demand (the chapter card's Start button): one firefly flies from stop
+   * `from` to the next, which rings gold. Resolves as it lands; at once without motion or a path.
+   */
+  playFlight(from: number): Promise<void> {
+    const seg = this.segments[from];
+    if (!seg || this.root.dataset.motion !== 'full' || this.root.hidden) return Promise.resolve();
+    this.flown = true;
+    return new Promise((resolve) => this.fly(seg, resolve, FLIGHT_ASKED));
+  }
+
+  /**
+   * The move out to a new chapter: the map zooms into stop `index` and fades, as its first
+   * garden opens. Resolves when done; at once without motion.
+   */
+  zoomInto(index: number): Promise<void> {
+    const p = this.stops[index];
+    if (!p || this.root.dataset.motion !== 'full' || this.root.hidden) return Promise.resolve();
+    const root = this.root.getBoundingClientRect(), field = this.field.getBoundingClientRect();
+    const ox = field.left - root.left + p.x, oy = field.top - root.top + p.y;
+    this.root.style.transformOrigin = `${ox.toFixed(0)}px ${oy.toFixed(0)}px`;
+    const anim = this.root.animate(
+      [{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(2.6)', opacity: 0 }],
+      { duration: MOVE_MS, easing: 'cubic-bezier(0.5, 0, 0.75, 0)', fill: 'forwards' },
+    );
+    this.zoom = anim;
+    return new Promise((resolve) => {
+      anim.onfinish = () => resolve();
+      anim.oncancel = () => resolve();
+    });
   }
 
   private queue(): void {
@@ -208,6 +282,8 @@ export class MapScreen {
     const w = this.field.clientWidth, h = this.field.clientHeight;
     if (w < 1 || h < 1) return;
     const layout = mapLayout(view.beds.length + 1, w, 44, Math.max(88, h - 36));
+    this.stops = layout.stops;
+    this.segments = layout.segments;
     this.drawing.setAttribute('viewBox', `0 0 ${w} ${h}`);
     this.drawing.setAttribute('width', String(w));
     this.drawing.setAttribute('height', String(h));
@@ -247,6 +323,7 @@ export class MapScreen {
         this.fly(seg);
       }
     }
+    for (const wait of this.drawWaiters.splice(0)) wait();
   }
 
   private placeLabel(node: HTMLElement, p: Point, right: boolean, w: number): void {
@@ -286,7 +363,8 @@ export class MapScreen {
   }
 
   /** The unlock flight: one firefly along the path to the next stop, which rings gold as it lands. */
-  private fly(seg: MapSegment): void {
+  private fly(seg: MapSegment, landed?: () => void, timing: typeof FLIGHT | typeof FLIGHT_ASKED = FLIGHT): void {
+    this.landed = landed ?? null;
     const sprite = el('div', 'ff-flier ff-map-flier');
     sprite.setAttribute('aria-hidden', 'true');
     // Constant markup (firefly C), never game or player data.
@@ -300,20 +378,25 @@ export class MapScreen {
     }));
     this.flightTimer = setTimeout(() => {
       this.flightTimer = null;
-      const anim = sprite.animate(frames, { duration: FLIGHT.travel, easing: 'ease-in-out', fill: 'forwards' });
+      const anim = sprite.animate(frames, { duration: timing.travel, easing: 'ease-in-out', fill: 'forwards' });
       this.flight = anim;
       const done = () => {
         sprite.remove();
         if (this.flight === anim) this.flight = null;
       };
-      anim.oncancel = done;
+      anim.oncancel = () => {
+        done();
+        this.land();
+      };
       anim.onfinish = () => {
         done();
         const ring = svg('circle', { cx: seg.to.x, cy: seg.to.y, r: 38 }, 'ff-mstop-land');
         this.drawing.append(ring);
-        setTimeout(() => ring.remove(), FLIGHT.land + 100);
+        setTimeout(() => ring.remove(), timing.land + 100);
+        // Let the gold ring land before moving on.
+        if (this.landed) setTimeout(() => this.land(), timing.land * 0.6);
       };
-    }, FLIGHT.delay);
+    }, timing.delay);
   }
 
   private stopFlight(): void {
@@ -322,6 +405,13 @@ export class MapScreen {
     this.flight?.cancel();
     this.flight = null;
     this.field.querySelectorAll('.ff-map-flier').forEach((n) => n.remove());
+    this.land();
+  }
+
+  private land(): void {
+    const done = this.landed;
+    this.landed = null;
+    done?.();
   }
 
   /** Night, grain and hills behind the map, rising behind Continue. */

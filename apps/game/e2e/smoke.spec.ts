@@ -38,7 +38,7 @@ async function tapCell(page: Page, cell: number): Promise<void> {
 /** Answer cells the player places (lanterns are already on the board and can't be tapped). */
 const answerCells = async (page: Page) => (await level(page)).answer;
 
-test('solves the first garden by tapping its answer, and the complete card credits the coins', async ({ page }) => {
+test('solves the first garden by tapping its answer, the complete card credits the coins, and Next moves on', async ({ page }) => {
   await open(page);
   expect((await page.evaluate(() => window.__ff.audio())).context).toBe('none'); // no sound before a gesture
   const start = await page.evaluate(() => window.__ff.wallet());
@@ -50,11 +50,24 @@ test('solves the first garden by tapping its answer, and the complete card credi
   }
   await expect.poll(async () => (await level(page)).solved).toBe(true);
   await expect(page.locator('.ff-complete')).toBeVisible();
+  // The card waits out the board's celebration inert (a stray tap can't skip the garden), then
+  // takes taps and focus.
+  const panel = page.locator('.ff-complete-panel');
+  expect(await panel.evaluate((el) => (el as HTMLElement).inert)).toBe(true);
+  await expect.poll(() => panel.evaluate((el) => (el as HTMLElement).inert)).toBe(false);
+  await expect(page.locator('.ff-complete-next')).toBeFocused();
   expect((await page.evaluate(() => window.__ff.wallet())).coins).toBe(startingCoins + coinsPerSolve);
   // The taps unlocked sound and played it (the landing chimes and the flourish).
   const audio = await page.evaluate(() => window.__ff.audio());
   expect(audio.context).toBe('running');
   expect(audio.played).toBeGreaterThan(0);
+  // Tap to continue: nothing moves on by itself, Next does, and the wait is logged.
+  await page.waitForTimeout(4500);
+  expect((await level(page)).id).toBe(l.id);
+  await page.locator('.ff-complete-next').click();
+  await expect.poll(async () => (await level(page)).id).not.toBe(l.id);
+  const moves = (await page.evaluate(() => window.__ff.events())).filter((e) => e.type === 'continue');
+  expect(moves).toEqual([expect.objectContaining({ level: l.id, choice: 'next' })]);
 });
 
 test('buys a hint with coins; a cancelled ad credits nothing and is silent; a finished ad credits hints', async ({ page }) => {
@@ -226,4 +239,64 @@ test('a still board stops drawing frames (reduced motion as the low-power mode),
   await page.waitForTimeout(1000);
   expect(await frames()).toBe(settled);
   await ctx.close();
+});
+
+/** Solve every garden of chapter 1 but its last through the hooks, then open that last one. */
+async function toChapterEnd(page: Page): Promise<{ last: string; next: string }> {
+  const chapters = await page.evaluate(() => window.__ff.chapters());
+  const ch1 = chapters[0]!;
+  const last = ch1[ch1.length - 1]!;
+  await page.evaluate(({ ids, id }) => {
+    window.__ff.markSolved(ids);
+    window.__ff.openLevel(id);
+  }, { ids: ch1.slice(0, -1), id: last });
+  return { last, next: chapters[1]![0]! };
+}
+
+test('finishing a chapter: Finish the chapter, the card over the map with its bonus, then Start chapter 2', async ({ page }) => {
+  await open(page);
+  const { last, next } = await toChapterEnd(page);
+  await expect.poll(async () => (await level(page)).id).toBe(last);
+  const coins = (await page.evaluate(() => window.__ff.wallet())).coins;
+  for (const c of (await level(page)).answer) await tapCell(page, c);
+  const nextButton = page.locator('.ff-complete-next');
+  await expect(nextButton).toHaveText(/Finish the chapter/);
+  await expect(nextButton).toBeFocused();
+  expect((await page.evaluate(() => window.__ff.wallet())).coins).toBe(coins + coinsPerSolve + PLAYER_CONFIG.economy.chapterBonus!);
+  await nextButton.click();
+  // Tap 1: the map opens and the chapter card settles over it.
+  const card = page.locator('.ff-chapter-card');
+  await expect(card).toBeVisible();
+  await expect(card).toContainText('Chapter 1 complete');
+  await expect(card).toContainText(`+${PLAYER_CONFIG.economy.chapterBonus} chapter bonus`);
+  await expect(page.locator('.ff-map')).toBeVisible();
+  // Only the card acts: the map behind it (Continue, Settings) is inert through both moves.
+  expect(await page.locator('.ff-map').evaluate((el) => (el as HTMLElement).inert)).toBe(true);
+  const go = page.locator('.ff-chapter-go');
+  await expect(go).toHaveText(/Start chapter 2/);
+  await expect(go).toBeFocused();
+  // Tap 2: one firefly flies the path, then chapter 2's first garden opens.
+  await go.click();
+  await expect(page.locator('.ff-map-flier')).toHaveCount(1);
+  await expect.poll(async () => (await level(page))?.id, { timeout: 10_000 }).toBe(next);
+  await expect(page.locator('.ff-map')).toBeHidden();
+  // The flight is seen: a reload opens the new garden, never the flight again.
+  await page.reload();
+  await page.waitForFunction(() => window.__ff?.level() != null);
+  expect((await level(page)).id).toBe(next);
+});
+
+test('a reload on the chapter card opens the map and plays the flight once', async ({ page }) => {
+  await open(page);
+  await toChapterEnd(page);
+  for (const c of (await level(page)).answer) await tapCell(page, c);
+  await page.locator('.ff-complete-next').click();
+  await expect(page.locator('.ff-chapter-card')).toBeVisible();
+  await page.reload();
+  await expect(page.locator('.ff-map')).toBeVisible();
+  await expect(page.locator('.ff-map-flier')).toHaveCount(1);
+  await page.reload();
+  await expect(page.locator('.ff-map')).toBeVisible();
+  await page.waitForTimeout(1200);
+  await expect(page.locator('.ff-map-flier')).toHaveCount(0);
 });

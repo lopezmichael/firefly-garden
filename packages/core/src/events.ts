@@ -44,7 +44,15 @@ export type AnalyticsEvent =
     })
   | (Base & { readonly type: 'hint'; readonly level: string; readonly source: HintSource; readonly step: number })
   | (Base & { readonly type: 'ad'; readonly kind: AdKind; readonly completed: boolean; readonly seconds: number })
-  | (Base & { readonly type: 'coins'; readonly delta: number; readonly balance: number; readonly why: 'solve' | 'hint' | 'doubler' | 'start' });
+  | (Base & { readonly type: 'coins'; readonly delta: number; readonly balance: number; readonly why: 'solve' | 'hint' | 'doubler' | 'start' | 'chapter' })
+  | (Base & {
+      /** The player moves on from a solved garden: whether they lingered or rushed. */
+      readonly type: 'continue';
+      readonly level: string;
+      readonly choice: 'next' | 'map';
+      /** Seconds from the solve to the tap. */
+      readonly seconds: number;
+    });
 
 export type EventType = AnalyticsEvent['type'];
 
@@ -70,6 +78,7 @@ const FIELDS: Readonly<Record<string, readonly string[]>> = {
   hint: ['level', 'source', 'step'],
   ad: ['kind', 'completed', 'seconds'],
   coins: ['delta', 'balance', 'why'],
+  continue: ['level', 'choice', 'seconds'],
 };
 const BASE_FIELDS = ['v', 'install', 'at', 'session', 'type'];
 const isText = (v: unknown, max = 64) => typeof v === 'string' && v.length > 0 && v.length <= max;
@@ -135,7 +144,12 @@ export function validateEvent(e: unknown, options: { readonly levels?: ReadonlyS
     case 'coins':
       need('delta', (v) => typeof v === 'number' && Number.isInteger(v) && Math.abs(v) < 1e6, 'an integer');
       need('balance', isCount, 'a count');
-      need('why', (v) => v === 'solve' || v === 'hint' || v === 'doubler' || v === 'start', 'a known reason');
+      need('why', (v) => v === 'solve' || v === 'hint' || v === 'doubler' || v === 'start' || v === 'chapter', 'a known reason');
+      break;
+    case 'continue':
+      need('level', isText, 'a level id');
+      need('choice', (v) => v === 'next' || v === 'map', '"next" or "map"');
+      need('seconds', isSeconds, 'seconds');
       break;
     default:
       p.push(`unknown event type ${JSON.stringify(r.type)}`);

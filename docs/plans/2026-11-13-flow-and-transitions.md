@@ -54,29 +54,47 @@ Michael's direction:
 
 ## A. Tap to continue (garden solved)
 
-- [ ] Remove the auto-advance and its countdown bar (`ff-complete-bar`, `AUTO_ADVANCE_MS`,
+- [x] Remove the auto-advance and its countdown bar (`ff-complete-bar`, `AUTO_ADVANCE_MS`,
       `screen.countdown`), plus the code that pauses and restarts the countdown for sheets and
       hidden tabs.
-- [ ] The card keeps its content (garden, time, hints, the +10 chip). **Next garden** is the
+- [x] The card keeps its content (garden, time, hints, the +10 chip). **Next garden** is the
       seal-red primary action and takes focus once the card appears; **Garden map** stays
       secondary.
-- [ ] Show the card when the bloom starts, not when it ends, so a player who taps straight away
-      isn't kept waiting. The bloom is only decoration.
-- [ ] A tap anywhere on the board after the solve does nothing, so a stray tap can't skip
+- [x] Show the card when the bloom starts, not when it ends, so a player who taps straight away
+      isn't kept waiting. The bloom is only decoration. *Built 2026-11-27 with the solve
+      celebration (`docs/plans/2026-11-27-solve-celebration.md`):* the card rises in with the
+      bloom (`CELEBRATION.cardDelay`, 0.5 s) and is inert until the fireflies lift off
+      (`cardReady`, 1.1 s), so a stray tap can't skip the flash and the release.
+- [x] A tap anywhere on the board after the solve does nothing, so a stray tap can't skip
       ahead. Only the card's buttons, Enter and Space continue.
-- [ ] The card shows the coins landing in the coin pill as it opens (ink and wash already animates
+- [x] The card shows the coins landing in the coin pill as it opens (ink and wash already animates
       the chip). Reduced motion: the total updates in place.
-- [ ] Ad pacing: the portal's midgame break, when one is due by `PLAYER_CONFIG` pacing, runs on
+- [x] Ad pacing: the portal's midgame break, when one is due by `PLAYER_CONFIG` pacing, runs on
       the Next tap. That code belongs in the Phase 3 adapter; here we only make sure the tap is the
-      single hand-off point.
-- [ ] Analytics: log the wait from solve to tap (`level_end` already exists; add the tap delay)
-      so the playtest shows whether people linger or rush.
-- [ ] Tests: the e2e solve test taps Next (it no longer waits out the countdown); the motion-css
+      single hand-off point. *Done:* `logContinue` in `app.ts` runs on Next and on the map from a
+      solved garden; the Phase 3 break hooks in there.
+- [x] Analytics: log the wait from solve to tap (`level_end` already exists; add the tap delay)
+      so the playtest shows whether people linger or rush. *Done:* a `continue` event (level,
+      choice, seconds), validated by the core schema.
+- [x] Tests: the e2e solve test taps Next (it no longer waits out the countdown); the motion-css
       and status/complete height ratchets keep passing.
 
 ## B. Chapter finished
 
-The flow when the solved garden is the last one of its chapter:
+The flow when the solved garden is the last one of its chapter. **Revised 2026-11-27 to two taps**
+(design canvas, "Chapter finished: two taps, into the map world"): the separate "See the garden map"
+step went, because the map is where the story is going anyway.
+
+- **Tap 1, Finish the chapter:** the solved board shrinks into its chapter's stop as the map fades
+  in around it, then the chapter card settles over the map.
+- **Tap 2, Start chapter N:** the card folds away, one firefly flies the path, the next stop rings
+  gold, and the view zooms into it as its first garden opens.
+- No timers: each sequence starts from a tap. Reduced motion: the same taps, with cuts.
+- **Chapter bonus: +30 coins** (decided 2026-11-27): `PLAYER_CONFIG.economy.chapterBonus`, credited
+  and saved at the solve (a reload can't lose it), simulated in both player simulators; every
+  economy ratchet holds.
+
+The original four steps, for reference:
 
 1. **The garden's card**, as in A, but its primary action reads **"Finish the chapter"**.
 2. **The chapter card**: a paper card over the dimmed board, much like the complete card.
@@ -91,24 +109,48 @@ The flow when the solved garden is the last one of its chapter:
    arrival instead of whenever the map is next opened. Primary action: **"Start chapter 2"**.
 4. **Chapter 2's first garden**, with its chapter intro line (moment 6) on the status card.
 
-- [ ] Detect "this solve finished a chapter" in `state/` (pure, tested). The map already knows
+- [x] Detect "this solve finished a chapter" in `state/` (pure, tested). The map already knows
       which chapters are done (`unlockToShow`, `mapSeen`).
-- [ ] The chapter card (`ui/chapter.ts`) with its own height budget, focus trap and live-region
+- [x] The chapter card (`ui/chapter.ts`) with its own height budget, focus trap and live-region
       announcement.
-- [ ] Route through the map after the card. The unlock flight plays once per chapter, as today:
+- [x] Route through the map after the card. The unlock flight plays once per chapter, as today:
       `mapSeen` is set when it plays, so a reload never replays it.
-- [ ] Reduced motion: no flight. The new stop appears open with a short line ("Chapter 2 is
+- [x] Reduced motion: no flight. The new stop appears open with a short line ("Chapter 2 is
       open"), and the button works the same.
-- [ ] A reload partway through (on the chapter card, or on the map before the flight): the save
+- [x] A reload partway through (on the chapter card, or on the map before the flight): the save
       knows the chapter is solved but not yet seen, so the next launch opens the map and plays
-      the flight. That is what `mapSeen` already gives us; it just needs a test.
-- [ ] Detours: if the policy picks a breather or a retry right after a chapter ends, the chapter
+      the flight. That is what `mapSeen` already gives us; it just needs a test. *Done (e2e):* the
+      card itself isn't shown again after a reload (its bonus is already credited); the map and its
+      flight are.
+- [x] Detours: if the policy picks a breather or a retry right after a chapter ends, the chapter
       moment comes first and the detour after it.
-- [ ] The last chapter in the build skips the flight and shows the ending card (moment 8).
-- [ ] Sound: a short chapter flourish on the card, and a rising cue for the flight
-      (placeholders until the sound design pass).
-- [ ] e2e: finish chapter 1 through test hooks, then check the card, the map, the flight (one
+- [x] The last chapter in the build skips the flight and shows the ending card (moment 8).
+      *Partly:* its card's button reads "See the garden map" and leaves the player on the finished
+      map; the ending card itself is moment 8 (section C).
+- [x] Sound: a short chapter flourish on the card, and a rising cue for the flight
+      (placeholders until the sound design pass). *For now the solve flourish and the hint sparkle.*
+- [x] e2e: finish chapter 1 through test hooks, then check the card, the map, the flight (one
       flier, once), the new chapter's first board, and that a reload doesn't replay it.
+
+Reviews of B (2026-11-27): security clean. Correctness: the map stayed live during the moves
+(its Continue or Settings, or a held Enter, could cut the sequence short and leave the next garden
+shrinking or focus outside the card), and the last chapter's card left focus nowhere. Fixed: the
+map is inert from tap 1 until the next garden opens, the board's shrink is cancelled if the
+sequence is cut short, and the last chapter focuses Settings when Continue is disabled.
+
+## Areas: making each world distinct (noted 2026-11-27, for Phase 4)
+
+Michael asked whether the level items make each area feel distinct. Not on their own: blooms,
+seals, board shapes and twist pieces vary a chapter, but they are small on screen and the board's
+look is (deliberately) the same everywhere. Split the job:
+
+- **The board stays constant** in every area (tiles, bushes, firefly, light), so the rules always
+  read the same.
+- **Level items carry the chapter:** its bloom flower, seal, board shapes and twist pieces.
+- **The surroundings carry the world:** per area, a sky tint and hill colours, a skyline silhouette
+  (rose arches, orchard trees, pond reeds), one ambient creature (moths, falling blossom, a koi
+  ripple), and its own region on the map. All of it lives in the scenery layer (`view/art/scenery.ts`
+  and the map), which is already separate from the board, so a new area adds scenery, not board art.
 
 ## C. Smaller moments to design alongside
 
