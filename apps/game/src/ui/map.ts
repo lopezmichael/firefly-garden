@@ -85,6 +85,20 @@ function orbitFly(): SVGGElement {
   return g;
 }
 
+/**
+ * A finished chapter's keepsake (rewards plan): its seal, the chapter card's red ink stamp, small
+ * at the stop's lower left, clear of its label.
+ */
+function seal(p: Point): SVGGElement {
+  const g = svg('g', { transform: `translate(${f(p.x - 26)} ${f(p.y + 24)}) rotate(-8) scale(0.3) translate(-38 -38)` }, 'ff-mseal');
+  g.append(
+    svg('circle', { cx: 38, cy: 38, r: 33 }, 'ff-seal-disc'),
+    svg('circle', { cx: 38, cy: 38, r: 27 }, 'ff-seal-rim'),
+    svg('path', { d: 'M38 38 m-3 0 a4.5 4.5 0 1 1 7.5 3.6 a9 9 0 1 1 -13.8 -7.8 a13.8 13.8 0 1 1 20.4 13.2' }, 'ff-seal-rose'),
+  );
+  return g;
+}
+
 /** The little bush on a stop, with `roses` roses. */
 function bushlet(roses: number): SVGGElement {
   const g = svg('g');
@@ -218,6 +232,11 @@ export class MapScreen {
     for (const w of this.drawWaiters.splice(0)) w();
   }
 
+  /** The coin pill, after a change while the map is open (the chapter card's double). */
+  setCoins(coins: number): void {
+    this.coins.textContent = String(coins);
+  }
+
   /**
    * Focus the map's Continue button (after the chapter card closes on the build's last chapter),
    * or Settings when Continue is disabled because every garden is glowing.
@@ -312,7 +331,7 @@ export class MapScreen {
       }
       if (b.state === 'now') g.append(svg('circle', { r: 38 }, 'ff-mstop-dash'));
       parts.push(g);
-      if (b.state === 'done') parts.push(...this.orbits(p));
+      if (b.state === 'done') parts.push(...this.orbits(p), seal(p));
       if (b.state === 'now') parts.push(this.hover(p));
     });
     const t = layout.stops[view.beds.length]!;

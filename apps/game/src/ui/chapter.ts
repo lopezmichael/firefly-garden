@@ -17,6 +17,8 @@ export interface ChapterCardView {
   readonly stats: readonly [ChapterStat, ChapterStat, ChapterStat];
   /** Coins credited for the chapter (0: no chip). */
   readonly bonus: number;
+  /** Offer the optional rewarded ad that doubles the bonus (only where rewarded ads exist). */
+  readonly doubler: boolean;
   /** "Start chapter 2", or "See the garden map" after the last chapter. */
   readonly action: string;
 }
@@ -52,9 +54,11 @@ export class ChapterCard {
   private readonly bonus = el('div', 'ff-chapter-bonus');
   private readonly bonusText = el('span');
   private readonly button = el('button', 'ff-chapter-go');
+  /** The optional rewarded double, under the bonus: always secondary to the card's main button. */
+  private readonly double = el('button', 'ff-chapter-double');
   private readonly buttonLabel = el('span');
 
-  constructor(onGo: () => void) {
+  constructor(onGo: () => void, onDouble: () => void) {
     this.root.hidden = true;
     const scrim = el('div', 'ff-chapter-scrim');
     scrim.setAttribute('aria-hidden', 'true');
@@ -76,14 +80,18 @@ export class ChapterCard {
     this.button.type = 'button';
     this.button.append(this.buttonLabel, icon('next'));
     this.button.addEventListener('click', () => onGo());
-    // A modal with one action: Tab and Shift+Tab stay on it.
+    this.double.type = 'button';
+    this.double.append(icon('video'), el('span', undefined, 'Watch a video to double it'));
+    this.double.addEventListener('click', () => onDouble());
+    // A modal: Tab and Shift+Tab move between its buttons and never leave it.
     this.card.addEventListener('keydown', (e) => {
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        this.button.focus({ preventScroll: true });
-      }
+      if (e.key !== 'Tab') return;
+      e.preventDefault();
+      const live = [this.double, this.button].filter((b) => !b.hidden && !b.disabled);
+      const at = live.indexOf(document.activeElement as HTMLButtonElement);
+      live[(at + (e.shiftKey ? -1 : 1) + live.length) % live.length]?.focus({ preventScroll: true });
     });
-    this.card.append(seal, this.title, this.line, stats, this.bonus, this.button);
+    this.card.append(seal, this.title, this.line, stats, this.bonus, this.double, this.button);
     this.root.append(scrim, this.card);
   }
 
@@ -100,6 +108,9 @@ export class ChapterCard {
     });
     this.bonus.hidden = view.bonus <= 0;
     this.bonusText.textContent = `+${view.bonus} chapter bonus`;
+    this.double.hidden = !view.doubler;
+    this.double.disabled = false;
+    this.button.disabled = false;
     this.buttonLabel.textContent = view.action;
     this.root.hidden = false;
     // Replay the entrance each time.
@@ -111,5 +122,23 @@ export class ChapterCard {
 
   hide(): void {
     this.root.hidden = true;
+  }
+
+  /** The double's ad is playing (the button waits) or came back without finishing (offer it again). */
+  doubling(on: boolean): void {
+    // Both wait while the ad plays: nothing on the card may start the next garden under it.
+    this.double.disabled = on;
+    this.button.disabled = on;
+  }
+
+  /** The double paid: the chip shows the new total and the offer goes (and a coins figure, if shown, catches up). */
+  doubled(total: number, coins: number): void {
+    this.bonusText.textContent = `+${total} chapter bonus`;
+    this.labels.forEach((label, k) => {
+      if (label.textContent === 'coins saved') this.nums[k]!.textContent = String(coins);
+    });
+    this.double.hidden = true;
+    this.button.disabled = false;
+    this.button.focus({ preventScroll: true });
   }
 }

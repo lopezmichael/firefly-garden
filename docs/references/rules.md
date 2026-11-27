@@ -163,8 +163,12 @@ its own counters. A quit detour is never served again, so its board is not parke
   level's unique solution, and the bank is a small non-negative integer. A corrupt or
   edited save must never lock wrong cells or grant unlimited hints.
 - Undo and reset never remove a locked hint firefly; a paid hint is never lost.
-- Hints are credited only after `Platform.showRewarded()` resolves `true` (the ad
-  finished). A failed or skipped ad credits nothing and charges nothing.
+- Hints, and the chapter card's bonus double, are credited only after
+  `Platform.showRewarded()` resolves `true` (the ad finished). A failed, skipped or rejected ad
+  credits nothing and charges nothing. Nothing on the chapter card can start the next garden
+  while its ad plays.
+- Phase 3: a portal adapter must resolve `showRewarded()` (false on a timeout) rather than hang;
+  the game blocks play while an ad is up, so an ad that never resolves would freeze it.
 
 ## Saved progress and the next-level policy (Phase 2 requirements)
 

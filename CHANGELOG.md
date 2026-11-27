@@ -5,6 +5,11 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Added
+- **The chapter bonus doubler** (rewards plan):
+  - The chapter card offers an optional "Watch a video to double it" under the +30 chip. Start chapter stays the main button.
+  - Only a finished ad pays, and it pays the bonus once more (a `coins` event, `why: 'doubler'`). A cancelled ad pays nothing and leaves the offer up.
+  - The hint sheet and the doubler now share one rewarded-ad path: sound muted while the ad plays, an `ad` event logged, and an adapter that rejects counts as not finished.
+- **Seals on the map:** each finished chapter's stop carries its red ink seal, the chapter card's stamp, as a keepsake.
 - Small delights before the playtest (rewards plan):
   - **The moon travels:** through each chapter, garden by garden, it moves along the sky toward the end of the area title and warms toward gold.
   - **Tap the moon:** a firefly crosses the sky.

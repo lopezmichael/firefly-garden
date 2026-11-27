@@ -104,7 +104,7 @@ export class GameApp {
   private opening: StatusText | null = null;
   /** When (Date.now()) the current garden was solved, until the player moves on (for `continue`). */
   private solvedAt: number | null = null;
-  private readonly chapterCard = new ChapterCard(() => void this.startNextChapter());
+  private readonly chapterCard = new ChapterCard(() => void this.startNextChapter(), () => void this.doubleChapterBonus());
   /** The solve just finished this chapter (index): Next becomes Finish the chapter. */
   private chapterMoment: number | null = null;
   /** Bumped by anything that cuts the chapter sequence short (a new level, the map closing). */
@@ -594,6 +594,7 @@ export class GameApp {
           { value: String(this.wallet.coins), label: 'coins saved' },
         ] as const,
         bonus,
+        doubler: this.platform.rewardedAds && bonus > 0,
         action: 'See the garden map',
       }
       : {
@@ -605,6 +606,7 @@ export class GameApp {
           { value: String(totals.hints), label: 'hints used' },
         ] as const,
         bonus,
+        doubler: this.platform.rewardedAds && bonus > 0,
         action: `Start chapter ${index + 2}`,
       };
     this.chapterCard.show(view);
@@ -622,7 +624,8 @@ export class GameApp {
    * build's last chapter the card's button only shows the map.
    */
   private async startNextChapter(): Promise<void> {
-    if (!this.chapterCard.isOpen) return;
+    // Never while the doubler's ad plays: the next garden (and its clock) would start under it.
+    if (!this.chapterCard.isOpen || this.adShowing) return;
     const run = ++this.chapterRun;
     const index = this.chapterIndex;
     this.chapterCard.hide();
@@ -797,21 +800,7 @@ export class GameApp {
     if (choice === 'pay') {
       source = this.wallet.payForHint();
     } else if (choice === 'ad' && this.platform.rewardedAds) {
-      const started = Date.now();
-      this.adShowing = true;
-      this.audio.setMuted('ad', true);
-      let completed = false;
-      try {
-        completed = await this.platform.showRewarded();
-      } catch (err) {
-        // An adapter that rejects instead of resolving false (real SDKs do): no credit, carry on.
-        console.warn('Rewarded ad failed:', err);
-        completed = false;
-      } finally {
-        this.adShowing = false;
-        this.audio.setMuted('ad', false);
-      }
-      this.emit({ type: 'ad', kind: 'rewarded', completed, seconds: Math.round((Date.now() - started) / 1000) });
+      const completed = await this.watchRewarded();
       // Credited only when the ad finished (rules.md); a failed or skipped ad charges and credits nothing.
       if (completed && this.play === play && !play.solved) {
         this.wallet.creditAd();
@@ -1115,6 +1104,54 @@ export class GameApp {
       this.audio.play('land');
     });
     return true;
+  }
+
+  /**
+   * Show one rewarded ad: sound muted and the game blocked while it plays, logged as an `ad` event.
+   * True only if it played to the end; an adapter that rejects (real SDKs do) counts as not finished.
+   */
+  private async watchRewarded(): Promise<boolean> {
+    const started = Date.now();
+    this.adShowing = true;
+    this.audio.setMuted('ad', true);
+    let completed = false;
+    try {
+      completed = await this.platform.showRewarded();
+    } catch (err) {
+      console.warn('Rewarded ad failed:', err);
+      completed = false;
+    } finally {
+      this.adShowing = false;
+      this.audio.setMuted('ad', false);
+    }
+    this.emit({ type: 'ad', kind: 'rewarded', completed, seconds: Math.round((Date.now() - started) / 1000) });
+    return completed;
+  }
+
+  /**
+   * The chapter card's "double it" (rewards plan): an optional rewarded ad that pays the chapter
+   * bonus once more. Only a finished ad pays; a cancelled one leaves the offer up. Once per card.
+   */
+  private async doubleChapterBonus(): Promise<void> {
+    if (!this.chapterCard.isOpen || !this.platform.rewardedAds || this.adShowing) return;
+    const run = this.chapterRun;
+    this.chapterCard.doubling(true);
+    const completed = await this.watchRewarded();
+    if (run !== this.chapterRun || !this.chapterCard.isOpen) {
+      // The sequence moved on meanwhile: a garden that opened under the ad gets its clock back.
+      this.resumeClock();
+      return;
+    }
+    if (!completed) {
+      this.chapterCard.doubling(false);
+      return;
+    }
+    this.wallet.creditDoubler();
+    const bonus = this.wallet.economy.chapterBonus ?? 0;
+    this.chapterCard.doubled(bonus * 2, this.wallet.coins);
+    this.mapScreen.setCoins(this.wallet.coins);
+    this.screen.announce(`Chapter bonus doubled: ${bonus * 2} coins.`);
+    this.flushSave();
   }
 
   /** Animate a firefly between the jar and a tile. False when skipped (reduced motion, no layout). */

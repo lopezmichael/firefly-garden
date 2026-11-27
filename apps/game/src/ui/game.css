@@ -515,6 +515,12 @@
 }
 .ff-chapter-bonus[hidden] { display: none; }
 .ff-chapter-bonus .ff-coin { width: 22px; height: 22px; }
+.ff-chapter-double {
+  align-self: stretch; height: 48px; border-radius: 10px; border: 2px solid var(--ff-sumi); background: var(--ff-paper); color: var(--ff-sumi);
+  font: 700 15px var(--ff-font-body); display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;
+}
+.ff-chapter-double[hidden] { display: none; }
+.ff-chapter-double:disabled { opacity: 0.6; cursor: wait; }
 .ff-chapter-go {
   align-self: stretch; height: 54px; border-radius: 10px; border: 2px solid var(--ff-sumi); background: var(--ff-seal); color: var(--ff-on-seal);
   font: 700 16px var(--ff-font-body); display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;

@@ -275,6 +275,19 @@ test('finishing a chapter: Finish the chapter, the card over the map with its bo
   const go = page.locator('.ff-chapter-go');
   await expect(go).toHaveText(/Start chapter 2/);
   await expect(go).toBeFocused();
+  // The optional double: a cancelled ad pays nothing and leaves the offer; a finished one pays the bonus again.
+  const bonus = PLAYER_CONFIG.economy.chapterBonus!;
+  const double = page.locator('.ff-chapter-double');
+  const withBonus = (await page.evaluate(() => window.__ff.wallet())).coins;
+  await page.evaluate(() => window.__ff.platform.queueRewarded('cancel', 'complete'));
+  await double.click();
+  await expect(double).toBeEnabled();
+  expect((await page.evaluate(() => window.__ff.wallet())).coins).toBe(withBonus);
+  await double.click();
+  await expect(card).toContainText(`+${bonus * 2} chapter bonus`);
+  await expect(double).toBeHidden();
+  expect((await page.evaluate(() => window.__ff.wallet())).coins).toBe(withBonus + bonus);
+  await expect(go).toBeFocused();
   // Tap 2: one firefly flies the path, then chapter 2's first garden opens.
   await go.click();
   await expect(page.locator('.ff-map-flier')).toHaveCount(1);
@@ -295,6 +308,8 @@ test('a reload on the chapter card opens the map and plays the flight once', asy
   await page.reload();
   await expect(page.locator('.ff-map')).toBeVisible();
   await expect(page.locator('.ff-map-flier')).toHaveCount(1);
+  // The finished chapter's seal is stamped on the map.
+  await expect(page.locator('.ff-mseal')).toHaveCount(1);
   await page.reload();
   await expect(page.locator('.ff-map')).toBeVisible();
   await page.waitForTimeout(1200);
