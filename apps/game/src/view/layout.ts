@@ -100,6 +100,28 @@ export function flightPath(from: Point, to: Point, steps = 16, lift = 110): Poin
   return out;
 }
 
+/**
+ * A released firefly's way from its tile to the garden progress track (viewport pixels): it
+ * rises first, swings to one side (`phase` picks which and how far), then curves in to land on
+ * the track from just above it, with a small wander that fades as it nears. Pure, so tested.
+ */
+export function releasePath(from: Point, to: Point, phase: number, steps = 28): Point[] {
+  const sway = Math.sin(phase) * 46;
+  const p1 = { x: from.x + sway, y: from.y - 130 };
+  const p2 = { x: to.x + (from.x - to.x) * 0.2 - sway * 0.4, y: Math.min(to.y, from.y) - 34 };
+  const out: Point[] = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps, u = 1 - t;
+    const a = u * u * u, b = 3 * u * u * t, c = 3 * u * t * t, d = t * t * t;
+    const wander = Math.sin(t * Math.PI * 3 + phase) * 9 * Math.sin(t * Math.PI);
+    out.push({
+      x: a * from.x + b * p1.x + c * p2.x + d * to.x + wander,
+      y: a * from.y + b * p1.y + c * p2.y + d * to.y,
+    });
+  }
+  return out;
+}
+
 /** Display (row, col) → canonical cell index, for a level `w` wide and `h` tall. */
 export function canonicalCell(transform: Transform, w: number, h: number, dr: number, dc: number): number {
   return transform === 'rot90' ? (h - 1 - dc) * w + dr : dr * w + dc;

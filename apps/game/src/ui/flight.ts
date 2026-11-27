@@ -5,7 +5,7 @@
  * changed when it starts, and reduced motion skips it entirely.
  */
 
-import { flightPath } from '../view/layout.ts';
+import { flightPath, releasePath } from '../view/layout.ts';
 import type { Point } from '../view/layout.ts';
 
 /** Flight length in milliseconds; the board delays the landing by about this much. */
@@ -28,6 +28,68 @@ const live = new Set<Animation>();
 /** Stop every flight now (level change, resize): their screen positions no longer apply. */
 export function cancelFlights(): void {
   for (const a of [...live]) a.cancel();
+}
+
+/** A released firefly's flight from its tile to the garden progress track, in milliseconds. */
+export const RELEASE_MS = 1400;
+/** Glints in a released firefly's comet trail, each a little later, smaller and fainter. */
+const TRAIL = 6;
+
+/**
+ * At the solve: one firefly flies from its tile (`from`) up to the garden progress track (`to`),
+ * a short comet trail of glints behind it, and dissolves into the track; `arrive` runs when it
+ * lands (not when cancelled). Viewport pixels. Every sprite removes itself.
+ */
+export function release(layer: HTMLElement, from: Point, to: Point, gold: boolean, phase: number, cellPx: number, arrive: () => void): void {
+  // Leave the tile at the board firefly's size (its drawing spans about 0.75 of a cell, the
+  // flier's 34 px box about 0.9 of its own), and shrink to a small light by the track.
+  const start = Math.max(1, (cellPx * 0.75) / (34 * 0.9)), end = 0.35;
+  const path = releasePath(from, to, phase);
+  const last = path.length - 1;
+  const at = (p: Point, scale: number) => `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) scale(${scale.toFixed(2)})`;
+  const sprites: HTMLElement[] = [];
+  const easing = 'cubic-bezier(0.45, 0, 0.55, 1)';
+  for (let k = TRAIL; k >= 1; k--) {
+    const glint = document.createElement('div');
+    glint.className = 'ff-trail';
+    glint.setAttribute('aria-hidden', 'true');
+    layer.append(glint);
+    sprites.push(glint);
+    const fade = 0.75 * (1 - k / (TRAIL + 1));
+    const frames = path.map((p, i) => ({
+      transform: at(p, (1 - k / (TRAIL + 2)) * (i === last ? 0.4 : 1)),
+      opacity: i === 0 || i === last ? 0 : fade,
+    }));
+    const a = glint.animate(frames, { duration: RELEASE_MS, delay: k * 38, easing, fill: 'both' });
+    track(a, () => glint.remove());
+  }
+  const sprite = document.createElement('div');
+  sprite.className = 'ff-flier';
+  sprite.dataset.gold = String(gold);
+  sprite.setAttribute('aria-hidden', 'true');
+  sprite.innerHTML = FIREFLY_SVG;
+  layer.append(sprite);
+  sprites.push(sprite);
+  const frames = path.map((p, i) => ({
+    transform: at(p, start + (end - start) * Math.pow(i / last, 0.6)),
+    opacity: i === last ? 0 : 1,
+  }));
+  const anim = sprite.animate(frames, { duration: RELEASE_MS, easing });
+  anim.onfinish = () => arrive();
+  track(anim, () => sprite.remove());
+  // Backstop: a hidden tab can hold the animation timeline; never leave a sprite behind.
+  setTimeout(() => sprites.forEach((s) => s.remove()), RELEASE_MS + TRAIL * 38 + 600);
+}
+
+/** Keep `anim` cancellable by `cancelFlights`, running `done` once it finishes or is cancelled. */
+function track(anim: Animation, done: () => void): void {
+  live.add(anim);
+  const end = () => {
+    live.delete(anim);
+    done();
+  };
+  anim.addEventListener('finish', end);
+  anim.addEventListener('cancel', end);
 }
 
 /** Fly one firefly from `from` to `to` (viewport pixels). The sprite removes itself. */

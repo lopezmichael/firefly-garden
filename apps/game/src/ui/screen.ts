@@ -217,6 +217,25 @@ export class PlayScreen {
     }));
   }
 
+  /** The current garden's dash in the progress track (viewport pixels), or null when there is none. */
+  progressTarget(): { x: number; y: number } | null {
+    const dot = this.dots.querySelector<HTMLElement>('.ff-dot[data-state="now"], .ff-dot[data-lit]');
+    const r = dot?.getBoundingClientRect();
+    return r && r.width > 0 ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
+  }
+
+  /** The solved garden's dash turns gold; `glint` flashes it (a released firefly landing). */
+  lightProgress(glint: boolean): void {
+    const dot = this.dots.querySelector<HTMLElement>('.ff-dot[data-state="now"], .ff-dot[data-lit]');
+    if (!dot) return;
+    dot.dataset.state = 'done';
+    dot.dataset.lit = 'true';
+    if (!glint) return;
+    delete dot.dataset.arrive;
+    void dot.offsetWidth; // restart the glint for each firefly that lands
+    dot.dataset.arrive = 'true';
+  }
+
   setCoins(coins: number, hintCost: number, bank: number): void {
     this.coins.textContent = String(coins);
     this.hintCost.textContent = bank > 0 ? `${bank} saved` : String(hintCost);

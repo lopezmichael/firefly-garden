@@ -33,6 +33,19 @@ that lands the state, a still board draws no frames, the status/complete card he
       in a stiff row.
 - [x] 1.1 s: the fireflies lift off one by one and drift up into the night with fading gold
       trails; the garden keeps glowing without them.
+- [x] Michael, same day: they should go somewhere. They now fly to the garden progress track
+      (page-level fliers from `ui/flight.ts`, so they can leave the canvas; `releasePath` in
+      `view/layout.ts`, tested), starting at the board firefly's size, with a comet trail. The
+      solved garden's dash turns gold at the first landing and glints for each one after. Works in
+      both bands (track above the board, or in the wide band's side panel). A bonus garden has no
+      dash to fly to: the board flies them up off the canvas as before. Reduced motion: the dash
+      turns gold at the solve.
+- [x] Desktop check: the halo had no room above a board that fills its canvas and showed as a
+      thin hard outline. Its reach now counts only canvas edges inside the viewport, and it is
+      skipped when it can't be at least 10 px soft.
+- [x] Reviews of the track flight: a cut-short celebration (reduced motion switched on, a resize
+      cancelling the flights) could leave the dash white, so a backstop lights it once the last
+      flier is due; fliers no longer launch over the map, a sheet or an ad. Security: clean.
 - [x] 1.5 s: the complete card rises in (counted from the landing, so after the jar flight);
       the next garden opens 3 s after that.
 

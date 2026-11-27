@@ -11,8 +11,10 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
   light rolls across the lit tiles, the bushes bloom (petals burst from the roses and tumble down
   turning over; small sparks of light rise from the leaves and twinkle out, replacing the milky
   motes and the row of rising petals), then the fireflies
-  lift off one by one and drift up into the night with fading gold trails while the garden keeps
-  glowing. The complete card rises in at 1.5 s and the next garden opens 3 s after it (was: card
+  lift off one by one and fly to the garden progress track in the top bar (above the board on
+  phones, in the side panel on desktop) with comet trails; the solved garden's dash turns gold as
+  the first lands and glints for each one after, while the garden keeps glowing. The board's
+  halo is skipped where it has no room to glow softly (a desktop board filling its canvas). The complete card rises in at 1.5 s and the next garden opens 3 s after it (was: card
   at once, 3 s); until it rises it is inert, so a stray tap can't skip the garden. Reduced motion lands the roses, the afterglow and the card at once and keeps
   the fireflies on their tiles. Lit tiles in play read as paper lit from within (a luminous
   centre, gold pooling at the edge), a firefly's glow is additive so its tile is the light's

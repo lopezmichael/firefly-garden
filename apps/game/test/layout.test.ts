@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bandFor, fitBoard, flightPath, HILLS, hillsFor, keepOrTurn, mapLayout, MIN_TAP, orientFor, segmentPoints } from '../src/view/layout.ts';
+import { bandFor, fitBoard, flightPath, HILLS, hillsFor, keepOrTurn, mapLayout, MIN_TAP, orientFor, segmentPoints, releasePath } from '../src/view/layout.ts';
 
 describe('layout bands follow the screen shape', () => {
   it.each([
@@ -126,5 +126,31 @@ describe('the garden map path', () => {
       expect(pts.at(-1)!.x).toBeCloseTo(s.to.x, 9);
       expect(pts.at(-1)!.y).toBeCloseTo(s.to.y, 9);
     });
+  });
+});
+
+describe('a released firefly flies to the progress track', () => {
+  const from = { x: 200, y: 500 }, to = { x: 120, y: 40 };
+
+  it('starts on its tile and lands on the track', () => {
+    for (const phase of [0, 1.3, 4]) {
+      const path = releasePath(from, to, phase);
+      expect(path[0]!.x).toBeCloseTo(from.x);
+      expect(path[0]!.y).toBeCloseTo(from.y);
+      expect(path.at(-1)!.x).toBeCloseTo(to.x);
+      expect(path.at(-1)!.y).toBeCloseTo(to.y);
+    }
+  });
+
+  it('lifts off upward first, and reaches the track from above it, not through the chrome below', () => {
+    const path = releasePath(from, to, 0.7);
+    expect(path[2]!.y).toBeLessThan(from.y);
+    expect(path.at(-2)!.y).toBeLessThan(to.y);
+  });
+
+  it('works when the track is beside the board (the wide band), not above it', () => {
+    const path = releasePath({ x: 700, y: 300 }, { x: 60, y: 40 }, 2);
+    expect(path.at(-1)!.x).toBeCloseTo(60);
+    expect(Math.max(...path.map((p) => p.x))).toBeLessThan(800);
   });
 });

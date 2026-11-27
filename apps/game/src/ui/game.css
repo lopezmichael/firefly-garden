@@ -72,6 +72,14 @@
 .ff-dot { width: 16px; height: 4px; border-radius: 2px; background: var(--ff-dusk-quiet); }
 .ff-dot[data-state='done'] { background: var(--ff-gold); }
 .ff-dot[data-state='now'] { background: var(--ff-paper); }
+/* A released firefly lands on the solved garden's dash: it flares and glows, then settles gold. */
+.ff-dot[data-arrive] { animation: ff-dot-glint 650ms ease-out; }
+@keyframes ff-dot-glint {
+  0% { transform: scaleY(1); box-shadow: 0 0 0 0 transparent; background: var(--ff-glow); }
+  30% { transform: scaleY(1.8); box-shadow: 0 0 10px 3px color-mix(in srgb, var(--ff-glow-soft) 80%, transparent); background: var(--ff-glow); }
+  100% { transform: scaleY(1); box-shadow: 0 0 0 0 transparent; background: var(--ff-gold); }
+}
+.ff-app[data-motion='reduced'] .ff-dot[data-arrive] { animation: none; }
 .ff-coins {
   height: 36px; box-sizing: border-box; display: flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 18px;
   border: 2px solid var(--ff-sumi); color: var(--ff-sumi); font-weight: 700; font-size: 15px;
@@ -147,6 +155,12 @@
 .ff-flier[data-gold='true'] .ff-flier-ribs { stroke: var(--ff-gold-edge); }
 .ff-flier-head { fill: var(--ff-sumi); }
 .ff-flier-feelers { fill: none; stroke: var(--ff-sumi); stroke-width: 0.8; stroke-linecap: round; }
+/* A released firefly's comet trail (Web Animations, created only with motion on). */
+.ff-trail {
+  position: fixed; left: 0; top: 0; width: 14px; height: 14px; margin: -7px 0 0 -7px; pointer-events: none; z-index: 19;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--ff-glow) 0, color-mix(in srgb, var(--ff-glow-soft) 60%, transparent) 35%, transparent 70%);
+}
 @keyframes ff-flap-l { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-28deg); } }
 @keyframes ff-flap-r { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(28deg); } }
 

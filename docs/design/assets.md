@@ -78,7 +78,7 @@ canvas texture at startup from noise; **painted** = optional scan from Michael's
 | Conflict | code | Rose tail and glow, sumi shiver lines either side, soft rose hatching on the tile; slow sway | ~0.5 KB |
 | Ruled-out cross | code | Two pale brush strokes | ~0.2 KB |
 | Hint reason outline | code | Dashed gold rounded outline around the cells a hint names | — |
-| Solve moment | code | Fireflies flash together twice, a warm halo swells round the board's edge and settles to an afterglow, a wave of light rolls across the lit tiles, every bush blooms in a ripple, then the fireflies drift up into the night with fading gold trails (`CELEBRATION` in `view/art/geometry.ts`) | — |
+| Solve moment | code | Fireflies flash together twice, a warm halo swells round the board's edge and settles to an afterglow, a wave of light rolls across the lit tiles, every bush blooms in a ripple, then the fireflies fly to the garden progress track with comet trails and its dash turns gold (`CELEBRATION` in `view/art/geometry.ts`, `release` in `ui/flight.ts`) | — |
 
 ### Scene and chrome
 
@@ -124,7 +124,7 @@ noise). Every sound mutable (the settings toggle and the sound on/off icon drive
 | Bush satisfied | Roses open (mushrooms: spores puff) | Roses shown open |
 | Too many | Bush slumps and drops petals | Shown slumped |
 | Conflict | Slow uneasy sway | Still; shiver lines and hatching stay |
-| Solve | Sync flash, halo swells, light wave, bloom ripple with petals and motes, fireflies released into the sky; the card rises in at 1.5 s | Roses open, afterglow shown, fireflies stay on their tiles; card appears at once |
+| Solve | Sync flash, halo swells, light wave, bloom ripple with petals and motes, fireflies fly to the progress track and its dash turns gold; the card rises in at 1.5 s | Roses open, afterglow shown, fireflies stay on their tiles, the dash turns gold; card appears at once |
 | Ambient | Motes drift over the hills; ripples and koi in ponds | Still |
 | Map | Fireflies circle finished chapters; unlock flight along the path | Still; the new stop appears lit |
 

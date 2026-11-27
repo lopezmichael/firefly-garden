@@ -23,7 +23,7 @@ import { BoardView } from '../view/board.ts';
 import { CELEBRATION } from '../view/art/geometry.ts';
 import { bandFor, canonicalCell, displayCell, displayDims, keepOrTurn, keyAction, orientFor, stepFocus } from '../view/layout.ts';
 import type { Palette } from '../view/theme.ts';
-import { cancelFlights, fly, FLIGHT_MS } from './flight.ts';
+import { cancelFlights, fly, FLIGHT_MS, release, RELEASE_MS } from './flight.ts';
 import { PlayScreen } from './screen.ts';
 import { HintSheet, SettingsSheet } from './sheets.ts';
 import { unlockToShow } from '../state/mapProgress.ts';
@@ -97,6 +97,8 @@ export class GameApp {
   private advancePending = false;
   /** When (Date.now()) the complete card's entrance is due; an auto-advance never starts before it. */
   private cardDueAt = 0;
+  /** Lights the solved garden's dash if no released firefly landed on it (a cut-short celebration). */
+  private progressTimer: ReturnType<typeof setTimeout> | null = null;
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
   /** Visible time in the current analytics session (hidden stretches excluded). */
   private sessionVisibleMs = 0;
@@ -167,6 +169,7 @@ export class GameApp {
       palette: this.palette,
       reducedMotion: this.reducedMotion(),
       onTap: (cell) => this.tap(cell),
+      onRelease: (from, gold, phase, cellPx) => this.releaseToTrack(from, gold, phase, cellPx),
     });
     this.applyMotion();
     this.reducedQuery.addEventListener('change', () => this.applyMotion());
@@ -551,6 +554,8 @@ export class GameApp {
 
   private show(next: NextLevel, play: Play): void {
     cancelFlights();
+    if (this.progressTimer !== null) clearTimeout(this.progressTimer);
+    this.progressTimer = null;
     this.cancelCues();
     this.screen.hideComplete();
     this.current = next;
@@ -730,6 +735,17 @@ export class GameApp {
     // With motion, the card waits while the board celebrates (the flash, the wave, the release).
     const starts = this.board.celebrationStartsIn();
     const cardDelay = starts === null ? 0 : Math.round(starts + CELEBRATION.cardDelay);
+    // Without a celebration no firefly flies to the progress track: the dash turns gold now. With
+    // one, it turns gold as the first lands; and once the last is due it is gold whatever happened
+    // (reduced motion switched on, a resize cancelling the flights, the map opened).
+    if (starts === null) this.screen.lightProgress(false);
+    else {
+      const due = starts + CELEBRATION.releaseStart + CELEBRATION.releaseSpan + RELEASE_MS + 300;
+      this.progressTimer = setTimeout(() => {
+        this.progressTimer = null;
+        this.screen.lightProgress(false);
+      }, due);
+    }
     this.cardDueAt = Date.now() + cardDelay;
     this.screen.showComplete({ sub, coins, more }, cardDelay);
     this.screen.announce(`Solved! The garden is glowing. ${sub} ${coins} coins earned.`);
@@ -921,6 +937,20 @@ export class GameApp {
       frames: () => this.board.frameStats(),
       platform: this.platform as TestPlatform,
     };
+  }
+
+  /**
+   * At the solve, a firefly flies from its tile up to the garden progress track, and the solved
+   * garden's dash turns gold as the first one lands. False when there's no track to fly to (a
+   * bonus garden) or motion is reduced: the board handles it.
+   */
+  private releaseToTrack(from: { x: number; y: number }, gold: boolean, phase: number, cellPx: number): boolean {
+    // Nothing flies over a sheet, an ad or the map (the board's own flier stays under them).
+    if (this.reducedMotion() || this.blocked()) return false;
+    const to = this.screen.progressTarget();
+    if (!to) return false;
+    release(this.screen.root, from, to, gold, phase, cellPx, () => this.screen.lightProgress(true));
+    return true;
   }
 
   /** Animate a firefly between the jar and a tile. False when skipped (reduced motion, no layout). */

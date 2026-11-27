@@ -209,12 +209,18 @@ export interface BoardViewOptions {
   readonly palette: Palette;
   readonly onTap: (cell: number) => void;
   readonly reducedMotion: boolean;
+  /**
+   * At the solve, a firefly leaves its tile from `from` (viewport pixels). Return true when the
+   * page flies it on (to the progress track); otherwise the board flies it up off the canvas.
+   */
+  readonly onRelease?: (from: { x: number; y: number }, gold: boolean, phase: number, cellPx: number) => boolean;
 }
 
 export class BoardView {
   private readonly app: Application;
   private readonly pal: Palette;
   private readonly onTap: (cell: number) => void;
+  private readonly onRelease: BoardViewOptions['onRelease'];
   private motion: boolean;
   private readonly stage = new Container();
   private readonly cellsLayer = new Container();
@@ -254,6 +260,8 @@ export class BoardView {
   private readonly released = new Set<number>();
   /** The board clock's time of the current solve's start, while its halo is still swelling. */
   private haloFrom: number | null = null;
+  /** The board clock's time the current level's solve celebration started (null: none). */
+  private celebrateAt: number | null = null;
   private textures = new Map<string, Texture>();
   private state: BoardState | null = null;
   private time = 0;
@@ -265,6 +273,7 @@ export class BoardView {
     this.app = app;
     this.pal = opts.palette;
     this.onTap = opts.onTap;
+    this.onRelease = opts.onRelease;
     this.motion = !opts.reducedMotion;
     this.stage.addChild(this.glowLayer, this.cellsLayer, this.flashLayer, this.outline, this.particleLayer, this.ghostLayer, this.flightLayer, this.focusRing);
     app.stage.addChild(this.stage);
@@ -340,6 +349,7 @@ export class BoardView {
     this.ghosts = [];
     this.released.clear();
     this.haloFrom = null;
+    this.celebrateAt = null;
     this.build();
   }
 
@@ -472,17 +482,22 @@ export class BoardView {
     const art = this.flyArt(cell);
     this.art = art;
     // The solved garden's halo: warm light round the whole board, under the tiles. Its reach
-    // stays inside the space above the board, so the canvas's top edge never cuts it off.
-    const reach = Math.max(6, Math.min(cell * 0.55, this.stage.y * 0.42));
-    const hm = Math.ceil(reach * 1.6);
-    this.haloTexture = bake(cell,
-      (ctx) => drawHalo(ctx, this.pal.css, fit.width - 2 * pad, fit.height - 2 * pad, hm + pad, cell * 0.08, reach),
-      { w: fit.width + 2 * hm, h: fit.height + 2 * hm });
-    this.halo = new Sprite(this.haloTexture);
-    this.halo.position.set(-hm, -hm);
-    this.halo.blendMode = 'add';
-    this.halo.visible = false;
-    this.glowLayer.addChild(this.halo);
+    // stays inside the room between the board and each canvas edge that sits on screen, so no
+    // edge cuts it off in a hard line; an edge on the viewport's own edge doesn't limit it.
+    // With too little room (a desktop board that fills its canvas) a halo would only be a hard
+    // thin outline, so there is none: the lit garden carries the moment alone.
+    const reach = Math.min(cell * 0.55, 0.42 * this.haloRoom(fit));
+    if (reach >= 10) {
+      const hm = Math.ceil(reach * 1.6);
+      this.haloTexture = bake(cell,
+        (ctx) => drawHalo(ctx, this.pal.css, fit.width - 2 * pad, fit.height - 2 * pad, hm + pad, cell * 0.08, reach),
+        { w: fit.width + 2 * hm, h: fit.height + 2 * hm });
+      this.halo = new Sprite(this.haloTexture);
+      this.halo.position.set(-hm, -hm);
+      this.halo.blendMode = 'add';
+      this.halo.visible = false;
+      this.glowLayer.addChild(this.halo);
+    }
     for (let dr = 0; dr < rows; dr++) {
       for (let dc = 0; dc < cols; dc++) {
         const i = canonicalCell(this.transform, b.w, b.h, dr, dc);
@@ -540,7 +555,7 @@ export class BoardView {
     }
     // A rebuild mid-celebration drops the pending releases: land them, so no firefly is left
     // behind while the others have flown (only with motion; reduced motion keeps them all).
-    if (this.motion && this.state?.solved && (this.haloFrom !== null || this.released.size > 0)) {
+    if (this.motion && this.state?.solved && (this.celebrateAt !== null || this.released.size > 0)) {
       for (const f of this.state.evaluation.fireflies) this.released.add(f);
     }
     if (this.state) this.render(this.state, { quiet: true });
@@ -652,8 +667,22 @@ export class BoardView {
     this.drawOutline(state.because);
     if (opts.removed !== undefined && opts.removed !== null) this.liftAway(opts.removed);
     if (solvingNow) this.celebrate(origin, landAt);
-    else if (!state.solved) this.haloFrom = null;
+    else if (!state.solved) this.haloFrom = this.celebrateAt = null;
     this.drawHalo();
+  }
+
+  /** CSS pixels between the board and the nearest canvas edge that is inside the viewport. */
+  private haloRoom(fit: BoardFit): number {
+    const r = this.app.canvas.getBoundingClientRect();
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const x = this.stage.x, y = this.stage.y;
+    const sides: [number, boolean][] = [
+      [y, r.top > 1],
+      [this.area.h - y - fit.height, r.bottom < vh - 1],
+      [x, r.left > 1],
+      [this.area.w - x - fit.width, r.right < vw - 1],
+    ];
+    return Math.min(Infinity, ...sides.filter(([, onScreen]) => onScreen).map(([room]) => room));
   }
 
   /** The garden's halo: hidden until solved, swelling at the solve, then a steady afterglow. */
@@ -685,6 +714,7 @@ export class BoardView {
     const T = CELEBRATION, board = this.board!, cell = this.fit!.cell;
     const flying = this.cells.filter((v) => v.fly?.root.visible === true);
     this.haloFrom = at;
+    this.celebrateAt = at;
     this.tweens.push({
       start: at + T.flashStart, dur: T.flashDur,
       step: (t) => {
@@ -725,11 +755,15 @@ export class BoardView {
   private release(v: CellView): void {
     // Reduced motion (also when it is switched on mid-celebration) keeps fireflies on their tiles.
     if (!this.fit || !this.art || !v.fly?.root.visible || !this.motion) return;
+    const from = this.cellScreenCenter(v.cell);
+    const gold = v.fly.kind === 'hint', phase = (v.cell * 2.39) % TAU;
     this.released.add(v.cell);
     v.fly.root.visible = false;
+    // The page takes it from here when it can (up to the progress track, past the canvas edge).
+    if (from && this.onRelease?.(from, gold, phase, this.fit.cell)) return;
     const cell = this.fit.cell;
     const fly = new FlyView(cell, this.art, v.fly.phase);
-    fly.setKind(v.fly.kind === 'hint' ? 'hint' : 'player');
+    fly.setKind(gold ? 'hint' : 'player');
     // Scaled about the firefly's centre as it goes away.
     const cx = cell / 2, cy = FACE_CENTER_Y * (cell / UNIT);
     fly.root.pivot.set(cx, cy);
@@ -738,7 +772,7 @@ export class BoardView {
     this.flightLayer.addChild(fly.root);
     // Climb past the canvas top (the stage sits `stage.y` below it), plus a cell to spare.
     const rise = (y0 + this.stage.y) / cell + 1;
-    this.fliers.push({ fly, x0, y0, phase: (v.cell * 2.39) % TAU, rise, age: 0, lastTrail: 0 });
+    this.fliers.push({ fly, x0, y0, phase, rise, age: 0, lastTrail: 0 });
   }
 
   private endFlights(): void {
@@ -961,7 +995,7 @@ export class BoardView {
    * flying in from the jar), or null when there is none (reduced motion, or no fresh solve).
    */
   celebrationStartsIn(): number | null {
-    return this.haloFrom === null ? null : Math.max(0, this.haloFrom - this.time);
+    return this.celebrateAt === null ? null : Math.max(0, this.celebrateAt - this.time);
   }
 
   /** Frames drawn and time elapsed since load (dev readout, e2e perf check). */
