@@ -5,6 +5,11 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Added
+- **The garden code:** Settings → Garden code moves a garden to another device or browser by copy and paste, with no account and no server.
+  - **Copy my garden code** puts one line (`FG1.…`, a few hundred characters) on the clipboard. Where the clipboard is refused, as in some portal frames, the code is shown so it can be copied by hand.
+  - **Enter a garden code** reads a pasted code and says what it holds against what this device has (and warns if it has fewer gardens). Nothing changes until **Replace my garden**. This device's garden is kept in the backup slot, and the game reloads into the new one only once storage has really taken it.
+  - **The code is untrusted input, like a save.** It is length-capped and carries a checksum, so a cut-off or mistyped code is caught. It is inflated with a size cap, so a small code can't expand into a huge one. What comes out is validated field by field by the save parser.
+  - **What stays with the device:** the analytics install id and sitting count (two devices never share an id), and the sound and motion settings.
 - **The chapter bonus doubler** (rewards plan):
   - The chapter card offers an optional "Watch a video to double it" under the +30 chip. Start chapter stays the main button.
   - Only a finished ad pays, and it pays the bonus once more (a `coins` event, `why: 'doubler'`). A cancelled ad pays nothing and leaves the offer up.

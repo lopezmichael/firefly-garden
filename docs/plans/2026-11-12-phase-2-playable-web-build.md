@@ -370,10 +370,13 @@ the same transitions are tested in Node and in Playwright.
       - economy numbers appear only in `PLAYER_CONFIG` (game reads, never restates)
 - [x] Reviews per CLAUDE.md before each substantive commit; `/security-review` for saves,
       storage and the ad placeholder flow.
-- [ ] Living docs: ARCHITECTURE (game layers), rules.md (hint reasons, locked cells as
+- [x] Living docs: ARCHITECTURE (game layers), rules.md (hint reasons, locked cells as
       implemented), analytics.md (where the local log lives), CHANGELOG, ROADMAP.
       *ARCHITECTURE, CHANGELOG and ROADMAP are current as of 2026-11-13 (release #9); rules.md and
-      analytics.md still need checking.*
+      analytics.md checked against the build 2026-11-27 (one stale line: how a hint firefly looks).*
+- [x] Garden code (added 2026-11-27, after Michael asked how progress is saved): Settings copies
+      the garden as one line of text and pastes it on another device, validated like a save
+      (rules.md, "The garden code"). Covers the gap until portal cloud saves (Phase 3).
 
 ### J. Playtest and gate
 

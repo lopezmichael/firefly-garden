@@ -423,3 +423,69 @@ test('small delights change nothing: the moon follows the chapter, a bush tap is
   const after = await page.evaluate(() => window.__ff.events());
   expect(after.slice(events).every((e) => e.type !== 'level_end')).toBe(true);
 });
+
+test('a garden code carries the garden to another device, after a yes; a bad code changes nothing', async ({ browser }) => {
+  // Device A: four gardens grown, a board in progress.
+  const a = await browser.newContext({ permissions: ['clipboard-read', 'clipboard-write'] });
+  const pa = await a.newPage();
+  await open(pa);
+  const ids = (await pa.evaluate(() => window.__ff.chapters()))[0]!.slice(0, 4);
+  await pa.evaluate((list) => window.__ff.markSolved(list), ids);
+  await pa.getByRole('button', { name: 'Settings' }).click();
+  await pa.getByRole('button', { name: 'Copy my garden code' }).click();
+  await expect(pa.getByRole('button', { name: /^Copied/ })).toBeVisible();
+  const code = await pa.evaluate(() => navigator.clipboard.readText());
+  expect(code).toMatch(/^FG1\./);
+  // A refused clipboard (a portal's frame) shows the code to copy by hand instead.
+  await pa.evaluate(() => { navigator.clipboard.writeText = () => Promise.reject(new Error('denied')); });
+  await pa.getByRole('button', { name: /^Copied/ }).click();
+  await expect(pa.getByRole('textbox', { name: 'Your garden code' })).toHaveValue(code);
+  const installA = (await pa.evaluate(() => window.__ff.events()))[0]!.install;
+  await a.close();
+
+  // Device B: a new player.
+  const b = await browser.newContext();
+  const pb = await b.newPage();
+  await open(pb);
+  const installB = (await pb.evaluate(() => window.__ff.events()))[0]!.install;
+  const solvedB = () => pb.evaluate(() => window.__ff.chapters()[0]!.filter((id) => window.__ff.isSolved(id)).length);
+  expect(await solvedB()).toBe(0);
+  await pb.getByRole('button', { name: 'Settings' }).click();
+  await pb.getByRole('button', { name: 'Enter a garden code' }).click();
+  const input = pb.getByRole('textbox', { name: 'Garden code' });
+  // A cut-off code is caught and nothing changes.
+  await input.fill(code.slice(0, -20));
+  await pb.getByRole('button', { name: 'Open this garden' }).click();
+  await expect(pb.getByRole('dialog').getByRole('status')).toHaveText(/missing or changed/);
+  // The whole code, wrapped across lines as a chat app might: asks first, then replaces.
+  await input.fill(code.match(/.{1,50}/g)!.join('\n'));
+  await pb.getByRole('button', { name: 'Open this garden' }).click();
+  await expect(pb.getByText(/The code holds 4 gardens grown/)).toBeVisible();
+  await pb.getByRole('button', { name: 'Keep my garden' }).click();
+  expect(await solvedB()).toBe(0);
+  await pb.getByRole('button', { name: 'Open this garden' }).click();
+  // Storage that refuses the new garden: nothing reloads, the garden here is unchanged, and it says so.
+  await pb.evaluate(() => {
+    const real = Storage.prototype.setItem;
+    (window as unknown as { realSetItem: typeof real }).realSetItem = real;
+    Storage.prototype.setItem = function (k: string, v: string) {
+      if (k.endsWith(':progress')) throw new DOMException('full', 'QuotaExceededError');
+      real.call(this, k, v);
+    };
+  });
+  await pb.getByRole('button', { name: 'Replace my garden' }).click();
+  await expect(pb.getByRole('dialog').getByRole('status')).toHaveText(/couldn't save the new garden/);
+  expect(await solvedB()).toBe(0);
+  await pb.evaluate(() => { Storage.prototype.setItem = (window as unknown as { realSetItem: Storage['setItem'] }).realSetItem; });
+  await Promise.all([pb.waitForEvent('load'), pb.getByRole('button', { name: 'Replace my garden' }).click()]);
+  await pb.waitForFunction(() => window.__ff?.level() != null || document.querySelector('.ff-map:not([hidden])') != null);
+  await expect.poll(solvedB).toBe(4);
+  // The garden moved; the device's analytics id did not.
+  const after = await pb.evaluate(() => window.__ff.events());
+  expect(after.every((e) => e.install === installB)).toBe(true);
+  expect(installB).not.toBe(installA);
+  // The garden it replaced waits in the backup slot.
+  const backup = await pb.evaluate(() => localStorage.getItem('firefly-garden:progress-backup'));
+  expect(JSON.parse(backup!).install).toBe(installB);
+  await b.close();
+});

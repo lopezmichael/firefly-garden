@@ -157,13 +157,37 @@ export interface SettingsView {
   readonly played: number;
   readonly solved: number;
   readonly hints: number;
+  /** Anything to carry in a garden code yet (a garden played or solved). */
+  readonly canCarry: boolean;
+  /** This browser can make and read garden codes (CompressionStream). */
+  readonly codes: boolean;
 }
+
+/** A garden in a few figures, for the garden code's confirmation. */
+export interface GardenSummary {
+  readonly solved: number;
+  readonly coins: number;
+}
+
+export type CodeCheck =
+  | { readonly ok: true; readonly here: GardenSummary; readonly there: GardenSummary }
+  | { readonly ok: false; readonly message: string };
 
 export interface SettingsHandlers {
   sound(on: boolean): void;
   motion(m: MotionSetting): void;
   copyLog(): Promise<boolean>;
+  /** This garden as a code, and whether it reached the clipboard (null: no code could be made). */
+  copyCode(): Promise<{ readonly code: string; readonly copied: boolean } | null>;
+  /** Read a pasted code (nothing changes yet). */
+  checkCode(text: string): Promise<CodeCheck>;
+  /** Replace this device's garden with the last code that checked out; false if storage refused (else the game reloads). */
+  useCode(): Promise<boolean>;
+  /** Drop a checked code (the sheet closed, or the text changed). */
+  forgetCode(): void;
 }
+
+const gardens = (g: GardenSummary) => `${plural(g.solved, 'garden', 'gardens')} grown, ${plural(g.coins, 'coin', 'coins')}`;
 
 const MOTION: readonly [MotionSetting, string][] = [['device', 'Device'], ['on', 'On'], ['off', 'Off']];
 const SOUND: readonly [boolean, string][] = [[true, 'On'], [false, 'Off']];
@@ -173,6 +197,20 @@ export class SettingsSheet extends Sheet {
   private readonly soundButtons = new Map<boolean, HTMLButtonElement>();
   private readonly summary = el('p', 'ff-sheet-line');
   private readonly copy: HTMLButtonElement;
+  /** The garden code: copy this garden's, or paste another device's and confirm. */
+  private readonly codeCopy: HTMLButtonElement;
+  private readonly codeEnter: HTMLButtonElement;
+  private readonly codeShown = el('textarea', 'ff-code-text');
+  private readonly codeForm = el('div', 'ff-code-form');
+  private readonly codeInput = el('textarea', 'ff-code-text');
+  private readonly codeCheck: HTMLButtonElement;
+  private readonly codeNote = el('p', 'ff-sheet-note');
+  private readonly codeConfirm = el('div', 'ff-code-form');
+  private readonly codeConfirmLine = el('p', 'ff-sheet-sub');
+  private readonly codeUse: HTMLButtonElement;
+  private codeBusy = false;
+  /** Bumped whenever the sheet opens, closes or the pasted text changes: a check that comes back late is dropped. */
+  private codeGen = 0;
 
   constructor(private readonly handlers: SettingsHandlers) {
     super('ff-settings-title');
@@ -218,9 +256,132 @@ export class SettingsSheet extends Sheet {
       el('p', 'ff-sheet-sub', 'Helping us test? Copy your play log and send it back. It holds level ids, times and counts, nothing about you, and it never leaves this device unless you send it.'),
       this.copy);
 
+    const code = el('section', 'ff-section');
+    this.codeCopy = button('ff-sheet-ad', 'Copy my garden code', () => void this.copyCode());
+    this.codeEnter = button('ff-sheet-quiet', 'Enter a garden code', () => this.openCodeForm());
+    this.codeShown.readOnly = true;
+    this.codeShown.rows = 3;
+    this.codeShown.hidden = true;
+    this.codeShown.setAttribute('aria-label', 'Your garden code');
+    // setSelectionRange: select() on a read-only field is unreliable on iOS.
+    this.codeShown.addEventListener('focus', () => this.codeShown.setSelectionRange(0, this.codeShown.value.length));
+    this.codeInput.rows = 3;
+    this.codeInput.classList.add('ff-code-input');
+    this.codeInput.placeholder = 'FG1.…';
+    this.codeInput.spellcheck = false;
+    this.codeInput.autocomplete = 'off';
+    this.codeInput.setAttribute('autocapitalize', 'off');
+    this.codeInput.setAttribute('aria-label', 'Garden code');
+    this.codeInput.addEventListener('input', () => this.resetCodeCheck());
+    this.codeCheck = button('ff-sheet-quiet', 'Open this garden', () => void this.checkCode());
+    // Always rendered (an empty note takes no room): a live region shown from hidden is often not announced.
+    this.codeNote.classList.add('ff-code-note');
+    this.codeNote.setAttribute('role', 'status');
+    this.codeUse = button('ff-sheet-primary', 'Replace my garden', () => void this.useCode());
+    this.codeConfirm.append(this.codeConfirmLine, this.codeUse, button('ff-sheet-link', 'Keep my garden', () => this.resetCodeCheck()));
+    this.codeForm.append(this.codeInput, this.codeCheck);
+    code.append(sectionTitle('code', 'Garden code'),
+      el('p', 'ff-sheet-sub', 'Playing on another device? Copy your garden code here and enter it there. Your gardens, coins and hints come with it.'),
+      this.codeCopy, this.codeShown, this.codeEnter, this.codeForm, this.codeNote, this.codeConfirm);
+
     const rule = el('hr', 'ff-rule');
     rule.setAttribute('aria-hidden', 'true');
-    this.panel.append(title, sound, motion, rule, log, button('ff-sheet-quiet', 'Done', () => this.close()));
+    const rule2 = el('hr', 'ff-rule');
+    rule2.setAttribute('aria-hidden', 'true');
+    this.panel.append(title, sound, motion, rule, code, rule2, log, button('ff-sheet-quiet', 'Done', () => this.close()));
+  }
+
+  override close(): void {
+    // onClose belongs to the app (it resumes the clock), so the sheet's own cleanup lives here.
+    if (this.isOpen) this.forgetCode();
+    super.close();
+  }
+
+  /** Any check in flight is dropped, and a checked code is forgotten. */
+  private forgetCode(): void {
+    this.codeGen++;
+    this.codeBusy = false;
+    this.codeInput.readOnly = false;
+    this.handlers.forgetCode();
+  }
+
+  private async copyCode(): Promise<void> {
+    if (this.codeBusy) return;
+    this.codeBusy = true;
+    const gen = this.codeGen;
+    let got: Awaited<ReturnType<SettingsHandlers['copyCode']>> = null;
+    try {
+      got = await this.handlers.copyCode();
+    } finally {
+      if (gen === this.codeGen) this.codeBusy = false;
+    }
+    if (gen !== this.codeGen) return;
+    if (!got) {
+      this.codeCopy.textContent = "Couldn't make a code. Try again?";
+      return;
+    }
+    // Copied: say so. Refused (a portal's frame, permissions): show the code to copy by hand.
+    this.codeCopy.textContent = got.copied ? 'Copied. Paste it on your other device' : 'Select the code below and copy it';
+    this.codeShown.value = got.code;
+    this.codeShown.hidden = got.copied;
+    if (!got.copied) this.codeShown.focus({ preventScroll: true });
+  }
+
+  private openCodeForm(): void {
+    this.codeEnter.hidden = true;
+    this.codeForm.hidden = false;
+    this.codeInput.focus({ preventScroll: true });
+  }
+
+  private resetCodeCheck(): void {
+    const wasConfirming = !this.codeConfirm.hidden;
+    this.forgetCode();
+    this.codeConfirm.hidden = true;
+    this.codeNote.textContent = '';
+    this.codeCheck.hidden = false;
+    if (wasConfirming) this.codeInput.focus({ preventScroll: true });
+  }
+
+  private async checkCode(): Promise<void> {
+    if (this.codeBusy) return;
+    this.codeBusy = true;
+    const gen = ++this.codeGen;
+    // The text can't change under a check (a result must match what's in the box).
+    this.codeInput.readOnly = true;
+    let r: CodeCheck;
+    try {
+      r = await this.handlers.checkCode(this.codeInput.value);
+    } catch {
+      r = { ok: false, message: "That code couldn't be read. Copy the whole code again." };
+    }
+    if (gen !== this.codeGen) return; // the sheet closed or reopened meanwhile
+    this.codeBusy = false;
+    this.codeInput.readOnly = false;
+    if (!r.ok) {
+      this.codeNote.textContent = r.message;
+      return;
+    }
+    this.codeNote.textContent = '';
+    this.codeCheck.hidden = true;
+    const fewer = r.there.solved < r.here.solved ? ' That is fewer gardens than this device has.' : '';
+    this.codeConfirmLine.textContent = `The code holds ${gardens(r.there)}. It replaces the garden on this device (${gardens(r.here)}).${fewer}`;
+    this.codeConfirm.hidden = false;
+    this.codeUse.focus({ preventScroll: true });
+  }
+
+  private async useCode(): Promise<void> {
+    if (this.codeBusy) return;
+    this.codeBusy = true;
+    this.codeUse.disabled = true;
+    this.codeUse.textContent = 'Opening your garden…';
+    const gen = this.codeGen;
+    const done = await this.handlers.useCode().catch(() => false);
+    if (done || gen !== this.codeGen) return;
+    // Storage refused the new garden: this one is untouched; say so and offer the button again.
+    this.codeBusy = false;
+    this.codeUse.disabled = false;
+    this.codeUse.textContent = 'Replace my garden';
+    this.codeNote.textContent = "This device couldn't save the new garden. Your garden here is unchanged.";
   }
 
   open(view: SettingsView): void {
@@ -228,6 +389,20 @@ export class SettingsSheet extends Sheet {
     this.setMotion(view.motion);
     this.summary.textContent = `${plural(view.played, 'garden played', 'gardens played')} · ${view.solved} solved · ${plural(view.hints, 'hint used', 'hints used')}`;
     this.copy.textContent = 'Copy play log';
+    // A new player has nothing to carry yet (a code with no gardens would be refused on the other end).
+    this.forgetCode();
+    this.codeCopy.disabled = !view.canCarry || !view.codes;
+    this.codeCopy.textContent = !view.codes ? "This browser can't make garden codes" : !view.canCarry ? 'Grow a garden first' : 'Copy my garden code';
+    this.codeEnter.disabled = !view.codes;
+    this.codeShown.hidden = true;
+    this.codeShown.value = '';
+    this.codeEnter.hidden = false;
+    this.codeForm.hidden = true;
+    this.codeInput.value = '';
+    this.codeNote.textContent = '';
+    this.codeConfirm.hidden = true;
+    this.codeUse.disabled = false;
+    this.codeUse.textContent = 'Replace my garden';
     this.show(this.soundButtons.get(view.sound)!);
   }
 

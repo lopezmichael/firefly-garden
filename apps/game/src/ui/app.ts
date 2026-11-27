@@ -19,6 +19,9 @@ import type { Notice, StatusText } from '../state/status.ts';
 import { conflictWords, crossTipDue } from '../state/teach.ts';
 import type { TipId } from '../state/teach.ts';
 import { Wallet } from '../state/wallet.ts';
+import { CODE_MESSAGES, readGardenCode, writeGardenCode } from '../state/gardenCode.ts';
+import { browserCodec } from './deflate.ts';
+import type { CodeCheck } from './sheets.ts';
 import { BoardView } from '../view/board.ts';
 import { CELEBRATION } from '../view/art/geometry.ts';
 import { bandFor, canonicalCell, displayCell, displayDims, keepOrTurn, keyAction, orientFor, stepFocus } from '../view/layout.ts';
@@ -73,6 +76,7 @@ export interface E2EHooks {
   voices(): Promise<Record<string, { peak: number; rms: number }>>;
   /** Record these gardens as solved (to reach a chapter's last garden quickly), and save. */
   markSolved(ids: string[]): void;
+  isSolved(id: string): boolean;
   platform: TestPlatform;
 }
 
@@ -114,6 +118,10 @@ export class GameApp {
   /** Lights the solved garden's dash if no released firefly landed on it (a cut-short celebration). */
   private progressTimer: ReturnType<typeof setTimeout> | null = null;
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
+  /** A garden code's save, checked and waiting for the player's yes. */
+  private pendingCode: SaveData | null = null;
+  /** Set once a garden code is being written over this garden: nothing else may save over it. */
+  private replacing = false;
   /** Visible time in the current analytics session (hidden stretches excluded). */
   private sessionVisibleMs = 0;
   private visibleSince: number | null = null;
@@ -169,6 +177,10 @@ export class GameApp {
       sound: (on) => this.setSound(on),
       motion: (m) => this.setMotion(m),
       copyLog: () => this.copyLog(),
+      copyCode: () => this.copyCode(),
+      checkCode: (text) => this.checkCode(text),
+      useCode: () => this.useCode(),
+      forgetCode: () => { this.pendingCode = null; },
     });
     this.settingsSheet.onClose = () => this.resumeClock();
   }
@@ -277,13 +289,14 @@ export class GameApp {
   }
 
   private scheduleSave(): void {
-    if (this.saveTimer !== null) return;
+    if (this.saveTimer !== null || this.replacing) return;
     this.saveTimer = setTimeout(() => this.flushSave(), SAVE_DELAY_MS);
   }
 
   private flushSave(): void {
     if (this.saveTimer !== null) clearTimeout(this.saveTimer);
     this.saveTimer = null;
+    if (this.replacing) return;
     void this.platform.save(SAVE_KEY, serializeSave(this.snapshot(), this.catalog));
     void this.platform.save(EVENT_LOG_KEY, this.log.serialize());
   }
@@ -368,7 +381,9 @@ export class GameApp {
     if (this.adShowing || this.hintSheet.isOpen || this.settingsSheet.isOpen) return;
     this.play?.pause();
     const s = this.log.summary();
-    this.settingsSheet.open({ sound: this.settings.sound, motion: this.settings.motion, played: s.played, solved: s.solved, hints: s.hints });
+    this.settingsSheet.open({ sound: this.settings.sound, motion: this.settings.motion, played: s.played, solved: s.solved, hints: s.hints,
+      canCarry: this.session.progress.history.length > 0 || this.session.progress.solved.size > 0,
+      codes: browserCodec.supported });
   }
 
   private async copyLog(): Promise<boolean> {
@@ -380,6 +395,70 @@ export class GameApp {
       console.warn('Copy failed:', err);
       return false;
     }
+  }
+
+  // ---------------------------------------------------------------- garden code
+
+  private async copyCode(): Promise<{ code: string; copied: boolean } | null> {
+    let code: string;
+    try {
+      code = await writeGardenCode(this.snapshot(), this.catalog, browserCodec);
+    } catch (err) {
+      // No CompressionStream (an old browser): say so on the button rather than fail silently.
+      console.warn('Garden code failed:', err);
+      return null;
+    }
+    try {
+      await navigator.clipboard.writeText(code);
+      return { code, copied: true };
+    } catch {
+      // Refused (a portal's frame, permissions): the sheet shows the code to copy by hand.
+      return { code, copied: false };
+    }
+  }
+
+  private async checkCode(text: string): Promise<CodeCheck> {
+    this.pendingCode = null;
+    const device = { install: this.install, session: this.log.session, settings: this.settings };
+    const r = await readGardenCode(text, this.catalog, Date.now(), device, browserCodec);
+    if (!r.ok) return { ok: false, message: CODE_MESSAGES[r.why] };
+    // Problems mean parts of the code were dropped (a level this build doesn't have); the rest is safe to use.
+    if (r.problems.length > 0) console.warn('Garden code had problems:', r.problems);
+    this.pendingCode = r.save;
+    return {
+      ok: true,
+      here: { solved: this.session.progress.solved.size, coins: this.wallet.coins },
+      there: { solved: r.save.solved.size, coins: r.save.coins },
+    };
+  }
+
+  /**
+   * Write the code's garden over this one and reload: the game then opens it through the same
+   * validated load path as any save, with no half-replaced state in memory.
+   */
+  private async useCode(): Promise<boolean> {
+    const save = this.pendingCode;
+    if (!save || this.replacing) return false;
+    this.replacing = true;
+    if (this.saveTimer !== null) clearTimeout(this.saveTimer);
+    this.saveTimer = null;
+    const load = (key: string) => this.platform.load(key).catch(() => null);
+    const raw = serializeSave(save, this.catalog);
+    // A player's garden is never silently lost: this one goes to the backup slot first (the same
+    // slot a save from another version is kept in), so a wrong code can still be recovered.
+    await this.platform.save(`${SAVE_KEY}-backup`, serializeSave(this.snapshot(), this.catalog)).catch(() => undefined);
+    // The play log stays this device's; write it out so nothing logged so far is lost. (The
+    // reload's own session_end is dropped: nothing may save once replacing.)
+    await this.platform.save(EVENT_LOG_KEY, this.log.serialize()).catch(() => undefined);
+    await this.platform.save(SAVE_KEY, raw).catch(() => undefined);
+    // Storage can refuse quietly (full, private mode): reload only once the new garden is really there.
+    if ((await load(SAVE_KEY)) !== raw) {
+      this.replacing = false;
+      this.scheduleSave();
+      return false;
+    }
+    window.location.reload();
+    return true;
   }
 
   private updateBand(): void {
@@ -1085,6 +1164,7 @@ export class GameApp {
         for (const id of ids) this.session.record({ levelId: id, reason: 'main', solved: true, seconds: 20, hints: 0, endedAt: Date.now() });
         this.flushSave();
       },
+      isSolved: (id) => this.session.isSolved(id),
       platform: this.platform as TestPlatform,
     };
   }

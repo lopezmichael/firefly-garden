@@ -264,12 +264,23 @@
 .ff-sheet-primary .ff-cost .ff-coin { width: 14px; height: 14px; }
 .ff-sheet-ad, .ff-sheet-quiet { border: 2px solid var(--ff-sumi); color: var(--ff-sumi); }
 .ff-sheet-ad[hidden] { display: none; }
+.ff-sheet-ad:disabled { opacity: 0.55; cursor: default; }
 .ff-sheet .ff-sheet-link {
   min-height: 46px; border: 0; background: transparent; color: var(--ff-sumi-soft);
   text-decoration: underline; text-underline-offset: 4px;
 }
 .ff-section { display: flex; flex-direction: column; gap: 8px; }
 .ff-section-title { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 700; color: var(--ff-sumi); }
+.ff-code-form { display: flex; flex-direction: column; gap: 8px; }
+.ff-code-form[hidden], .ff-sheet button[hidden], .ff-code-text[hidden] { display: none; }
+.ff-code-text {
+  box-sizing: border-box; width: 100%; resize: none; padding: 10px 12px; border: 2px solid var(--ff-sumi); border-radius: 10px;
+  background: var(--ff-paper); color: var(--ff-sumi); font: 13px/1.4 var(--ff-font-mono); word-break: break-all;
+}
+/* 16 px: iOS Safari zooms into any focused text field set smaller. */
+.ff-code-input { font-size: 16px; }
+.ff-code-note:empty { margin-top: -8px; }
+.ff-sheet-quiet:disabled { opacity: 0.55; cursor: default; }
 .ff-rule { width: 100%; margin: 0; border: 0; border-top: 1.5px dashed var(--ff-paper-rule); }
 .ff-segments { display: flex; border: 2px solid var(--ff-sumi); border-radius: 10px; overflow: hidden; }
 .ff-sheet .ff-segment {
