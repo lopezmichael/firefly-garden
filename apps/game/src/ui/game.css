@@ -50,6 +50,14 @@
 .ff-scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .ff-moon { position: absolute; right: 28px; top: 64px; width: 50px; height: 48px; }
 .ff-moon-face { fill: var(--ff-paper); opacity: 0.92; }
+/* The play screen's moon travels through a chapter (screen.ts placeMoon) and warms toward gold. */
+.ff-sky .ff-moon {
+  transform: translate(var(--ff-moon-x, 0px), var(--ff-moon-y, 0px));
+  transition: transform 1400ms cubic-bezier(0.45, 0, 0.55, 1);
+}
+.ff-sky .ff-moon-face { fill: color-mix(in srgb, var(--ff-gold) calc(var(--ff-moon-warm, 0) * 55%), var(--ff-paper)); transition: fill 1400ms ease-in-out; }
+.ff-app[data-motion='reduced'] .ff-sky .ff-moon,
+.ff-app[data-motion='reduced'] .ff-sky .ff-moon-face { transition: none; }
 .ff-app[data-band='square'] .ff-moon { top: 64px; right: 48px; }
 .ff-app[data-band='wide'] .ff-moon { right: auto; left: 200px; top: 84px; width: 42px; height: 40px; }
 /* Firefly lights drifting over the hills; still under reduced motion. */
@@ -159,6 +167,9 @@
 .ff-flier[data-gold='true'] .ff-flier-ribs { stroke: var(--ff-gold-edge); }
 .ff-flier-head { fill: var(--ff-sumi); }
 .ff-flier-feelers { fill: none; stroke: var(--ff-sumi); stroke-width: 0.8; stroke-linecap: round; }
+/* Coins hopping from the complete card's chip to the coin pill (Web Animations, motion on only). */
+.ff-coin-flier { position: fixed; left: 0; top: 0; width: 22px; height: 22px; margin: -11px 0 0 -11px; pointer-events: none; z-index: 21; }
+.ff-coin-flier svg { width: 100%; height: 100%; display: block; }
 /* A released firefly's comet trail (Web Animations, created only with motion on). */
 .ff-trail {
   position: fixed; left: 0; top: 0; width: 14px; height: 14px; margin: -7px 0 0 -7px; pointer-events: none; z-index: 19;

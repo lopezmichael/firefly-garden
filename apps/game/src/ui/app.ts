@@ -869,8 +869,9 @@ export class GameApp {
     const cardDelay = starts === null ? 0 : Math.round(starts + CELEBRATION.cardDelay);
     const cardReady = starts === null ? 0 : Math.round(starts + CELEBRATION.cardReady);
     this.solvedAt = Date.now();
-    // The +10 lands in the coin pill as the card's chip rises (its CSS: 400 ms after the card).
-    this.screen.landCoins(before, before + garden, starts === null ? 0 : cardDelay + 700);
+    // The +10 flies from the card's chip once it has risen in (its CSS: 400 ms after the card, over
+    // 700 ms), then lands in the coin pill, which counts up.
+    this.screen.landCoins(before, before + garden, starts === null ? 0 : cardDelay + 1150 + 560);
     // Without a celebration no firefly flies to the progress track: the dash turns gold now. With
     // one, it turns gold as the first lands; and once the last is due it is gold whatever happened
     // (reduced motion switched on, a resize cancelling the flights, the map opened).

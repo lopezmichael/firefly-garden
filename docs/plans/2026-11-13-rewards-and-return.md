@@ -101,7 +101,7 @@ Each needs a reduced-motion version and lives on the board's tween list or in CS
 
 | When | What | Why then |
 | --- | --- | --- |
-| **Before the friends playtest** | Flow A (tap to continue), the moon's travel, tap the bush or moon, coins flying to the pill | Cheap delight that makes the first session feel finished |
+| **Before the friends playtest** | Flow A (tap to continue), the moon's travel, tap the bush or moon, coins flying to the pill. *Built 2026-11-27* (the moon's five-tap field note waits for field notes, Phase 3) | Cheap delight that makes the first session feel finished |
 | **With flow B** | Chapter bonus and its rewarded double, seals in a first journal page, the celebration signal | It all lives on the chapter card |
 | **Phase 3 (portal launch)** | Daily garden with the gentle streak and frost leaves, the welcome-back gift, field notes | Day-1 return is the gate number portals judge |
 | **Phase 4 (grow)** | Firefly varieties and lantern styles (the coin sink), mastery marks, named gardens, the full journal | Needs coins to have something to buy, and the areas to restore |

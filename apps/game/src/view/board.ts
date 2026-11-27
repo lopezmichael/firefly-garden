@@ -164,6 +164,8 @@ interface CellView {
   /** The bush drawing (swapped for the wilted one when it has too many). */
   bush?: Sprite;
   bushKind?: BushKind;
+  /** A tap's rustle is still running (a second tap waits for it). */
+  rustling?: boolean;
   /** The three roses a happy bush shows (and every bush, plain ones too, once the garden is solved). */
   roses?: Container;
   /** A tile look still on its way (the light's wash travelling from the firefly), and its move. */
@@ -539,6 +541,10 @@ export class BoardView {
           v.bush = new Sprite(this.bushTexture(cell, v.bushKind));
           v.bush.width = v.bush.height = cell;
           root.addChild(v.bush);
+          // Tap a bush: it rustles (rewards plan, small interactions). Not a move; reveals nothing.
+          root.eventMode = 'static';
+          root.hitArea = new Rectangle(-gap / 2, -gap / 2, cell + gap, cell + gap);
+          root.on('pointertap', () => this.rustle(v));
           v.roses = new Container();
           v.roses.visible = false;
           roseVariants(i).forEach((variant, k) => {
@@ -887,6 +893,39 @@ export class BoardView {
       });
     });
     if (solving) this.particles(v, at, 5, 4, true);
+  }
+
+  /**
+   * A tapped bush rustles: it shivers down and up, its roses bob one after another, and its dots
+   * pulse once (they already show its count, so nothing new is revealed). Motion only; a tap while
+   * it is still rustling waits for the next.
+   */
+  private rustle(v: CellView): void {
+    if (!this.motion || !this.fit || !v.bush || v.rustling) return;
+    v.rustling = true;
+    const bush = v.bush, size = this.fit.cell, start = this.time;
+    this.tweens.push({
+      start, dur: 520,
+      step: (t) => {
+        const k = Math.sin(t * Math.PI * 3) * (1 - t) * 0.045;
+        bush.scale.y = (size / bush.texture.height) * (1 - k);
+        bush.y = size * k;
+        if (t >= 1) v.rustling = false;
+      },
+    });
+    if (v.roses?.visible) {
+      const u = size / UNIT;
+      (v.roses.children as Sprite[]).forEach((rose, k) => {
+        // Its resting size (as openRoses sets it), never its scale now: it may still be opening.
+        const base = (ROSE_SLOTS[k]!.size * u) / rose.texture.width;
+        // Still opening (or waiting to): leave it to its own tween.
+        if (rose.scale.x < base * 0.95) return;
+        this.tweens.push({ start: start + k * 70, dur: 380, step: (t) => rose.scale.set(base * (1 + 0.22 * Math.sin(t * Math.PI))) });
+      });
+    }
+    const pips = v.pips;
+    if (pips) this.tweens.push({ start: start + 60, dur: 420, step: (t) => { pips.alpha = 1 - 0.55 * Math.sin(t * Math.PI); } });
+    this.wake();
   }
 
   /** Too many: the bush sinks a little and springs back, and two petals fall. */

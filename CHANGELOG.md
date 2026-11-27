@@ -5,6 +5,12 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Added
+- Small delights before the playtest (rewards plan):
+  - **The moon travels:** through each chapter, garden by garden, it moves along the sky toward the end of the area title and warms toward gold.
+  - **Tap the moon:** a firefly crosses the sky.
+  - **Tap a bush:** it rustles, its roses bob and its dots pulse once. It's not a move and reveals nothing.
+  - **Coins fly to the pill:** after a solve, coins hop from the card's +10 chip into the pill, which counts up.
+  - **Reduced motion** keeps the moon's place and the final count, and drops the movement.
 - The conflict beam ("crossed gazes"), from Michael's 2026-11-12 feedback. When two fireflies see each other (once the second has landed), two streaks shoot out of their glowing tails, each with a small glow where the gaze leaves, and meet in the middle; sparks then stream from each toward the meeting point, the line quivers like a plucked string, and a small star flickers where the gazes clash. When the conflict clears, the beam pulls back into the fireflies. The broken rule is visible, not just a tint on each firefly. Reduced motion shows the line and the star, still.
 - A smoke test plays a garden (with an undo), moves on and quits the next to the map, then checks every logged event passes the schema and matches the play.
 

@@ -141,6 +141,9 @@ voice offline and fails if one is silent or clips.
 | Conflict | Slow uneasy sway; the beam between the pair shoots in, sparks stream toward the middle, the line quivers, a star flickers where they meet | Still; shiver lines, hatching, the beam and its star stay |
 | Solve | Sync flash, halo swells, light wave, bloom ripple with petals and motes, fireflies fly to the progress track and its dash turns gold; the card rises in with the bloom and takes taps from 1.1 s | Roses open, afterglow shown, fireflies stay on their tiles, the dash turns gold; card appears at once |
 | Ambient | Motes drift over the hills; ripples and koi in ponds | Still |
+| The moon | Glides along the sky garden by garden through a chapter, warming toward gold; a tap sends a firefly across | Sits in its place for the garden; a tap does nothing |
+| Tap a bush | It rustles, its roses bob, its dots pulse once | Nothing (it is never a move) |
+| Coins after a solve | Hop from the card's chip into the pill, which counts up | The pill shows the new total |
 | Map | Fireflies circle finished chapters; unlock flight along the path | Still; the new stop appears lit |
 
 Every state change stays under reduced motion; only movement goes.

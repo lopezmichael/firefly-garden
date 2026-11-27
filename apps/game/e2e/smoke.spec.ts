@@ -383,3 +383,28 @@ test('a scripted play-through logs an event stream that matches the play', async
   expect(of('continue')).toEqual([expect.objectContaining({ level: first.id, choice: 'next' })]);
   expect(of('coins').map((e) => e.why)).toEqual(['start', 'solve']);
 });
+
+test('small delights change nothing: the moon follows the chapter, a bush tap is not a move', async ({ page }) => {
+  await open(page);
+  const chapters = await page.evaluate(() => window.__ff.chapters());
+  const warmth = () => page.evaluate(() => (document.querySelector('.ff-sky .ff-moon') as SVGElement).style.getPropertyValue('--ff-moon-warm'));
+  await page.evaluate((id) => window.__ff.openLevel(id), chapters[0]![0]!);
+  await expect.poll(warmth).toBe('0.00');
+  await page.evaluate((id) => window.__ff.openLevel(id), chapters[0]!.at(-1)!);
+  await expect.poll(warmth).toBe('1.00');
+  // A bush: a cell outside the answer that a tap doesn't place a firefly on.
+  const l = await level(page);
+  const events = (await page.evaluate(() => window.__ff.events())).length;
+  let tapped = false;
+  for (let c = 0; c < l.w * l.h && !tapped; c++) {
+    if (l.answer.includes(c)) continue;
+    await tapCell(page, c);
+    if ((await level(page)).placed.length > 0) { await tapCell(page, c); continue; }
+    tapped = true;
+  }
+  expect(tapped).toBe(true);
+  expect((await level(page)).placed).toEqual([]);
+  // Only a placement and its removal while searching may have been logged: never by the bush itself.
+  const after = await page.evaluate(() => window.__ff.events());
+  expect(after.slice(events).every((e) => e.type !== 'level_end')).toBe(true);
+});

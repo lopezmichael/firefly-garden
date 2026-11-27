@@ -121,6 +121,12 @@ export class CompleteCard {
     this.focusWanted = false;
   }
 
+  /** The +coins chip's centre (viewport pixels), or null while it isn't laid out. */
+  chipCenter(): { x: number; y: number } | null {
+    const r = this.chip.getBoundingClientRect();
+    return r.width > 0 ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
+  }
+
   /** Focus Next, or Garden map on the last garden. */
   focus(): void {
     if (this.panel.inert) {
