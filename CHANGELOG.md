@@ -5,6 +5,10 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Added
+- **Your own X marks** ([plan](docs/plans/2026-11-28-hints-coins-journal.md), section 2): tapping a tile cycles it from empty to firefly to X and back to empty. Space on the keyboard does the same.
+  - X marks are free and never judged, and they take nothing from the jar; with the jar empty, a tap on an empty tile goes straight to an X. Undo walks back through them, reset clears them with your fireflies, and each garden saves its own.
+  - Press-and-hold is left free for a later light preview.
+- **The X mark:** one hand-drawn coral X in two soft brush strokes, the same for hints and for your own marks. It lands with a small boop and lifts away in a puff of pollen; under reduced motion it simply appears and goes. It is baked per cell size like the other board art, in new colour tokens (`--ff-mark`, `--ff-mark-deep`, `--ff-mark-light`, `--ff-pollen`), with contrast ratchets on a dark and a lit tile.
 - **The home screen:** every launch now opens on a painted night garden instead of going straight to a garden or the map.
   - A rose arch with a lantern, a cobbled path winding over the meadow's folds to a glowing glasshouse, the moon, and fireflies drifting and blinking over the grass.
   - **Pip,** a lantern firefly with a wildflower garland, sits on the arch and waves, with hearts rising. Five friends in their own lantern colours bob in the meadow, and every part of them moves: breathing, wings, antennae, head tilts, blinks, wandering eyes, waves and grins.
@@ -13,6 +17,14 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
   - The art is painted once by `npm run art:home` and ships as two images (about 180 KB).
 
 ### Changed
+- **Hints rule tiles out; they never place a firefly** ([plan](docs/plans/2026-11-28-hints-coins-journal.md), section 1).
+  - A hint crosses out a group of tiles that can't hold a firefly, all for one reason, at most four at once, and says why: "This bush already has all its fireflies, so no more go around it." A ring goes round the bush or tiles behind the reason. Tapping a hint's X shows its reason again.
+  - A wrong firefly of yours still comes off first.
+  - When the next step is a firefly with nothing left to rule out, the hint rings the bush or dark tile and says what to look for ("This dark tile can only be lit from one spot. Which?"). It never rings the firefly's own tile alone: when that is the reason, the ring takes its row and column. Asking again on the same board shows the same line for free.
+  - It never gets stuck: if the grader has nothing to go on, the hint rings a bush or a run of tiles near a missing firefly.
+  - Hint X marks are locked like hint fireflies were (undo and reset keep them; you paid), and they are saved.
+  - Hints read only their own X marks, never yours, since yours could be wrong.
+  - The simulated players now model hints the same way (weaker help per hint, so more hints per stuck spot). The simulated hint finds what the real one does from the same position (a test holds them to 95% agreement on crossing versus pointing). The economy guardrails hold: 0.92% of hint requests refused (limit 5%), 96.4% clear chapter 1 (at least 95%), breathers 3.0% hint use (under 5%), and the busiest level 25.7% (at most 40%).
 - **The map no longer says "Welcome back":** the home screen welcomes returning players.
 - **Difficulty labels:** every garden shows its difficulty beside its place in the chapter: one to four leaves and a word (Easy, Medium, Hard, Expert), from the garden's stored tier. The leaves warm with difficulty: moss green, gold, amber, then red, and the word takes the colour from Hard up. On narrow phones the leaves stand alone and the word stays for screen readers. The progress line reads "3 of 10" to make room (screen readers still hear "Garden 3 of 10"). The journal shows each garden's coloured leaves under its sketch.
 

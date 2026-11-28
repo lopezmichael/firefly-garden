@@ -69,7 +69,11 @@
   --ff-warn-glow: #ffd6dc;
 
   /* Marks */
-  --ff-ruled: #b9c6dc;         /* ruled-out brush cross, locked icon */
+  --ff-ruled: #b9c6dc;         /* locked icon */
+  --ff-mark: #f88a6e;          /* the X mark (hints and the player's own): coral brush */
+  --ff-mark-deep: #a8432f;     /* the X mark's soft edge, so it reads on a lit tile too */
+  --ff-mark-light: #ffc9b6;    /* the wet highlight along each stroke */
+  --ff-pollen: #f6d77a;        /* the puff of pollen as an X lifts away */
   --ff-firefly-rib: #c9963c;   /* lantern ribs on the firefly's tail */
   --ff-wing: #ffffff;
 

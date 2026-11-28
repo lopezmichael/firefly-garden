@@ -6,6 +6,7 @@ import { createCatalog } from '../src/state/catalog.ts';
 import { DEFAULT_SETTINGS, MAX_COINS, MAX_PARKED, MAX_SAVE_CHARS, newInstallId, parseSave, SAVE_VERSION, serializeSave } from '../src/state/save.ts';
 import type { SaveData } from '../src/state/save.ts';
 import { TIP_IDS } from '../src/state/teach.ts';
+import { Play } from '../src/state/play.ts';
 import { HISTORY_CAP } from '../src/state/session.ts';
 import { MAX_BANKED_HINTS } from '../src/state/wallet.ts';
 
@@ -19,6 +20,9 @@ const board = catalog.board(id);
 const solution = [...catalog.solution(id)];
 const fresh = () => 'feedfacefeedfacefeedfacefeedface';
 const wrong = board.paths.find((c) => !catalog.solution(id).has(c))!;
+/** Non-answer path tiles (hint X candidates) and a bush, for the X mark checks. */
+const outside = board.paths.filter((c) => !catalog.solution(id).has(c) && !board.lantern[c]);
+const bush = board.numbered[0]!;
 
 function good(): SaveData {
   return {
@@ -27,7 +31,9 @@ function good(): SaveData {
     history: catalog.mainPath.slice(0, 4).map((l, i) => ({ levelId: l, reason: 'main' as const, solved: true, seconds: 30 + i, hints: 0, endedAt: NOW - 1000 * (4 - i) })),
     playedReserve: new Set([catalog.reserve[0]!.id]),
     quitMain: new Set([catalog.mainPath[3]!]),
-    current: { levelId: id, key: catalog.levelKey(id), reason: 'main', placed: [solution[1]!], locked: [solution[0]!], seconds: 12, placements: 3, undos: 1, restarts: 0, hints: 1 },
+    current: { levelId: id, key: catalog.levelKey(id), reason: 'main', placed: [solution[1]!], locked: [solution[0]!],
+      crossed: [{ cells: [outside[0]!, outside[1]!], technique: 'T1-satisfied', because: [bush] }], marks: [outside[2]!],
+      seconds: 12, placements: 3, undos: 1, restarts: 0, hints: 1 },
     parked: [],
     settings: { sound: false, motion: 'off' },
     tips: new Set(['cross']),
@@ -111,7 +117,7 @@ describe('save validation (rules.md)', () => {
   });
 
   it('drops a saved board holding more fireflies than the jar', () => {
-    const tooMany = board.paths.filter((c) => !board.lantern[c] && c !== solution[0]).slice(0, solution.length).map((c) => cellCoord(board, c));
+    const tooMany = board.paths.filter((c) => !board.lantern[c] && c !== solution[0] && c !== outside[0] && c !== outside[1]).slice(0, solution.length).map((c) => cellCoord(board, c));
     const { data, problems } = parseSave(tamper((o) => { (o.current as Record<string, unknown>).placed = tooMany; }), catalog, NOW, fresh);
     expect(data!.current!.placed).toEqual([]);
     expect(data!.current!.locked).toEqual([solution[0]]);
@@ -231,12 +237,65 @@ describe('map seen chapters (the unlock flight plays once)', () => {
   });
 });
 
+describe('X marks in a save (hint X marks and the player\'s own)', () => {
+  const cur = (o: Record<string, unknown>) => o.current as Record<string, unknown>;
+  const at = (c: number) => cellCoord(board, c);
+  const group = (cells: number[], technique: unknown = 'T1-satisfied') => ({ cells: cells.map(at), technique, because: [at(bush)] });
+  const parse = (edit: (c: Record<string, unknown>) => void) => parseSave(tamper((o) => edit(cur(o))), catalog, NOW, fresh);
+
+  it('loads saves from before X marks existed with none', () => {
+    const { data, problems } = parse((c) => { delete c.crossed; delete c.marks; });
+    expect(problems).toEqual([]);
+    expect(data!.current!.crossed).toEqual([]);
+    expect(data!.current!.marks).toEqual([]);
+  });
+
+  it('keeps hint X marks only on path tiles outside the answer: one bad tile drops every group', () => {
+    for (const bad of [solution[2]!, bush, outside[0]!]) {
+      // outside[0] twice: a tile in two groups.
+      const { data, problems } = parse((c) => { c.crossed = [group([outside[0]!]), group([bad])]; });
+      expect(data!.current!.crossed).toEqual([]);
+      expect(problems.some((p) => p.startsWith('current.crossed'))).toBe(true);
+    }
+  });
+
+  it('refuses unknown techniques, empty or oversized groups, and anything not a list of groups', () => {
+    const bads: unknown[] = [
+      [group([outside[0]!, outside[0]!])], // one tile twice in a group: Play would throw on it
+      [group([outside[0]!], 'T9-magic')], [group([outside[0]!], '__proto__')], [group([outside[0]!], 'toString')],
+      [group([])], [group(outside.slice(0, 5))], [{ cells: [at(outside[0]!)], technique: 'T1-satisfied' }],
+      'x', {}, [7], [{ cells: [[-1, 0]], technique: 'T1-satisfied', because: [] }],
+    ];
+    for (const crossed of bads) {
+      const { data } = parse((c) => { c.crossed = crossed; });
+      expect(data!.current!.crossed, JSON.stringify(crossed)).toEqual([]);
+    }
+  });
+
+  it('keeps the player\'s X marks only on free path tiles: not a bush, firefly, lantern or hint X', () => {
+    for (const bad of [bush, solution[1]!, outside[0]!]) {
+      const { data, problems } = parse((c) => { c.marks = [at(outside[3]!), at(bad)]; });
+      expect(data!.current!.marks).toEqual([]);
+      expect(problems.some((p) => p.startsWith('current.marks'))).toBe(true);
+    }
+    // A player X on an answer tile is fine: X marks are never judged.
+    const { data } = parse((c) => { c.marks = [at(solution[3]!)]; });
+    expect(data!.current!.marks).toEqual([solution[3]!]);
+  });
+
+  it('drops player fireflies sitting on a hint X', () => {
+    const { data, problems } = parse((c) => { c.placed = [at(outside[0]!)]; });
+    expect(data!.current!.placed).toEqual([]);
+    expect(problems.some((p) => p.startsWith('current.placed'))).toBe(true);
+  });
+});
+
 describe('parked boards (quit levels kept for their retry)', () => {
   const quitId = catalog.mainPath[6]!;
   const qb = catalog.board(quitId);
   const qsol = [...catalog.solution(quitId)];
   const parkedPlay = (levelId: string) => ({
-    levelId, key: catalog.levelKey(levelId), reason: 'retry' as const, placed: [], locked: [], seconds: 9, placements: 2, undos: 0, restarts: 0, hints: 0,
+    levelId, key: catalog.levelKey(levelId), reason: 'retry' as const, placed: [], locked: [], crossed: [], marks: [], seconds: 9, placements: 2, undos: 0, restarts: 0, hints: 0,
   });
 
   it('round-trips a parked board with its fireflies', () => {
@@ -309,6 +368,15 @@ describe('save fuzz', () => {
           // Keep the fingerprint in step so the fuzz reaches the cell checks, not the early drop.
           if (catalog.has(cur.levelId as string)) cur.key = catalog.levelKey(cur.levelId as string);
           cur.locked = Array.from({ length: Math.floor(rng.next() * 4) }, () => [Math.floor(rng.next() * 9) - 1, Math.floor(rng.next() * 9) - 1]);
+          const cell = () => [Math.floor(rng.next() * 9) - 1, Math.floor(rng.next() * 9) - 1];
+          if (rng.next() < 0.5) {
+            cur.crossed = rng.next() < 0.2 ? junk(0) : Array.from({ length: Math.floor(rng.next() * 4) }, () => ({
+              cells: Array.from({ length: Math.floor(rng.next() * 6) }, cell),
+              technique: pick(['T1-satisfied', 'T2-bush-room', 'T3-count-bound', 'T9', '__proto__', 'constructor', 7]),
+              because: rng.next() < 0.8 ? Array.from({ length: Math.floor(rng.next() * 3) }, cell) : junk(1),
+            }));
+          }
+          if (rng.next() < 0.5) cur.marks = rng.next() < 0.2 ? junk(0) : Array.from({ length: Math.floor(rng.next() * 6) }, cell);
         }
       });
       const { data } = parseSave(raw, catalog, NOW, fresh);
@@ -338,6 +406,14 @@ describe('save fuzz', () => {
         expect(cur.locked.every((c) => sol.has(c))).toBe(true);
         const b = catalog.board(cur.levelId);
         expect(cur.placed.every((c) => b.kind[c] === 'path' && !cur.locked.includes(c))).toBe(true);
+        // A hint X is never on an answer tile (it would mislead the player and the hint's grader).
+        const xs = cur.crossed.flatMap((g) => g.cells);
+        // Whatever parses must also resume: a parsed board never makes Play throw.
+        expect(() => new Play(b, sol, { now: () => 0 }, cur)).not.toThrow();
+        expect(xs.every((c) => b.kind[c] === 'path' && !sol.has(c))).toBe(true);
+        expect(new Set(xs).size).toBe(xs.length);
+        expect(cur.marks.every((c) => b.kind[c] === 'path' && !b.lantern[c] && !xs.includes(c) && !cur.placed.includes(c))).toBe(true);
+        expect(cur.placed.every((c) => !xs.includes(c))).toBe(true);
       }
       // A parsed save always serializes and re-parses to itself.
       expect(parseSave(serializeSave(data, catalog), catalog, NOW, fresh).data).toEqual(data);

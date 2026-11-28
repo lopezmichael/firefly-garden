@@ -10,7 +10,7 @@ export type Cue =
   /** A firefly landed. `pitch` runs from 1 (top row on screen) to 0 (bottom row): higher rings higher. */
   | { readonly kind: 'place'; readonly pitch: number }
   | { readonly kind: 'lift' }
-  /** A hint placed a locked firefly. */
+  /** A hint crossed tiles out or pointed at a bush or tile. */
   | { readonly kind: 'hint'; readonly pitch: number }
   /** At least one more bush has exactly its number. */
   | { readonly kind: 'bush' }
@@ -21,8 +21,8 @@ export type Cue =
   | { readonly kind: 'empty' };
 
 export type Move =
-  | { readonly kind: 'placed' | 'hint-placed'; readonly row: number; readonly rows: number }
-  | { readonly kind: 'removed' | 'hint-removed' | 'undo' | 'reset' | 'jar-empty' };
+  | { readonly kind: 'placed'; readonly row: number; readonly rows: number }
+  | { readonly kind: 'removed' | 'hint-removed' | 'hint-shown' | 'undo' | 'reset' | 'jar-empty' };
 
 const met = (ev: Evaluation) => ev.bushes.reduce((n, b) => n + (b.state === 'met' ? 1 : 0), 0);
 
@@ -36,9 +36,11 @@ export function cuesFor(before: Evaluation, after: Evaluation, move: Move): Cue[
   if (move.kind === 'jar-empty') return [{ kind: 'empty' }];
   if (after.solved && !before.solved) return [{ kind: 'solve' }];
   const out: Cue[] = [];
-  if (move.kind === 'placed' || move.kind === 'hint-placed') {
+  if (move.kind === 'placed') {
     const pitch = move.rows <= 1 ? 0.5 : 1 - Math.min(1, Math.max(0, move.row / (move.rows - 1)));
-    out.push({ kind: move.kind === 'placed' ? 'place' : 'hint', pitch });
+    out.push({ kind: 'place', pitch });
+  } else if (move.kind === 'hint-shown') {
+    out.push({ kind: 'hint', pitch: 0.5 });
   } else if (move.kind === 'removed' || move.kind === 'hint-removed') {
     out.push({ kind: 'lift' });
   }

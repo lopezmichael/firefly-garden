@@ -96,7 +96,7 @@ describe('sound cues', () => {
   });
 
   it('hints have their own landing sound', () => {
-    expect(cuesFor(ev([]), ev([at(0, 1)]), { kind: 'hint-placed', row: 0, rows: 4 })).toEqual([{ kind: 'hint', pitch: 1 }]);
+    expect(cuesFor(ev([]), ev([]), { kind: 'hint-shown' })).toEqual([{ kind: 'hint', pitch: 0.5 }]);
   });
 });
 

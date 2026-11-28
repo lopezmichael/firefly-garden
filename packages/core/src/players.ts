@@ -1,4 +1,7 @@
 import { DIFFICULTY_CONFIG } from './difficulty.ts';
+import type { Board } from './board.ts';
+import type { Grade } from './grader.ts';
+import { HINT_CROSS_CAP } from './hints.ts';
 import { isDetour, nextLevel, type PlayRecord, type PolicyLevel } from './policy.ts';
 import { createRng, deriveSeed, type Rng } from './rng.ts';
 
@@ -11,6 +14,14 @@ import { createRng, deriveSeed, type Rng } from './rng.ts';
  * for one, struggle on, or quit; some who quit never come back. Solving
  * stretch steps teaches the technique, so skill grows along the ramp.
  *
+ * A hint never places a firefly (`hint`, hints.ts). It crosses out the first
+ * group of `empty` steps still open on the board (`simHintGroup`: the grader
+ * reads only the hint's X marks, so it may re-find tiles the player had
+ * already worked out, and the player stays stuck), or, when the next deduction
+ * is a firefly with nothing left to rule out, it points at it and the player
+ * still has to find it (`pointedTimeFactor`). Asking again for the same point
+ * shows it again for free, so a point is the last hint one stuck spot can take.
+ *
  * Every number here is a modelling assumption, kept in PLAYER_CONFIG so it
  * can be refit once real solve, hint and quit data exists.
  */
@@ -18,6 +29,32 @@ import { createRng, deriveSeed, type Rng } from './rng.ts';
 export interface SimStep {
   readonly tier: number;
   readonly width: number;
+  /**
+   * What the step decides and its technique plus reason cells (`simSteps`), so a hint can
+   * cross out a group of empty steps. Without `value`, a hint resolves the stuck step (the
+   * older model, kept for hand-made test levels).
+   */
+  readonly value?: 'firefly' | 'empty';
+  readonly group?: string;
+  /**
+   * An empty step only: the index of the first firefly step whose light reaches its tile.
+   * Once that firefly is down the tile is visibly decided, so no hint re-finds it.
+   */
+  readonly litAt?: number;
+}
+
+/** A grader trace as the simulated players walk it (count-aware: pass `gradeLevel` and the level's board). */
+export function simSteps(g: Grade, board: Board): SimStep[] {
+  const lit = new Map<number, number>();
+  g.steps.forEach((s, i) => {
+    if (s.value !== 'firefly') return;
+    for (const c of [s.cell, ...board.rays[s.cell]!]) if (!lit.has(c)) lit.set(c, i);
+  });
+  return g.steps.map((s, i) => {
+    const step: SimStep = { tier: s.tier, width: s.width, value: s.value, group: `${s.technique}:${s.because.join(',')}` };
+    const at = lit.get(s.cell);
+    return s.value === 'empty' && at !== undefined && at > i ? { ...step, litAt: at } : step;
+  });
 }
 
 export type LevelRole = 'opener' | 'climb' | 'breather' | 'peak';
@@ -80,6 +117,13 @@ export const PLAYER_CONFIG = {
   quitWithoutHelp: 0.6,
   /** Seconds a rewarded ad takes. */
   adSeconds: 30,
+  /**
+   * Time multiplier for a step a hint pointed at (the ring and the line say where and what
+   * to look for; the player still finds the firefly). ASSUMPTION until real hint data exists.
+   */
+  pointedTimeFactor: 1.5,
+  /** Hints one stuck spot may take before the player grinds it out (a safety bound, rarely reached). */
+  maxHintsPerStuck: 6,
   /** A level abandoned once elapsed time passes patience × this. */
   hardStopFactor: 2.5,
   /** A player who quits but stays retries the level this many times at most. */
@@ -282,10 +326,14 @@ function playOnce(level: SimLevel, profile: PlayerProfile, economy: Economy, sta
   const time = DIFFICULTY_CONFIG.time;
   const [n0, n1] = cfg.noise;
   const out: PlayResult = { solved: false, seconds: level.fireflies * time.secondsPerTap * profile.speed, coinHints: 0, adHints: 0, refusedHints: 0, bankedHints: 0 };
+  /** Steps a hint has crossed out this play. */
+  const crossed = new Set<number>();
 
   for (const [k, step] of level.steps.entries()) {
     // Give up between steps once far past patience; finishing the last step always counts.
     if (k > 0 && out.seconds > profile.patience * cfg.hardStopFactor) return out;
+    // A tile a hint already crossed out: nothing to work out.
+    if (crossed.has(k)) continue;
     const base = time.secondsPerTier[step.tier]! * (1 + time.spread / (step.width + 1));
     const noise = n0 + rng.next() * (n1 - n0);
     const gap = step.tier - state.skill;
@@ -302,21 +350,31 @@ function playOnce(level: SimLevel, profile: PlayerProfile, economy: Economy, sta
     if (rng.next() < stuckChance) {
       const frustrated = out.seconds > profile.patience;
       if (rng.next() < cfg.quitWhenStuck[frustrated ? 1 : 0]!) return out;
-      if (state.bank > 0) {
-        state.bank--;
-        out.bankedHints++;
-      } else if (state.coins >= economy.hintCost) {
-        state.coins -= economy.hintCost;
-        out.coinHints++;
-      } else if (rng.next() < profile.adWillingness) {
-        out.adHints++;
-        out.seconds += cfg.adSeconds;
-        state.bank += Math.max(0, economy.hintsPerAd - 1); // one used now, the rest saved
-      } else {
-        out.refusedHints++;
-        if (rng.next() < cfg.quitWithoutHelp) return out;
-        out.seconds += base * profile.speed * cfg.stretchTimeFactor; // grinds it out
+      let resolved = step.value === undefined;
+      for (let ask = 0; ask < cfg.maxHintsPerStuck; ask++) {
+        const got = takeHint(profile, economy, state, rng, out);
+        if (got === 'quit') return out;
+        if (got === 'grind') {
+          out.seconds += base * profile.speed * cfg.stretchTimeFactor;
+          resolved = true;
+          break;
+        }
+        if (resolved) break; // the older model: the hint resolves the step
+        const group = simHintGroup(level.steps, k, crossed);
+        if (group.length === 0) {
+          // Nothing left to rule out before this firefly: the hint points, the player finds it.
+          out.seconds += base * profile.speed * cfg.pointedTimeFactor;
+          resolved = true;
+          break;
+        }
+        for (const j of group) crossed.add(j);
+        if (crossed.has(k)) {
+          resolved = true;
+          break;
+        }
+        // The hint crossed tiles the player had already worked out: still stuck.
       }
+      if (!resolved) out.seconds += base * profile.speed * cfg.stretchTimeFactor; // grinds it out
       // A hinted step teaches a little; an unaided one teaches fully.
       if (gap === 1) learn(state, profile, 0.5);
     } else if (gap === 1) {
@@ -325,6 +383,60 @@ function playOnce(level: SimLevel, profile: PlayerProfile, economy: Economy, sta
 
   }
   out.solved = true;
+  return out;
+}
+
+/**
+ * One hint for a stuck player: from the bank, with coins, or by watching an ad; refused
+ * when none of those happens, and then they either quit or grind the step out.
+ */
+function takeHint(profile: PlayerProfile, economy: Economy, state: PlayerState, rng: Rng, out: PlayResult): 'hint' | 'quit' | 'grind' {
+  const cfg = PLAYER_CONFIG;
+  if (state.bank > 0) {
+    state.bank--;
+    out.bankedHints++;
+  } else if (state.coins >= economy.hintCost) {
+    state.coins -= economy.hintCost;
+    out.coinHints++;
+  } else if (rng.next() < profile.adWillingness) {
+    out.adHints++;
+    out.seconds += cfg.adSeconds;
+    state.bank += Math.max(0, economy.hintsPerAd - 1); // one used now, the rest saved
+  } else {
+    out.refusedHints++;
+    return rng.next() < cfg.quitWithoutHelp ? 'quit' : 'grind';
+  }
+  return 'hint';
+}
+
+/**
+ * The steps the next hint crosses out for a player stuck on step `k`, as the real hint finds
+ * them: the grader starts from the fireflies placed so far (every firefly step before `k`)
+ * and the hint's own X marks, never the player's, so it re-finds, in trace order, the first
+ * empty step that is still open on the board (not crossed by a hint, not lit by a firefly
+ * already down), even one the player worked out long ago. It takes the run of open steps
+ * sharing that step's technique and reason cells, at most `HINT_CROSS_CAP`, and stops at the
+ * next firefly still to place. Empty when nothing is open before it (the hint points).
+ * Exported for tests.
+ */
+export function simHintGroup(steps: readonly SimStep[], k: number, crossed: ReadonlySet<number>): number[] {
+  const open = (j: number) => {
+    const st = steps[j]!;
+    return st.value === 'empty' && !crossed.has(j) && !(st.litAt !== undefined && st.litAt < k);
+  };
+  const out: number[] = [];
+  let group: string | undefined;
+  for (let j = 0; j < steps.length && out.length < HINT_CROSS_CAP; j++) {
+    const st = steps[j]!;
+    if (st.value === 'firefly') {
+      if (j >= k) break; // the next firefly to place: the grader stops there
+      continue; // already on the board
+    }
+    if (!open(j)) continue;
+    if (group === undefined) group = st.group;
+    else if (st.group !== group) break;
+    out.push(j);
+  }
   return out;
 }
 

@@ -1,6 +1,8 @@
-import { cellCoord, cellIndex, canPlace } from '@firefly/core';
-import type { Coord, NextReason, PlayRecord } from '@firefly/core';
+import { cellCoord, cellIndex, canPlace, HINT_CROSS_CAP } from '@firefly/core';
+import type { Board, Coord, NextReason, PlayRecord } from '@firefly/core';
 import type { Catalog } from './catalog.ts';
+import { isTechnique } from './play.ts';
+import type { CrossGroup } from './play.ts';
 import { HISTORY_CAP } from './session.ts';
 import { isTipId, TIP_IDS } from './teach.ts';
 import type { TipId } from './teach.ts';
@@ -15,8 +17,9 @@ export { MAX_COINS };
  * so `parseSave` validates field by field, per docs/references/rules.md
  * ("Hints", "Saved progress"): unknown levels and reasons are dropped,
  * numbers must be finite and in range, timestamps not in the future, a locked
- * hint cell must be a cell of that level's unique answer, player cells must be
- * path cells, and the coin balance and hint bank are capped. A bad field falls
+ * hint cell must be a cell of that level's unique answer, a hint X must be a
+ * path cell outside it (with a known technique), player fireflies and X marks
+ * must be path cells holding nothing else, and the coin balance and hint bank are capped. A bad field falls
  * back to a safe default on its own; a wholly unreadable save starts fresh.
  * It never throws. Cells are stored as canonical [row, col], so the board's
  * on-screen rotation never reaches a save.
@@ -47,7 +50,12 @@ export interface CurrentPlay {
   readonly key: string;
   readonly reason: NextReason;
   readonly placed: readonly number[];
+  /** Hint fireflies from saves made before hints stopped placing them (answer cells). */
   readonly locked: readonly number[];
+  /** Hint X marks, one group per hint: path cells outside the answer. */
+  readonly crossed: readonly CrossGroup[];
+  /** The player's own X marks (free, never judged). */
+  readonly marks: readonly number[];
   readonly seconds: number;
   readonly placements: number;
   readonly undos: number;
@@ -161,6 +169,39 @@ function parseCells(v: unknown, w: number, h: number): Coord[] | null {
   return out;
 }
 
+/**
+ * Hint X groups: a list of `{ cells, technique, because }`. Every cell a path tile outside the
+ * answer and in one group only; 1 to `HINT_CROSS_CAP` cells a group; `because` cells on the
+ * board; the technique a known id. Any problem drops every group.
+ */
+function parseCrossed(v: unknown, board: Board, solution: ReadonlySet<number>, problems: string[]): CrossGroup[] {
+  const n = board.w * board.h;
+  if (!Array.isArray(v) || v.length > n) {
+    problems.push('current.crossed is malformed; dropped');
+    return [];
+  }
+  const out: CrossGroup[] = [];
+  const seen = new Set<number>();
+  for (const raw of v) {
+    const cellsRaw = isObject(raw) ? parseCells(own(raw, 'cells'), board.w, board.h) : null;
+    const becauseRaw = isObject(raw) ? parseCells(own(raw, 'because'), board.w, board.h) : null;
+    const technique = isObject(raw) ? own(raw, 'technique') : undefined;
+    if (!cellsRaw || !becauseRaw || !isTechnique(technique) || cellsRaw.length === 0 || cellsRaw.length > HINT_CROSS_CAP) {
+      problems.push('current.crossed: a group is malformed; dropped');
+      return [];
+    }
+    const cells = cellsRaw.map((c) => cellIndex(board, c));
+    // A tile in an earlier group or twice in this one: `Play` would refuse it, so refuse it here.
+    if (new Set(cells).size !== cells.length || cells.some((c) => board.kind[c] !== 'path' || solution.has(c) || seen.has(c))) {
+      problems.push('current.crossed: a hint X is not a free tile outside the answer; dropped');
+      return [];
+    }
+    for (const c of cells) seen.add(c);
+    out.push({ cells, technique, because: [...new Set(becauseRaw.map((c) => cellIndex(board, c)))] });
+  }
+  return out;
+}
+
 function parseCurrent(v: unknown, catalog: Catalog, problems: string[]): CurrentPlay | null {
   if (v === undefined || v === null) return null;
   if (!isObject(v)) {
@@ -191,7 +232,13 @@ function parseCurrent(v: unknown, catalog: Catalog, problems: string[]): Current
     else problems.push('current.locked: a cell is not a placeable answer cell; dropped');
   } else problems.push('current.locked is malformed; dropped');
 
-  // Player fireflies: path cells, not lanterns, not locked; otherwise the whole set is dropped.
+  // Hint X marks: path cells outside the answer, each group at most a hint's worth with a known
+  // technique; otherwise every group is dropped (a hint X on an answer tile would mislead the
+  // player and the next hint's grader alike).
+  const crossed = parseCrossed(own(v, 'crossed') ?? [], board, solution, problems);
+  const crossedSet = new Set(crossed.flatMap((g) => g.cells));
+
+  // Player fireflies: path cells, not lanterns, not locked, not a hint X; otherwise the whole set is dropped.
   let placed: number[] = [];
   const lockedSet = new Set(locked);
   const placedCoords = parseCells(own(v, 'placed') ?? [], board.w, board.h);
@@ -199,10 +246,20 @@ function parseCurrent(v: unknown, catalog: Catalog, problems: string[]): Current
     const cells = [...new Set(placedCoords.map((c) => cellIndex(board, c)))];
     const lanterns = board.lanterns.filter((l) => solution.has(l)).length;
     const jarSize = solution.size - lanterns;
-    if (!cells.every((c) => canPlace(board, c, lockedSet))) problems.push('current.placed: a cell cannot hold a firefly; dropped');
+    if (!cells.every((c) => canPlace(board, c, lockedSet) && !crossedSet.has(c))) problems.push('current.placed: a cell cannot hold a firefly; dropped');
     else if (cells.length + locked.length > jarSize) problems.push('current.placed: more fireflies than the jar holds; dropped');
     else placed = cells;
   } else problems.push('current.placed is malformed; dropped');
+
+  // The player's X marks: free tiles only (not a firefly, lantern or hint X); otherwise all are dropped.
+  let marks: number[] = [];
+  const placedSet = new Set(placed);
+  const markCoords = parseCells(own(v, 'marks') ?? [], board.w, board.h);
+  if (markCoords) {
+    const cells = [...new Set(markCoords.map((c) => cellIndex(board, c)))];
+    if (cells.every((c) => canPlace(board, c, lockedSet) && !crossedSet.has(c) && !placedSet.has(c))) marks = cells;
+    else problems.push('current.marks: a cell cannot hold an X; dropped');
+  } else problems.push('current.marks is malformed; dropped');
 
   const count = (k: string) => {
     const n = own(v, k);
@@ -212,7 +269,7 @@ function parseCurrent(v: unknown, catalog: Catalog, problems: string[]): Current
   };
   const seconds = own(v, 'seconds');
   return {
-    levelId, key, reason: reason as NextReason, placed, locked,
+    levelId, key, reason: reason as NextReason, placed, locked, crossed, marks,
     seconds: isSeconds(seconds) ? Math.floor(seconds) : 0,
     placements: count('placements'), undos: count('undos'), restarts: count('restarts'), hints: count('hints'),
   };
@@ -323,6 +380,8 @@ export function serializeSave(d: SaveData, catalog: Catalog): string {
   const play = (p: CurrentPlay) => ({
     levelId: p.levelId, key: p.key, reason: p.reason,
     placed: coords(p.placed, p.levelId), locked: coords(p.locked, p.levelId),
+    crossed: p.crossed.map((g) => ({ cells: coords(g.cells, p.levelId), technique: g.technique, because: coords(g.because, p.levelId) })),
+    marks: coords(p.marks, p.levelId),
     seconds: p.seconds, placements: p.placements, undos: p.undos, restarts: p.restarts, hints: p.hints,
   });
   return JSON.stringify({

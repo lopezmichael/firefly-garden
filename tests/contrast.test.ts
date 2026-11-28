@@ -56,7 +56,8 @@ const PAIRS: readonly (readonly [string, string, number, string])[] = [
   ['gold', 'moss', LARGE, 'bush number, happy'],
   ['warn', 'wilt', LARGE, 'bush number, too many'],
   // State graphics on the dark tile
-  ['ruled', 'dusk', LARGE, 'ruled-out cross'],
+  ['mark', 'dusk', LARGE, 'X mark on a dark tile'],
+  ['mark-deep', 'gold', LARGE, 'X mark edge on a lit tile'],
   ['gold', 'dusk', LARGE, 'hint reason outline'],
   ['gold', 'moss', LARGE, 'filled bush dots'],
   ['paper', 'moss', LARGE, 'empty bush dots'],
