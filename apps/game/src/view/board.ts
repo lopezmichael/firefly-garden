@@ -242,7 +242,9 @@ export class BoardView {
    * clears X marks and the tiles it has passed. `swallowTap`: the press became a hold, so the
    * tap Pixi reports on release is not a tap.
    */
-  private press: { cell: number; timer: ReturnType<typeof setTimeout> | null; held: boolean; on: boolean | null; seen: Set<number> } | null = null;
+  private press: {
+    cell: number; pointer: number; timer: ReturnType<typeof setTimeout> | null; held: boolean; on: boolean | null; seen: Set<number>;
+  } | null = null;
   private swallowTap = false;
   private readonly onRelease: BoardViewOptions['onRelease'];
   private motion: boolean;
@@ -316,7 +318,13 @@ export class BoardView {
     // Right-click marks an X (desktop), so the browser's menu stays away from the board.
     app.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     // A press ends wherever the pointer is let go (on the board or off it).
-    for (const type of ['pointerup', 'pointercancel', 'blur'] as const) window.addEventListener(type, () => this.endPress());
+    // (Only the pointer that started it: a second finger lifting doesn't end a first finger's drag.)
+    for (const type of ['pointerup', 'pointercancel'] as const) {
+      window.addEventListener(type, (e) => {
+        if (!this.press || e.pointerId === this.press.pointer) this.endPress();
+      });
+    }
+    window.addEventListener('blur', () => this.endPress());
   }
 
   static async create(host: HTMLElement, opts: BoardViewOptions): Promise<BoardView> {
@@ -440,10 +448,9 @@ export class BoardView {
   }
 
   /** A press on a tile: a hold if it lasts `HOLD_MS` on that tile, else the tap Pixi reports. */
-  private startPress(cell: number): void {
+  private startPress(cell: number, pointer: number): void {
     this.endPress();
-    this.swallowTap = false;
-    const press = { cell, timer: null as ReturnType<typeof setTimeout> | null, held: false, on: null as boolean | null, seen: new Set([cell]) };
+    const press = { cell, pointer, timer: null as ReturnType<typeof setTimeout> | null, held: false, on: null as boolean | null, seen: new Set([cell]) };
     press.timer = setTimeout(() => {
       if (this.press !== press) return;
       press.timer = null;
@@ -460,9 +467,9 @@ export class BoardView {
   }
 
   /** The pointer moves onto a tile: paint it if a hold is dragging, or cancel a press that wandered off. */
-  private pressOver(cell: number, buttons: number): void {
+  private pressOver(cell: number, buttons: number, pointer: number): void {
     const press = this.press;
-    if (!press || press.seen.has(cell)) return;
+    if (!press || pointer !== press.pointer || press.seen.has(cell)) return;
     // No button down: the release happened somewhere we never heard about (another window).
     if (buttons === 0) {
       this.endPress();
@@ -473,9 +480,15 @@ export class BoardView {
     else if (press.on !== null) this.onPaint?.(cell, press.on);
   }
 
+  /**
+   * Pixi delivers the tap (capture phase on window) before our bubble-phase window `pointerup`
+   * reaches here, so a hold's tap is already swallowed; a flag left over (the release landed off
+   * the tile, so no tap came) is cleared here and never eats a later tap or Ctrl+click.
+   */
   private endPress(): void {
     if (this.press?.timer) clearTimeout(this.press.timer);
     this.press = null;
+    this.swallowTap = false;
   }
 
   /** Free textures drawn for other cell sizes (resizes and folds would otherwise pile them up). */
@@ -687,12 +700,12 @@ export class BoardView {
             else this.onTap(i);
           });
           root.on('pointerdown', (e) => {
-            if (e.button === 0 && !e.ctrlKey) this.startPress(i);
+            if (e.button === 0 && !e.ctrlKey) this.startPress(i, e.pointerId);
           });
-          root.on('pointerover', (e) => this.pressOver(i, e.buttons));
+          root.on('pointerover', (e) => this.pressOver(i, e.buttons, e.pointerId));
           // Sliding off the tile before the hold lands cancels it (a held drag carries on).
-          root.on('pointerout', () => {
-            if (this.press && !this.press.held && this.press.cell === i) this.endPress();
+          root.on('pointerout', (e) => {
+            if (this.press && !this.press.held && this.press.cell === i && e.pointerId === this.press.pointer) this.endPress();
           });
           root.on('rightclick', () => this.onHold?.(i));
         } else if (v.kind === 'bush') {

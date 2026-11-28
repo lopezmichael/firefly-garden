@@ -1038,7 +1038,8 @@ export class GameApp {
     }
     // One tap: the garden's free hints first, then any saved from an earlier video. Only once
     // both are used does a sheet appear, offering a video for more.
-    let source: 'free' | 'bank' | 'ad' | null = this.freeHintsLeft(play) > 0 ? 'free' : this.wallet.takeBanked() ? 'bank' : null;
+    // A saved hint is only spent once the hint is given (below), so none is ever lost.
+    let source: 'free' | 'bank' | 'ad' | null = this.freeHintsLeft(play) > 0 ? 'free' : this.wallet.bank > 0 ? 'bank' : null;
     if (!source) {
       if (!this.platform.rewardedAds) {
         this.notice = { kind: 'no-hints' };
@@ -1067,6 +1068,7 @@ export class GameApp {
     const before = play.evaluation;
     const h = play.applyHint();
     if (h.kind === 'none') return;
+    if (source === 'bank') this.wallet.takeBanked();
     this.emit({ type: 'hint', level: this.current!.id, source, step: hintStep(this.catalog.grade(this.current!.id), hintCell(h)) });
     this.notice = { kind: 'hint', hint: h };
     // A removal sends the wrong firefly home and leaves a hint X on its tile; crossed tiles get
