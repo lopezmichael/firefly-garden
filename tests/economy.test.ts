@@ -10,14 +10,16 @@ import { describe, expect, it } from 'vitest';
 import {
   buildBoard, combine, gradeLevel, measure, parseLevel, PLAYER_CONFIG, rampRoles, simulate, type SimLevel,
 } from '../packages/core/src/index.ts';
+import { PLAYED_CHAPTERS } from '../apps/game/src/build.ts';
 
 const DIR = join(import.meta.dirname, '..', 'levels');
 const pack = JSON.parse(readFileSync(join(DIR, 'launch.json'), 'utf8')) as { levels: unknown[] };
 const byId = new Map(pack.levels.map((l) => parseLevel(l)).map((l) => [l.id, l]));
 const manifest = JSON.parse(readFileSync(join(DIR, 'manifest.json'), 'utf8')) as { chapters: { id: string; levels: string[] }[] };
 
-// The economy guardrails are about the opening: chapters 1 to 3.
-const simLevels: SimLevel[] = manifest.chapters.slice(0, 3).flatMap((c) => {
+// The economy guardrails cover the main path this build plays, in order.
+const played = PLAYED_CHAPTERS.map((id) => manifest.chapters.find((c) => c.id === id)!);
+const simLevels: SimLevel[] = played.flatMap((c) => {
   const graded = c.levels.map((id) => {
     const level = byId.get(id)!;
     const board = buildBoard(level);

@@ -1,12 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { PLAYED_CHAPTERS } from '../src/build.ts';
 import { createCatalog } from '../src/state/catalog.ts';
 import { difficultyOf } from '../src/state/difficulty.ts';
 
 const LEVELS = join(import.meta.dirname, '../../../levels');
 const read = (f: string): unknown => JSON.parse(readFileSync(join(LEVELS, f), 'utf8'));
-const catalog = createCatalog({ launch: read('launch.json'), reserve: read('reserve.json'), manifest: read('manifest.json') }, ['c1', 'c2', 'c3']);
+const catalog = createCatalog({ launch: read('launch.json'), reserve: read('reserve.json'), manifest: read('manifest.json') }, PLAYED_CHAPTERS);
 
 describe('difficulty labels', () => {
   it('maps each tier to a word and leaves', () => {

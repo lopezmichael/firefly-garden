@@ -1,18 +1,19 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { PLAYED_CHAPTERS } from '../src/build.ts';
 import { createCatalog } from '../src/state/catalog.ts';
 import { gardenSketch, journalPages, openingPage } from '../src/state/journal.ts';
 
 const LEVELS = join(import.meta.dirname, '../../../levels');
 const read = (f: string): unknown => JSON.parse(readFileSync(join(LEVELS, f), 'utf8'));
-const catalog = createCatalog({ launch: read('launch.json'), reserve: read('reserve.json'), manifest: read('manifest.json') }, ['c1', 'c2', 'c3']);
+const catalog = createCatalog({ launch: read('launch.json'), reserve: read('reserve.json'), manifest: read('manifest.json') }, PLAYED_CHAPTERS);
 const [c1, c2] = catalog.chapters;
 
 describe('journal pages', () => {
   it('a new player: chapter 1 growing with nothing grown, the rest dark; opens on chapter 1', () => {
     const pages = journalPages(catalog.chapters, () => false, []);
-    expect(pages.map((p) => p.state)).toEqual(['growing', 'dark', 'dark']);
+    expect(pages.map((p) => p.state)).toEqual(['growing', ...pages.slice(1).map(() => 'dark')]);
     expect(pages[0]!.grown).toBe(0);
     expect(pages[0]!.area).toBe(`The ${c1!.area}`);
     expect(openingPage(pages)).toBe(0);
@@ -22,7 +23,7 @@ describe('journal pages', () => {
     const solved = new Set([...c1!.levels, ...c2!.levels.slice(0, 4)]);
     const history = [...solved].map((levelId, i) => ({ levelId, seconds: 30 + i, hints: i === 2 ? 1 : 0, solved: true }));
     const pages = journalPages(catalog.chapters, (id) => solved.has(id), history);
-    expect(pages.map((p) => p.state)).toEqual(['done', 'growing', 'dark']);
+    expect(pages.map((p) => p.state)).toEqual(['done', 'growing', ...pages.slice(2).map(() => 'dark')]);
     expect(pages[0]!.line).toMatch(/glowing/);
     expect(pages[0]!.hints).toBe(1);
     expect(pages[0]!.seconds).toBe(c1!.levels.reduce((sum, _, i) => sum + 30 + i, 0));

@@ -5,6 +5,9 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Added
+- **The whole Rose Bed is playable:** chapters 4 and 5 join the main path, so the build plays 50 gardens instead of 30. Both chapters were already in the launch pack: plain rectangular gardens up to 8×8, no twists, mixing everything chapters 1 to 3 teach. Chapter 4 has its own line on the chapter card. Chapter 5 now ends the build on the ending card, and its line shows in the journal.
+  - **One list of played chapters** (`apps/game/src/build.ts`) feeds the game, its tests, the hint-economy ratchet and the difficulty report. The ratchet and the report used to stop at chapter 3 whatever the build played; they now simulate the main path that ships. All four guardrails hold over 50 gardens, and chapters 4 and 5 stay under 7% hint use for every player profile.
+  - **The garden map makes room for every chapter:** its stops keep at least 92 px apart, so a label never covers the next stop. The map grows and scrolls on short screens, and opens scrolled to the chapter in play. Before this, five chapters and the teaser crowded into the space made for three at 320 × 568, and the Orchard teaser sat on top of chapter 5.
 - **The home screen:** every launch now opens on a painted night garden instead of going straight to a garden or the map.
   - A rose arch with a lantern, a cobbled path winding over the meadow's folds to a glowing glasshouse, the moon, and fireflies drifting and blinking over the grass.
   - **Pip,** a lantern firefly with a wildflower garland, sits on the arch and waves, with hearts rising. Five friends in their own lantern colours bob in the meadow, and every part of them moves: breathing, wings, antennae, head tilts, blinks, wandering eyes, waves and grins.

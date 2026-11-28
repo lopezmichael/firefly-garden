@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { cellCoord, createRng } from '@firefly/core';
+import { PLAYED_CHAPTERS } from '../src/build.ts';
 import { createCatalog } from '../src/state/catalog.ts';
 import { DEFAULT_SETTINGS, MAX_COINS, MAX_PARKED, MAX_SAVE_CHARS, newInstallId, parseSave, SAVE_VERSION, serializeSave } from '../src/state/save.ts';
 import type { SaveData } from '../src/state/save.ts';
@@ -11,7 +12,7 @@ import { MAX_BANKED_HINTS } from '../src/state/wallet.ts';
 
 const LEVELS = join(import.meta.dirname, '../../../levels');
 const read = (f: string): unknown => JSON.parse(readFileSync(join(LEVELS, f), 'utf8'));
-const catalog = createCatalog({ launch: read('launch.json'), reserve: read('reserve.json'), manifest: read('manifest.json') }, ['c1', 'c2', 'c3']);
+const catalog = createCatalog({ launch: read('launch.json'), reserve: read('reserve.json'), manifest: read('manifest.json') }, PLAYED_CHAPTERS);
 const NOW = Date.UTC(2026, 10, 12, 18);
 const INSTALL = '0123456789abcdef0123456789abcdef';
 const id = catalog.mainPath[4]!;
@@ -92,7 +93,7 @@ describe('save validation (rules.md)', () => {
   });
 
   it('never locks a lantern, even though lanterns are part of the answer', () => {
-    // Chapters 1 to 3 have no lanterns: use a catalog that includes the first lantern chapter.
+    // The played chapters have no lanterns: use a catalog that includes the first lantern chapter.
     const manifest = read('manifest.json') as { chapters: { id: string; levels: string[] }[] };
     const launch = read('launch.json') as { levels: { id: string; twists?: { lanterns?: unknown[] } }[] };
     const lanternLevel = launch.levels.find((l) => (l.twists?.lanterns?.length ?? 0) > 0)!;
