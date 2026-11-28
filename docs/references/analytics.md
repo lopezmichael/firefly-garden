@@ -34,7 +34,7 @@ far, so the last one per session counts. A level resumed after a reload logs no 
 | `session_end` | App hidden or closed | seconds |
 | `level_start` | A level is shown | level, reason (`main`, `retry`, `warm-up`, `breather-*`), attempt |
 | `level_end` | Solved or abandoned | outcome, active seconds, placements, undos, restarts, hints |
-| `hint` | A hint is used | source (`coins`, `ad`, `bank`), step (which grader step it revealed) |
+| `hint` | A hint is used | source (`free` from the garden's allowance, `ad`, `bank`; `coins` in logs from before 2026-11-28), step (which grader step it revealed) |
 | `ad` | An ad finishes or fails | kind (`midgame`, `rewarded`), completed, seconds |
 | `coins` | Balance changes | delta, balance, why (`solve`, `hint`, `doubler`, `start`, `chapter`) |
 | `continue` | The player moves on from a solved garden | level, choice (`next`, `map`), seconds from the solve to the tap |
@@ -49,5 +49,5 @@ far, so the last one per session counts. A level resumed after a reload logs no 
 | Patience and churn | Per player kind | Quits and the last `level_end` before an install goes quiet |
 | Breather effect (policy) | Assumed 30% fewer leave after a quit | Return rate after `breather-after-quit` versus quits with no breather served |
 | Ad pacing | CrazyGames 3-minute cap, 15 s ads | `ad` events per session |
-| Economy | Starting 60 coins, 10 per solve, 30 per hint, 3 per ad | `coins` and `hint.source` |
+| Economy | 3 free hints per garden, then 3 per rewarded ad; coins (60 to start, 10 per solve) only plant the map | `coins` and `hint.source` |
 | Plan targets | Breathers under 5%, peaks 10 to 25% hint use | `level_end.hints` by level role |

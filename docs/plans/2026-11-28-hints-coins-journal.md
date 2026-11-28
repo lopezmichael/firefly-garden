@@ -90,6 +90,32 @@ Every garden's stored tier (1 to 4, count-aware) as a word and leaves: Easy, Med
 (Michael, 2026-11-28: plain labels; leaves warm from moss and gold to amber and red). Shown on the complete card, the journal and the map; in play, small leaves beside the
 garden title inside the status card's reserved height (measured, as `test/status.test.ts` does).
 
+## Revision after playing the X marks (Michael, 2026-11-28, decided in conversation)
+
+What playing #21 showed: a tap that lifts a firefly left an X, which is not a deduction the
+player made; there was no deliberate way to place an X; asking for a hint took two taps; and most
+hints pointed instead of crossing tiles out (in a hints-only run over the 50 played gardens, 348
+pointed, 192 crossed, and most crosses were a single X).
+
+Decisions:
+1. **Tap is fireflies only; hold is the player's own X.** Holding a tile (320 ms) marks or clears
+   an X, dragging on paints more, right-click and the X key do the same. The light preview once
+   planned for press-and-hold is dropped. A one-time tip teaches the hold after the first hint
+   that crosses tiles.
+2. **Hints cross more, sized by the board.** A hint crosses everything the grader can rule out
+   now (simplest first, any technique), up to 3 tiles up to 5×5, 4 up to 7×7, 6 above, never with
+   a technique harder than the garden's own tier (an Easy garden never gets a lookahead X; without
+   that limit 200 of 258 crossing hints led with a harder deduction than the next simple step).
+   The status card shows the lead reason with its ring; tapping any X shows that X's own reason.
+   It crosses only what it can explain from the board as it stands; when nothing can be ruled out
+   it still points (pointing stays). In the hints-only run, crossing hints now carry 2.9 X on average.
+3. **A wrong firefly comes off as an X:** the removal hint leaves a hint X on its tile.
+4. **Three free hints per garden, then a video; coins only plant the map.** A hint is one tap
+   while the free ones (or saved ones) last; then an optional video grants 3 more. Simulated
+   (2026-11-28, 50 gardens): 2 free refused too many stuck players (7.6%); 5 left the video almost
+   no role. With bigger hints, 3 free: 1.25% refused, 97.1% clear chapter 1, breathers 3.5%,
+   busiest garden 26.2%, 77.1% finish all 50 (79.0% under the old coin economy).
+
 ## Order
 
 - [x] Plan (this file) and the hint mock on the design canvas (with the X mark and its animation).
@@ -97,6 +123,7 @@ garden title inside the status card's reserved height (measured, as `test/status
 - [x] Difficulty labels. *Built 2026-11-28:* leaves and the word beside the garden's place in the play header ("3 of 10"; the word drops on narrow phones), and under each garden in the journal. Not on the complete card (the header above it already shows the label, and the card's height must not change) or the map (a chapter mixes tiers).
 - [x] Hints that rule out (core `hint`, reasons, game drawing, saves, simulation re-run). *Built 2026-11-28:* `hint` returns `remove`, `cross` (the first run of the grader's `empty` steps sharing a technique and reason cells, at most `HINT_CROSS_CAP` = 4) or `point` (the next step places a firefly, or the grader is stuck); `RULE_OUT_REASONS` next to `HINT_REASONS` (which now says what to look for), and a bush that wants none says so. The grader takes the hint's X marks as `startEmpty`. A repeated point on an unchanged board is shown again free. Saves keep hint X marks as groups (cells, technique, reason cells), validated: a hint X must be a non-answer path cell. The simulated players re-find, as the real hint does, the first empty steps still open on the board (not hint-crossed, not lit; the grader never reads the player's own marks) and point when nothing is left to rule out; a test holds them to the real hint (over the Rose Bed's 50 gardens, 632 and 535 of 653 positions agree on kind and on tiles). Every economy ratchet holds over those 50 gardens (0.65% refused, 96.4% clear chapter 1, breathers 3.5%, worst level 25.7%). A point whose reason is the firefly's own tile rings its row and column instead. Unit tests (groups, reasons, the cap, save validation and fuzz, the sim), e2e (a hint crossing tiles out, a pointing hint, the free repeat) and four caught mutations.
 - [x] Player X marks. *Built 2026-11-28:* tap and Space cycle empty, firefly, X, empty (an empty jar sends an empty tile straight to X); undo and reset cover them; saved per garden and validated; the board draws them exactly like hint X marks (the coral X, a boop in, a puff of pollen out, instant under reduced motion). E2e: a player cycling a tile by taps, and the keyboard cycle.
+- [x] Revision: hold for X, bigger hints sized by the board (never harder than the garden), a wrong firefly leaves an X, three free one-tap hints then a video, coins out of hints. *Built 2026-11-28:* core `hint` (`emptyOnly` grading, `hintCap`, `maxTier`, `parts`), the board's hold and drag, the one-tap hint button and video sheet, saves (`wrong` groups, up to 6 tiles), the simulation (`freeHints`, caps, tier limit) and the economy sweep; unit and e2e tests.
 - [ ] Coins plant the map: mock, then build.
 
 Each lands with tests, the two reviews (a security review where saves change) and a screenshot.

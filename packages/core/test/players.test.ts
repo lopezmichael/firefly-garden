@@ -9,14 +9,14 @@ const level = (id: string, tiers: number[], width = 3): SimLevel =>
 const profile = (over: Partial<PlayerProfile> = {}): PlayerProfile => ({
   id: 'p', label: 'P', share: 1, skill: 2, speed: 1, patience: 300, learnSteps: 3, adWillingness: 0.5, churnOnQuit: 0.5, ...over,
 });
-const economy = { startingCoins: 60, coinsPerSolve: 10, hintCost: 30, hintsPerAd: 1 };
+const economy = { startingCoins: 60, coinsPerSolve: 10, freeHints: 3, hintsPerAd: 1 };
 
 describe('hints that rule out (simulated)', () => {
-  const rich = { ...economy, startingCoins: 100_000 };
+  const rich = { ...economy, freeHints: 100 };
   const lone = (steps: SimStep[]): SimLevel[] => [{ id: 'x', chapter: 'c', role: 'climb', steps, fireflies: 2 }];
   const hintsOf = (lv: SimLevel[], seed: number) => {
     const o = simulate(lv, profile({ skill: 1, patience: 1e9 }), rich, 400, seed).levels[0]!;
-    return (o.coinHints + o.bankedHints + o.adHints) / Math.max(1, o.hintedPlays);
+    return (o.freeHints + o.bankedHints + o.adHints) / Math.max(1, o.hintedPlays);
   };
 
   it('carries each step\'s value and technique plus reason cells from the grader', () => {
@@ -78,17 +78,23 @@ describe('simulate', () => {
     }
   });
 
-  it('charges for hints, so coins run out and later hints come from ads', () => {
-    // 30 coins buys exactly one hint; this level needs many.
+  it('gives each garden its free hints, then later hints come from ads', () => {
+    // One free hint per garden; this level needs many.
     const lv = [level('x', [5, 5, 5, 5, 5, 5, 5, 5])];
-    const o = simulate(lv, profile({ skill: 1, adWillingness: 1, patience: 1e9 }), { startingCoins: 30, coinsPerSolve: 0, hintCost: 30, hintsPerAd: 1 }, 200, 9).levels[0]!;
-    expect(o.coinHints).toBeLessThanOrEqual(o.plays); // at most one paid hint per player
-    expect(o.adHints).toBeGreaterThan(o.coinHints);
+    const o = simulate(lv, profile({ skill: 1, adWillingness: 1, patience: 1e9 }), { startingCoins: 0, coinsPerSolve: 0, freeHints: 1, hintsPerAd: 1 }, 200, 9).levels[0]!;
+    expect(o.freeHints).toBeLessThanOrEqual(o.plays); // at most one free hint per play
+    expect(o.adHints).toBeGreaterThan(o.freeHints);
+  });
+
+  it('never spends coins on hints: coins only grow', () => {
+    const lv = [level('x', [5, 5, 5, 5])];
+    const r = simulate(lv, profile({ skill: 1, adWillingness: 1, patience: 1e9, churnOnQuit: 0 }), economy, 100, 3);
+    expect(r.meanEndCoins).toBe(economy.startingCoins + economy.coinsPerSolve);
   });
 
   it('saves the extra hints a rewarded ad grants, so fewer ads are needed', () => {
     const lv = Array.from({ length: 4 }, (_, i) => level(`h${i}`, [5, 5, 5, 5]));
-    const broke = { startingCoins: 0, coinsPerSolve: 0, hintCost: 30 };
+    const broke = { startingCoins: 0, coinsPerSolve: 0, freeHints: 0 };
     const p = profile({ skill: 1, adWillingness: 1, patience: 1e9, churnOnQuit: 0 });
     const one = simulate(lv, p, { ...broke, hintsPerAd: 1 }, 300, 21);
     const three = simulate(lv, p, { ...broke, hintsPerAd: 3 }, 300, 21);
@@ -116,13 +122,13 @@ describe('simulate', () => {
     expect(o.solved).toBe(50);
   });
 
-  it('pays hints in coins while it can, then ads, and refuses the rest', () => {
+  it('uses the free hints first, then ads, and refuses the rest', () => {
     const lv = [level('x', [4, 4, 4, 4, 4, 4])];
-    const rich = simulate(lv, profile({ skill: 1, adWillingness: 0 }), { ...economy, startingCoins: 10_000 }, 200, 4).levels[0]!;
+    const rich = simulate(lv, profile({ skill: 1, adWillingness: 0 }), { ...economy, freeHints: 100 }, 200, 4).levels[0]!;
     expect(rich.adHints).toBe(0);
     expect(rich.refusedHints).toBe(0);
-    const broke = simulate(lv, profile({ skill: 1, adWillingness: 1 }), { ...economy, startingCoins: 0 }, 200, 4).levels[0]!;
-    expect(broke.coinHints).toBe(0);
+    const broke = simulate(lv, profile({ skill: 1, adWillingness: 1 }), { ...economy, freeHints: 0 }, 200, 4).levels[0]!;
+    expect(broke.freeHints).toBe(0);
     expect(broke.adHints).toBeGreaterThan(0);
   });
 

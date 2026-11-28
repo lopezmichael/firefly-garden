@@ -3,26 +3,31 @@ import { grade, type Grade, type Step, type TechniqueId } from './grader.ts';
 import { evaluate } from './rules.ts';
 
 /**
- * Hints: the grader's next step on the player's current board. A hint never
+ * Hints: the grader's next steps on the player's current board. A hint never
  * places a firefly (docs/references/rules.md, "Hints"). It removes one wrong
- * firefly, crosses out a group of tiles that can't hold one, or points at the
- * bush or tile the next deduction is about, always with a one-line reason. It
+ * firefly (the game leaves a hint X on its tile), crosses out tiles that can't
+ * hold one (as many as the board's size allows, `hintCap`), or, when nothing can
+ * be ruled out, points at the bush or tile the next deduction is about, always
+ * with a one-line reason per X. It
  * is the same grader that rated the level, so a hint is always a move a person
  * could have found. Like the level's rating, it grades with the firefly count
  * known (the game shows it in the firefly jar), so count deductions can feed a hint.
  */
 export type Hint =
-  /** A player firefly that is not part of the answer. */
+  /** A player firefly that is not part of the answer (its tile then gets a hint X: it can never hold one). */
   | { readonly kind: 'remove'; readonly cell: number; readonly reason: string }
   /**
-   * Tiles that can't hold a firefly, for one reason: the first run of the
-   * grader's `empty` steps that share a technique and reason cells, at most
-   * `HINT_CROSS_CAP`. Every cell gets a hint X. `because` is the bush, tiles or
-   * bushes behind the reason (the ring on the board).
+   * Tiles that can't hold a firefly: every tile the grader can rule out from the board as
+   * the player sees it, simplest technique first, up to the board's cap (`hintCap`) and
+   * never with a technique harder than the garden needs (`HintOptions.maxTier`). Every
+   * cell gets a hint X. `parts` splits them by reason (one technique and reason cells
+   * each, in order); the lead part's `technique`, `reason` and `because` (the ring) are
+   * repeated at the top for the status card. Tapping any X shows its own part's reason.
    */
   | {
       readonly kind: 'cross';
       readonly cells: readonly number[];
+      readonly parts: readonly CrossPart[];
       readonly technique: TechniqueId;
       readonly reason: string;
       readonly because: readonly number[];
@@ -43,8 +48,37 @@ export type Hint =
   /** Already solved: nothing to hint. */
   | { readonly kind: 'none' };
 
-/** The most tiles one hint crosses out, so a hint never clears half the board. */
-export const HINT_CROSS_CAP = 4;
+/** One reason's share of a crossing hint: its tiles, technique, words and reason cells. */
+export interface CrossPart {
+  readonly cells: readonly number[];
+  readonly technique: TechniqueId;
+  readonly reason: string;
+  readonly because: readonly number[];
+}
+
+/** The most tiles any hint crosses out (the largest boards' cap); saves are checked against it. */
+export const HINT_CROSS_MAX = 6;
+
+/**
+ * How many tiles one hint may cross out on this board: bigger gardens get bigger hints, so
+ * one hint takes about the same share of any board and never clears half of one. By the
+ * board's area: up to 5×5, 3; up to 7×7, 4; larger, `HINT_CROSS_MAX`.
+ */
+export function hintCap(board: Board): number {
+  const area = board.w * board.h;
+  return area <= 25 ? 3 : area <= 49 ? 4 : HINT_CROSS_MAX;
+}
+
+export interface HintOptions {
+  /** Tiles one hint may cross out. Default: `hintCap(board)`. */
+  readonly cap?: number;
+  /**
+   * The garden's own tier (its rating): a crossing hint never uses a technique harder than
+   * this, unless the next step from here is itself harder (then up to that step's tier).
+   * Default: no limit.
+   */
+  readonly maxTier?: number;
+}
 
 /**
  * What to look for when a hint points (the next deduction places a firefly).
@@ -128,6 +162,7 @@ export function hint(
   placed: Iterable<number>,
   locked: ReadonlySet<number> = new Set(),
   crossed: Iterable<number> = [],
+  options: HintOptions = {},
 ): Hint {
   const answer = new Set(solution);
   const on = new Set<number>();
@@ -158,14 +193,24 @@ export function hint(
   // Every firefly on the board is part of the answer and every hint X is outside it, so
   // the grader's deductions from here are sound. The player sees the firefly count, so
   // the grader uses it too (lanterns are in `answer`, as in the level's rating).
-  const steps = grade(board, { start: on, startEmpty: known, stopAtFirefly: true, knownCount: answer.size }).steps;
+  const from = { start: on, startEmpty: known, knownCount: answer.size };
+  const steps = grade(board, { ...from, stopAtFirefly: true }).steps;
   const first = steps[0];
-  if (first && first.value === 'empty') {
-    const cells = crossGroup(steps).filter((c) => !answer.has(c)); // defense in depth: never cross an answer cell
-    if (cells.length > 0) {
-      return { kind: 'cross', cells, technique: first.technique, reason: ruleOutReason(first.technique, cells.length, board, first.because), because: [...first.because] };
-    }
-  } else if (first && answer.has(first.cell)) {
+  // Cross out before pointing: everything that can be ruled out now, simplest first, never
+  // harder than the garden (or than the next step, if that is harder still).
+  const limit = Math.max(first?.tier ?? 0, options.maxTier ?? Infinity);
+  const empties = grade(board, { ...from, emptyOnly: true, maxSteps: options.cap ?? hintCap(board) }).steps;
+  const usable: Step[] = [];
+  for (const st of empties) {
+    if (st.tier > limit) break;
+    if (!answer.has(st.cell)) usable.push(st); // defense in depth: never cross an answer cell
+  }
+  if (usable.length > 0) {
+    const parts = crossParts(board, usable);
+    const lead = parts[0]!;
+    return { kind: 'cross', cells: usable.map((st) => st.cell), parts, technique: lead.technique, reason: lead.reason, because: lead.because };
+  }
+  if (first && first.value === 'firefly' && answer.has(first.cell)) {
     // A tile boxed in on all sides (no rays) can only light itself: ringing it gives nothing away.
     const own = board.rays[first.cell]!.length > 0
       && (first.because.length === 0 || (first.because.length === 1 && first.because[0] === first.cell));
@@ -179,17 +224,19 @@ export function hint(
   return stuckPoint(board, answer, on);
 }
 
-/** The first run of empty steps sharing the first step's technique and reason cells, capped. */
-function crossGroup(steps: readonly Step[]): number[] {
-  const first = steps[0]!;
-  const key = first.because.join(',');
-  const out: number[] = [];
+/** Split crossed steps into runs that share a technique and reason cells, each with its words. */
+function crossParts(board: Board, steps: readonly Step[]): CrossPart[] {
+  const runs: Step[][] = [];
   for (const st of steps) {
-    if (st.value !== 'empty' || st.technique !== first.technique || st.because.join(',') !== key) break;
-    out.push(st.cell);
-    if (out.length === HINT_CROSS_CAP) break;
+    const last = runs.at(-1);
+    const prev = last?.[0];
+    if (last && prev && prev.technique === st.technique && prev.because.join(',') === st.because.join(',')) last.push(st);
+    else runs.push([st]);
   }
-  return out;
+  return runs.map((run) => {
+    const { technique, because } = run[0]!;
+    return { cells: run.map((st) => st.cell), technique, reason: ruleOutReason(technique, run.length, board, because), because: [...because] };
+  });
 }
 
 /**

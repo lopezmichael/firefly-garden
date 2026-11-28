@@ -1,5 +1,5 @@
 import type { MotionSetting } from '../state/save.ts';
-import { coin, icon } from './icons.ts';
+import { icon } from './icons.ts';
 import type { IconName } from './icons.ts';
 
 /**
@@ -82,67 +82,53 @@ class Sheet {
   }
 }
 
-export interface HintOffer {
-  readonly bank: number;
-  readonly coins: number;
-  readonly cost: number;
-  readonly rewardedAds: boolean;
-  readonly coinsPerSolve: number;
-}
-
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
+/** What the hint sheet offers once a garden's free hints and any saved ones are used. */
+export interface HintOffer {
+  /** Free hints each garden gives. */
+  readonly free: number;
+  /** Hints one finished video grants. */
+  readonly perAd: number;
+}
+
+/**
+ * Asked only when a garden's free hints and saved ones are used (a hint is otherwise one
+ * tap): an optional video for more, or not now. Ads stay optional and clearly marked.
+ */
 export class HintSheet extends Sheet {
-  private readonly wallet = el('p', 'ff-sheet-line');
-  private readonly primary: HTMLButtonElement;
-  private readonly primaryCost = el('span');
+  private readonly sub = el('p', 'ff-sheet-sub');
   private readonly ad: HTMLButtonElement;
-  private readonly note = el('p', 'ff-sheet-note');
   private readonly decline: HTMLButtonElement;
-  private choice: ((how: 'pay' | 'ad' | null) => void) | null = null;
+  private choice: ((how: 'ad' | null) => void) | null = null;
 
   constructor() {
     super('ff-hint-title');
     const head = el('div', 'ff-sheet-head');
-    const title = el('h2', 'ff-sheet-title', 'Use a hint');
+    const title = el('h2', 'ff-sheet-title', 'More hints');
     title.id = 'ff-hint-title';
     // The hint button's own mark (a firefly with a seal-red ring).
     const badge = el('span', 'ff-sheet-badge');
     badge.append(icon('hint'));
     head.append(badge, title);
-    const sub = el('p', 'ff-sheet-sub', "A hint crosses out tiles that can't hold a firefly and says why, or lifts one that can't stay. Its X marks stay put.");
-
-    this.primary = button('ff-sheet-primary', '', () => this.pick('pay'));
-    this.ad = button('ff-sheet-ad', 'Watch a video for 3 hints', () => this.pick('ad'));
-    this.ad.prepend(icon('video'));
-    this.decline = button('ff-sheet-link', 'No thanks', () => this.pick(null));
-    this.panel.append(head, sub, this.wallet, this.primary, this.ad, this.note, this.decline);
+    this.ad = button('ff-sheet-ad', '', () => this.pick('ad'));
+    this.decline = button('ff-sheet-link', 'Not now', () => this.pick(null));
+    this.panel.append(head, this.sub, this.ad, this.decline);
     this.onClose = () => this.settle(null);
   }
 
-  /** Resolves with the player's choice; nothing is charged here. */
-  ask(offer: HintOffer): Promise<'pay' | 'ad' | null> {
+  /** Resolves with the player's choice; nothing is credited here. */
+  ask(offer: HintOffer): Promise<'ad' | null> {
     this.settle(null);
-    this.wallet.textContent = `${plural(offer.coins, 'coin', 'coins')} · ${offer.bank === 0 ? 'no saved hints' : plural(offer.bank, 'saved hint', 'saved hints')}`;
-    const canPay = offer.bank > 0 || offer.coins >= offer.cost;
-    this.primary.replaceChildren(document.createTextNode(offer.bank > 0 ? 'Use a saved hint' : 'Use a hint'));
-    if (offer.bank === 0) {
-      const cost = el('span', 'ff-cost');
-      cost.append(coin(), this.primaryCost);
-      this.primaryCost.textContent = String(offer.cost);
-      this.primary.append(cost);
-    }
-    this.primary.disabled = !canPay;
-    this.ad.hidden = !offer.rewardedAds;
-    this.note.hidden = canPay;
-    this.note.textContent = `Not enough coins yet. Solve a garden to earn ${offer.coinsPerSolve} more.`;
-    this.show(canPay ? this.primary : this.decline);
+    this.sub.textContent = `This garden\u2019s ${offer.free} free hints are used. A short video gives ${offer.perAd} more.`;
+    this.ad.replaceChildren(icon('video'), document.createTextNode(`Watch a video for ${offer.perAd} hints`));
+    this.show(this.ad);
     return new Promise((resolve) => {
       this.choice = resolve;
     });
   }
 
-  private pick(how: 'pay' | 'ad' | null): void {
+  private pick(how: 'ad' | null): void {
     const resolve = this.choice;
     this.choice = null;
     this.close();

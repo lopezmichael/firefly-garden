@@ -1,8 +1,10 @@
 import { PLAYER_CONFIG } from '@firefly/core';
-import type { Economy, HintSource } from '@firefly/core';
+import type { Economy } from '@firefly/core';
 
 /**
- * Coins and the saved-hint bank. Every number comes from the shipped economy
+ * Coins and the saved-hint bank. Coins plant the garden map; they never buy hints (each
+ * garden's free hints are counted by its play, then hints come from the bank or a rewarded
+ * ad). Every number comes from the shipped economy
  * (`PLAYER_CONFIG.economy`); nothing is restated here. Every balance change
  * goes through `change`, which tells the listener (the analytics `coins`
  * event) so no change can go unlogged.
@@ -42,19 +44,11 @@ export class Wallet {
     return this.bankValue;
   }
 
-  /** How the next hint would be paid for without an ad, or null if it can't be. */
-  hintSource(): Exclude<HintSource, 'ad'> | null {
-    if (this.bankValue > 0) return 'bank';
-    if (this.coinsValue >= this.economy.hintCost) return 'coins';
-    return null;
-  }
-
-  /** Pays for one hint from the bank, else coins. Returns the source, or null (nothing charged). */
-  payForHint(): Exclude<HintSource, 'ad'> | null {
-    const source = this.hintSource();
-    if (source === 'bank') this.bankValue--;
-    else if (source === 'coins') this.change(-this.economy.hintCost, 'hint');
-    return source;
+  /** Uses one hint saved from an earlier rewarded ad. False when there is none (nothing changes). */
+  takeBanked(): boolean {
+    if (this.bankValue === 0) return false;
+    this.bankValue--;
+    return true;
   }
 
   /**

@@ -33,6 +33,8 @@ export interface BoardState {
 const TAU = Math.PI * 2;
 /** The X's pivot: the tile face's centre (38 of 84 units down), so it boops from the middle. */
 const X_PIVOT_Y = 38 / 84;
+/** How long a press on a tile lasts before it is a hold (the player's own X) rather than a tap. */
+export const HOLD_MS = 320;
 /** The X mark's moments, in ms (skipped under reduced motion: it simply appears and goes). */
 const X_MOTION = { boopMs: 300, liftMs: 380, puffMs: 620, grains: 7 } as const;
 const easeOutBack = (t: number) => 1 + 2.7 * (t - 1) ** 3 + 1.7 * (t - 1) ** 2;
@@ -217,6 +219,10 @@ interface Trail {
 export interface BoardViewOptions {
   readonly palette: Palette;
   readonly onTap: (cell: number) => void;
+  /** A tile held for `HOLD_MS` (or right-clicked): the player's own X. */
+  readonly onHold?: (cell: number) => void;
+  /** Dragging on after a hold: set (`on`) or clear the X on one more tile, as the hold did. */
+  readonly onPaint?: (cell: number, on: boolean) => void;
   readonly reducedMotion: boolean;
   /**
    * At the solve, a firefly leaves its tile from `from` (viewport pixels). Return true when the
@@ -229,6 +235,15 @@ export class BoardView {
   private readonly app: Application;
   private readonly pal: Palette;
   private readonly onTap: (cell: number) => void;
+  private readonly onHold: BoardViewOptions['onHold'];
+  private readonly onPaint: BoardViewOptions['onPaint'];
+  /**
+   * A press in progress: which tile, its hold timer, and once held, whether the drag sets or
+   * clears X marks and the tiles it has passed. `swallowTap`: the press became a hold, so the
+   * tap Pixi reports on release is not a tap.
+   */
+  private press: { cell: number; timer: ReturnType<typeof setTimeout> | null; held: boolean; on: boolean | null; seen: Set<number> } | null = null;
+  private swallowTap = false;
   private readonly onRelease: BoardViewOptions['onRelease'];
   private motion: boolean;
   private readonly stage = new Container();
@@ -289,6 +304,8 @@ export class BoardView {
     this.app = app;
     this.pal = opts.palette;
     this.onTap = opts.onTap;
+    this.onHold = opts.onHold;
+    this.onPaint = opts.onPaint;
     this.onRelease = opts.onRelease;
     this.motion = !opts.reducedMotion;
     this.stage.addChild(this.glowLayer, this.cellsLayer, this.beams, this.flashLayer, this.outline, this.particleLayer, this.ghostLayer, this.flightLayer, this.focusRing);
@@ -296,6 +313,10 @@ export class BoardView {
     app.ticker.add((ticker) => this.tick(ticker.deltaMS));
     // A lost and restored WebGL context (common on phones in the background) needs a fresh frame.
     app.canvas.addEventListener('webglcontextrestored', () => this.wake());
+    // Right-click marks an X (desktop), so the browser's menu stays away from the board.
+    app.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    // A press ends wherever the pointer is let go (on the board or off it).
+    for (const type of ['pointerup', 'pointercancel', 'blur'] as const) window.addEventListener(type, () => this.endPress());
   }
 
   static async create(host: HTMLElement, opts: BoardViewOptions): Promise<BoardView> {
@@ -416,6 +437,45 @@ export class BoardView {
       this.textures.set(k, t);
     }
     return t;
+  }
+
+  /** A press on a tile: a hold if it lasts `HOLD_MS` on that tile, else the tap Pixi reports. */
+  private startPress(cell: number): void {
+    this.endPress();
+    this.swallowTap = false;
+    const press = { cell, timer: null as ReturnType<typeof setTimeout> | null, held: false, on: null as boolean | null, seen: new Set([cell]) };
+    press.timer = setTimeout(() => {
+      if (this.press !== press) return;
+      press.timer = null;
+      press.held = true;
+      this.swallowTap = true;
+      const before = this.state?.marks.has(cell) ?? false;
+      this.onHold?.(cell);
+      const after = this.state?.marks.has(cell) ?? false;
+      // The drag carries on what the hold did: set X marks if it set one, clear them if it cleared
+      // one, and nothing if it did neither (a hint's X, a lantern, a board that was busy).
+      press.on = after === before ? null : after;
+    }, HOLD_MS);
+    this.press = press;
+  }
+
+  /** The pointer moves onto a tile: paint it if a hold is dragging, or cancel a press that wandered off. */
+  private pressOver(cell: number, buttons: number): void {
+    const press = this.press;
+    if (!press || press.seen.has(cell)) return;
+    // No button down: the release happened somewhere we never heard about (another window).
+    if (buttons === 0) {
+      this.endPress();
+      return;
+    }
+    press.seen.add(cell);
+    if (!press.held) this.endPress();
+    else if (press.on !== null) this.onPaint?.(cell, press.on);
+  }
+
+  private endPress(): void {
+    if (this.press?.timer) clearTimeout(this.press.timer);
+    this.press = null;
   }
 
   /** Free textures drawn for other cell sizes (resizes and folds would otherwise pile them up). */
@@ -545,6 +605,8 @@ export class BoardView {
 
   private build(): void {
     this.wake();
+    // A press belongs to the tiles it started on: a rebuild (a new garden, a resize) ends it.
+    this.endPress();
     this.cellsLayer.removeChildren().forEach((c) => c.destroy({ children: true }));
     this.cells = [];
     this.outline.clear();
@@ -614,7 +676,25 @@ export class BoardView {
           root.eventMode = 'static';
           root.cursor = 'pointer';
           root.hitArea = new Rectangle(-gap / 2, -gap / 2, cell + gap, cell + gap);
-          root.on('pointertap', () => this.onTap(i));
+          root.on('pointertap', (e) => {
+            if (e.button !== 0) return;
+            if (this.swallowTap) {
+              this.swallowTap = false;
+              return;
+            }
+            // Ctrl+click (a Mac's right-click) marks, as right-click does.
+            if (e.ctrlKey) this.onHold?.(i);
+            else this.onTap(i);
+          });
+          root.on('pointerdown', (e) => {
+            if (e.button === 0 && !e.ctrlKey) this.startPress(i);
+          });
+          root.on('pointerover', (e) => this.pressOver(i, e.buttons));
+          // Sliding off the tile before the hold lands cancels it (a held drag carries on).
+          root.on('pointerout', () => {
+            if (this.press && !this.press.held && this.press.cell === i) this.endPress();
+          });
+          root.on('rightclick', () => this.onHold?.(i));
         } else if (v.kind === 'bush') {
           const numbered = b.clue[i] !== null;
           v.bushKind = numbered ? 'numbered' : 'plain';

@@ -33,8 +33,9 @@ function good(): SaveData {
     playedReserve: new Set([catalog.reserve[0]!.id]),
     quitMain: new Set([catalog.mainPath[3]!]),
     current: { levelId: id, key: catalog.levelKey(id), reason: 'main', placed: [solution[1]!], locked: [solution[0]!],
-      crossed: [{ cells: [outside[0]!, outside[1]!], technique: 'T1-satisfied', because: [bush] }], marks: [outside[2]!],
-      seconds: 12, placements: 3, undos: 1, restarts: 0, hints: 1 },
+      crossed: [{ cells: [outside[0]!, outside[1]!], technique: 'T1-satisfied', because: [bush] }, { cells: [outside[3]!], technique: 'wrong', because: [] }],
+      marks: [outside[2]!],
+      seconds: 12, placements: 3, undos: 1, restarts: 0, hints: 1, priorHints: 2 },
     parked: [],
     settings: { sound: false, motion: 'off' },
     tips: new Set(['cross']),
@@ -118,7 +119,7 @@ describe('save validation (rules.md)', () => {
   });
 
   it('drops a saved board holding more fireflies than the jar', () => {
-    const tooMany = board.paths.filter((c) => !board.lantern[c] && c !== solution[0] && c !== outside[0] && c !== outside[1]).slice(0, solution.length).map((c) => cellCoord(board, c));
+    const tooMany = board.paths.filter((c) => !board.lantern[c] && c !== solution[0] && !outside.slice(0, 4).includes(c)).slice(0, solution.length).map((c) => cellCoord(board, c));
     const { data, problems } = parseSave(tamper((o) => { (o.current as Record<string, unknown>).placed = tooMany; }), catalog, NOW, fresh);
     expect(data!.current!.placed).toEqual([]);
     expect(data!.current!.locked).toEqual([solution[0]]);
@@ -264,7 +265,7 @@ describe('X marks in a save (hint X marks and the player\'s own)', () => {
     const bads: unknown[] = [
       [group([outside[0]!, outside[0]!])], // one tile twice in a group: Play would throw on it
       [group([outside[0]!], 'T9-magic')], [group([outside[0]!], '__proto__')], [group([outside[0]!], 'toString')],
-      [group([])], [group(outside.slice(0, 5))], [{ cells: [at(outside[0]!)], technique: 'T1-satisfied' }],
+      [group([])], [group(outside.slice(0, 7))], [group([outside[0]!, outside[1]!], 'wrong')], [{ cells: [at(outside[0]!)], technique: 'T1-satisfied' }],
       'x', {}, [7], [{ cells: [[-1, 0]], technique: 'T1-satisfied', because: [] }],
     ];
     for (const crossed of bads) {
@@ -296,7 +297,7 @@ describe('parked boards (quit levels kept for their retry)', () => {
   const qb = catalog.board(quitId);
   const qsol = [...catalog.solution(quitId)];
   const parkedPlay = (levelId: string) => ({
-    levelId, key: catalog.levelKey(levelId), reason: 'retry' as const, placed: [], locked: [], crossed: [], marks: [], seconds: 9, placements: 2, undos: 0, restarts: 0, hints: 0,
+    levelId, key: catalog.levelKey(levelId), reason: 'retry' as const, placed: [], locked: [], crossed: [], marks: [], seconds: 9, placements: 2, undos: 0, restarts: 0, hints: 0, priorHints: 0,
   });
 
   it('round-trips a parked board with its fireflies', () => {

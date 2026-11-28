@@ -62,7 +62,7 @@ function boardOf(p: Play): Omit<CurrentPlay, 'levelId' | 'key' | 'reason'> {
   return {
     placed: [...p.placed], locked: [...p.locked], marks: [...p.marks], seconds: p.seconds,
     crossed: p.crossGroups.map((g) => ({ cells: [...g.cells], technique: g.technique, because: [...g.because] })),
-    placements: p.placements, undos: p.undos, restarts: p.restarts, hints: p.hints,
+    placements: p.placements, undos: p.undos, restarts: p.restarts, hints: p.hints, priorHints: p.priorHints,
   };
 }
 
@@ -72,6 +72,8 @@ export interface E2EHooks {
     id: string; transform: Transform; w: number; h: number; placed: number[]; locked: number[];
     /** Hint X marks and the player's own X marks. */
     crossed: number[]; marks: number[];
+    /** Tiles a player can tap (paths, lanterns excluded), and hints this play has used. */
+    paths: number[]; hints: number;
     /** The answer's cells the player places (lanterns excluded). */
     answer: number[];
     canUndo: boolean; seconds: number; solved: boolean; remaining: number; notice: string | null; focus: number | null;
@@ -234,6 +236,8 @@ export class GameApp {
       palette: this.palette,
       reducedMotion: this.reducedMotion(),
       onTap: (cell) => this.tap(cell),
+      onHold: (cell) => this.tap(cell, false, true),
+      onPaint: (cell, on) => this.paint(cell, on),
       onRelease: (from, gold, phase, cellPx) => this.releaseToTrack(from, gold, phase, cellPx),
     });
     this.applyMotion();
@@ -549,7 +553,7 @@ export class GameApp {
     this.attempt = this.session.attempt(next.id);
     // A keyboard player pressed Next (focus sat on the complete card, about to hide): carry on on the board.
     const handOff = this.screen.completeHasFocus();
-    this.show(next, this.unpark(next.id) ?? new Play(board, this.catalog.solution(next.id), this.clock));
+    this.show(next, this.unpark(next.id) ?? new Play(board, this.catalog.solution(next.id), this.clock, {}, this.rules(next.id)));
     this.emit({ type: 'level_start', level: next.id, reason: next.reason, attempt: this.attempt });
     if (handOff) this.screen.boardHost.focus({ preventScroll: true });
     this.scheduleSave();
@@ -559,7 +563,7 @@ export class GameApp {
   private resume(saved: CurrentPlay): boolean {
     let play: Play;
     try {
-      play = new Play(this.catalog.board(saved.levelId), this.catalog.solution(saved.levelId), this.clock, saved);
+      play = new Play(this.catalog.board(saved.levelId), this.catalog.solution(saved.levelId), this.clock, saved, this.rules(saved.levelId));
     } catch (err) {
       // parseSave already validated every cell; a throw here is a validation bug. Start the level fresh.
       console.warn('Could not resume the saved board:', err);
@@ -569,6 +573,12 @@ export class GameApp {
     this.attempt = this.session.attempt(saved.levelId);
     this.show({ id: saved.levelId, reason: saved.reason }, play);
     return true;
+  }
+
+  /** What a play needs to know about its garden: its tier, the hardest technique a hint may use. */
+  private rules(levelId: string): { tier?: number } {
+    const tier = this.catalog.levels.get(levelId)?.tier;
+    return tier === undefined ? {} : { tier };
   }
 
   /** A parked board for this level, resumed (and no longer parked); undefined if none or unusable. */
@@ -581,7 +591,9 @@ export class GameApp {
       // history describe this attempt, so breather triggers (long solve, hint streak) stay fair.
       const play = new Play(this.catalog.board(levelId), this.catalog.solution(levelId), this.clock, {
         placed: saved!.placed, locked: saved!.locked, crossed: saved!.crossed, marks: saved!.marks,
-      });
+        // Its own counters start fresh, but the garden's free hints stay used.
+        priorHints: saved!.priorHints + saved!.hints,
+      }, this.rules(levelId));
       // A parked board can't be already solved (only edited saves get here): start fresh instead.
       return play.solved ? undefined : play;
     } catch (err) {
@@ -911,7 +923,11 @@ export class GameApp {
 
   // ---------------------------------------------------------------- moves
 
-  private tap(cell: number, viaKeyboard = false): void {
+  /**
+   * A tap places or lifts a firefly; a hold (`hold`, also right-click and the X key) marks
+   * or clears the player's own X. Either on a hint's X shows its reason again.
+   */
+  private tap(cell: number, viaKeyboard = false, hold = false): void {
     const play = this.play;
     if (!play || play.solved || this.blocked()) return;
     if (!viaKeyboard) {
@@ -922,15 +938,15 @@ export class GameApp {
     }
     this.cancelCues();
     const before = play.evaluation;
-    const r = play.tap(cell);
+    const hadFirefly = play.placed.has(cell);
+    const r = hold ? play.mark(cell) : play.tap(cell);
     if (r === 'blocked') return;
     if (r === 'jar-empty') {
       this.notice = { kind: 'jar-empty' };
       this.screen.shakeJar();
       this.playCues(cuesFor(before, play.evaluation, { kind: 'jar-empty' }));
       this.refresh();
-      if (viaKeyboard) this.screen.announce('The jar is empty, so the tile took an X. Call a firefly back first.');
-      this.scheduleSave();
+      if (viaKeyboard) this.screen.announce('The jar is empty. Call a firefly back first.');
       return;
     }
     if (r === 'hint-x') {
@@ -951,9 +967,18 @@ export class GameApp {
       this.tips.add('cross');
       this.notice = { kind: 'tip-cross' };
     }
-    // A placed firefly flies out of the jar and lands when it arrives; one turned into an X flies home.
-    const flew = r === 'placed' ? this.flight(cell, 'out', false) : r === 'marked' ? this.flight(cell, 'home', false) : false;
-    if (r === 'placed' || r === 'marked') {
+    // After a hint first crosses tiles, the next move teaches the player to mark their own (once).
+    if ((r === 'placed' || r === 'removed') && !this.notice && !this.tips.has('hold-x')
+      && play.crossGroups.some((g) => g.technique !== 'wrong')) {
+      this.tips.add('hold-x');
+      this.notice = { kind: 'tip-hold' };
+    }
+    if (r === 'marked' || (hold && r === 'cleared')) this.platform.haptic?.('light');
+    // A placed firefly flies out of the jar and lands when it arrives; a lifted one flies home
+    // (a hold on a firefly lifts it too, leaving the X).
+    const lifted = r === 'removed' || (r === 'marked' && hadFirefly);
+    const flew = r === 'placed' ? this.flight(cell, 'out', false) : lifted ? this.flight(cell, 'home', false) : false;
+    if (r === 'placed' || lifted) {
       this.playCues(cuesFor(before, play.evaluation, r === 'placed' ? this.placeMove('placed', cell) : { kind: 'removed' }), flew ? FLIGHT_MS - 80 : 0);
     }
     this.refresh(false, null, flew && r === 'placed' ? cell : null);
@@ -961,6 +986,16 @@ export class GameApp {
     if (r === 'placed') this.platform.haptic?.('light');
     if (play.solved) this.solved();
     else if (r !== 'locked') this.scheduleSave();
+  }
+
+  /** Dragging on after a hold: the same X (set or cleared) on each tile passed over. */
+  private paint(cell: number, on: boolean): void {
+    const play = this.play;
+    if (!play || play.solved || this.blocked()) return;
+    if (!play.paint(cell, on)) return;
+    this.notice = null;
+    this.refresh();
+    this.scheduleSave();
   }
 
   private undo(): void {
@@ -1001,43 +1036,53 @@ export class GameApp {
       this.screen.announce(peek.reason);
       return;
     }
-    play.pause();
-    const choice = await this.hintSheet.ask({
-      bank: this.wallet.bank, coins: this.wallet.coins, cost: this.wallet.economy.hintCost,
-      rewardedAds: this.platform.rewardedAds, coinsPerSolve: this.wallet.economy.coinsPerSolve,
-    });
-    // The sheet resolves after it closes; the board may have changed meanwhile only if the play did.
-    if (this.play !== play || play.solved) return;
-    let source: 'bank' | 'coins' | 'ad' | null = null;
-    if (choice === 'pay') {
-      source = this.wallet.payForHint();
-    } else if (choice === 'ad' && this.platform.rewardedAds) {
-      const completed = await this.watchRewarded();
-      // Credited only when the ad finished (rules.md); a failed or skipped ad charges and credits nothing.
-      if (completed && this.play === play && !play.solved) {
-        this.wallet.creditAd();
-        source = 'ad';
-      }
-    }
-    this.resumeClock();
+    // One tap: the garden's free hints first, then any saved from an earlier video. Only once
+    // both are used does a sheet appear, offering a video for more.
+    let source: 'free' | 'bank' | 'ad' | null = this.freeHintsLeft(play) > 0 ? 'free' : this.wallet.takeBanked() ? 'bank' : null;
     if (!source) {
-      if (choice === 'pay') this.notice = { kind: 'no-coins', coinsPerSolve: this.wallet.economy.coinsPerSolve };
-      this.refresh();
-      return;
+      if (!this.platform.rewardedAds) {
+        this.notice = { kind: 'no-hints' };
+        this.refresh();
+        this.screen.announce('This garden\u2019s hints are used.');
+        return;
+      }
+      play.pause();
+      const choice = await this.hintSheet.ask({ free: this.wallet.economy.freeHints, perAd: this.wallet.economy.hintsPerAd });
+      // The sheet resolves after it closes; the board may have changed meanwhile only if the play did.
+      if (this.play !== play || play.solved) return;
+      if (choice === 'ad') {
+        const completed = await this.watchRewarded();
+        // Credited only when the ad finished (rules.md); a failed or skipped ad credits nothing.
+        if (completed && this.play === play && !play.solved) {
+          this.wallet.creditAd();
+          source = 'ad';
+        }
+      }
+      this.resumeClock();
+      if (!source) {
+        this.refresh();
+        return;
+      }
     }
     const before = play.evaluation;
     const h = play.applyHint();
     if (h.kind === 'none') return;
     this.emit({ type: 'hint', level: this.current!.id, source, step: hintStep(this.catalog.grade(this.current!.id), hintCell(h)) });
     this.notice = { kind: 'hint', hint: h };
-    // A removal sends the wrong firefly home; crossed tiles get their X with a boop (the board);
-    // a pointing hint only rings its bush or tile. Nothing is ever placed.
+    // A removal sends the wrong firefly home and leaves a hint X on its tile; crossed tiles get
+    // their X with a boop (the board); a pointing hint only rings its bush or tile. Nothing is
+    // ever placed.
     const flew = h.kind === 'remove' && this.flight(h.cell, 'home', false);
     this.playCues(cuesFor(before, play.evaluation, h.kind === 'remove' ? { kind: 'hint-removed' } : { kind: 'hint-shown' }));
     this.refresh(false, h.kind === 'remove' && !flew ? h.cell : null);
     this.screen.announce(h.reason);
     if (play.solved) this.solved();
     else this.scheduleSave();
+  }
+
+  /** This garden's free hints still unused (counting hints its board took in earlier plays). */
+  private freeHintsLeft(play: Play): number {
+    return Math.max(0, this.wallet.economy.freeHints - play.boardHints);
   }
 
   private solved(): void {
@@ -1142,12 +1187,12 @@ export class GameApp {
 
   // ---------------------------------------------------------------- keyboard
 
-  /** Arrows move a focus ring over the board, space/enter cycles a tile like a tap, Z undoes, H hints (plan E). */
+  /** Arrows move a focus ring over the board, space/enter places or lifts a firefly, X marks an X, Z undoes, H hints (plan E). */
   private setupKeyboard(): void {
     const host = this.screen.boardHost;
     host.tabIndex = 0;
     host.setAttribute('aria-roledescription', 'puzzle board');
-    host.setAttribute('aria-label', 'Garden board. Arrow keys move, space cycles a tile through firefly, X and empty, Z undoes, H asks for a hint.');
+    host.setAttribute('aria-label', 'Garden board. Arrow keys move, space places or lifts a firefly, X marks a tile, Z undoes, H asks for a hint.');
     host.addEventListener('focus', () => {
       // A mouse or touch focus shows no ring; keyboard focus (Tab) does.
       if (host.matches(':focus-visible')) this.showFocus();
@@ -1189,7 +1234,7 @@ export class GameApp {
       this.board.setFocus(this.focusCell);
       this.announceFocus(false);
     } else if (!e.repeat && b.kind[this.focusCell!] === 'path') {
-      this.tap(this.focusCell!, true);
+      this.tap(this.focusCell!, true, a.kind === 'mark');
     }
   }
 
@@ -1260,7 +1305,7 @@ export class GameApp {
         if (!p || !cur) return null;
         return {
           id: cur.id, transform: this.transform, w: p.board.w, h: p.board.h, placed: [...p.placed], locked: [...p.locked],
-          crossed: [...p.crossed], marks: [...p.marks],
+          crossed: [...p.crossed], marks: [...p.marks], paths: p.board.paths.filter((c) => !p.board.lantern[c]), hints: p.hints,
           answer: [...p.solution].filter((c) => !p.board.lantern[c]), canUndo: p.canUndo, seconds: p.seconds, solved: p.solved, remaining: p.remaining,
           notice: this.notice?.kind ?? null, focus: this.focusRing ? this.focusCell : null,
         };
@@ -1272,7 +1317,7 @@ export class GameApp {
       audio: () => this.audio.state,
       setStatus: (st) => this.screen.setStatus(st),
       refresh: () => this.refresh(),
-      openLevel: (id) => this.show({ id, reason: 'main' }, new Play(this.catalog.board(id), this.catalog.solution(id), this.clock)),
+      openLevel: (id) => this.show({ id, reason: 'main' }, new Play(this.catalog.board(id), this.catalog.solution(id), this.clock, {}, this.rules(id))),
       frames: () => this.board.frameStats(),
       events: () => this.log.events.map((e) => ({ ...e })),
       chapters: () => this.catalog.chapters.map((c) => [...c.levels]),
@@ -1391,7 +1436,9 @@ export class GameApp {
     this.board.render({
       evaluation: ev,
       locked: play.locked,
-      because: new Set(shown && shown.kind !== 'remove' ? shown.because : []),
+      // The ring: a point's bush or tile; for a cross, the lead reason's bush or tiles and the
+      // X marks that reason covers, so "this tile" in its line is the one ringed.
+      because: new Set(shown?.kind === 'point' ? shown.because : shown?.kind === 'cross' ? [...shown.because, ...shown.parts[0]!.cells] : []),
       crossed: play.crossed,
       marks: play.marks,
       solved: ev.solved,
@@ -1409,6 +1456,7 @@ export class GameApp {
     this.screen.setStatus(status);
     this.screen.setJar(play.remaining, play.jarSize);
     this.screen.setMoves(play.canUndo, play.placed.size + play.marks.size > 0, ev.solved);
-    this.screen.setCoins(this.wallet.coins, this.wallet.economy.hintCost, this.wallet.bank);
+    this.screen.setCoins(this.wallet.coins);
+    this.screen.setHints(this.freeHintsLeft(play), this.wallet.bank);
   }
 }

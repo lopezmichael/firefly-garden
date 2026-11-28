@@ -161,7 +161,8 @@ export function stepFocus(transform: Transform, w: number, h: number, cell: numb
 }
 
 /** What a key does on the play screen, or null if it is not one of ours. */
-export type KeyAction = { readonly kind: 'move'; readonly dir: Direction } | { readonly kind: 'toggle' | 'undo' | 'hint' };
+/** `toggle`: place or lift a firefly (space, enter). `mark`: the player's own X (X key). */
+export type KeyAction = { readonly kind: 'move'; readonly dir: Direction } | { readonly kind: 'toggle' | 'mark' | 'undo' | 'hint' };
 
 export interface KeyInput {
   readonly key: string;
@@ -188,6 +189,7 @@ export function keyAction(e: KeyInput): KeyAction | null {
     case 'ArrowLeft': return { kind: 'move', dir: 'left' };
     case 'ArrowRight': return { kind: 'move', dir: 'right' };
     case ' ': case 'Enter': return { kind: 'toggle' };
+    case 'x': return { kind: 'mark' };
     case 'z': return { kind: 'undo' };
     case 'h': return { kind: 'hint' };
     default: return null;
