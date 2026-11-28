@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { deflateRawSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import { createRng } from '@firefly/core';
+import { PLAYED_CHAPTERS } from '../src/build.ts';
 import { createCatalog } from '../src/state/catalog.ts';
 import { checksum, fromBase64Url, MAX_CODE_CHARS, readGardenCode, toBase64Url, writeGardenCode } from '../src/state/gardenCode.ts';
 import { browserCodec } from '../src/ui/deflate.ts';
@@ -12,7 +13,7 @@ import type { SaveData } from '../src/state/save.ts';
 
 const LEVELS = join(import.meta.dirname, '../../../levels');
 const read = (f: string): unknown => JSON.parse(readFileSync(join(LEVELS, f), 'utf8'));
-const catalog = createCatalog({ launch: read('launch.json'), reserve: read('reserve.json'), manifest: read('manifest.json') }, ['c1', 'c2', 'c3']);
+const catalog = createCatalog({ launch: read('launch.json'), reserve: read('reserve.json'), manifest: read('manifest.json') }, PLAYED_CHAPTERS);
 const NOW = Date.UTC(2026, 10, 27, 18);
 const id = catalog.mainPath[4]!;
 const solution = [...catalog.solution(id)];

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { PLAYER_CONFIG, POLICY_CONFIG } from '@firefly/core';
+import { PLAYED_CHAPTERS } from '../src/build.ts';
 import { CatalogError, createCatalog } from '../src/state/catalog.ts';
 import { Play } from '../src/state/play.ts';
 import { HISTORY_CAP, Session } from '../src/state/session.ts';
@@ -10,7 +11,7 @@ import { MAX_BANKED_HINTS, Wallet } from '../src/state/wallet.ts';
 const LEVELS = join(import.meta.dirname, '../../../levels');
 const read = (f: string): unknown => JSON.parse(readFileSync(join(LEVELS, f), 'utf8'));
 const DATA = { launch: read('launch.json'), reserve: read('reserve.json'), manifest: read('manifest.json') };
-const CHAPTERS = ['c1', 'c2', 'c3'];
+const CHAPTERS = PLAYED_CHAPTERS;
 const catalog = createCatalog(DATA, CHAPTERS);
 
 function fakeClock(start = 1_000_000) {
@@ -32,15 +33,17 @@ function wrongCell(id: string): number {
 }
 
 describe('catalog', () => {
-  it('holds chapters 1 to 3 as the main path and the whole reserve', () => {
-    expect(catalog.mainPath).toHaveLength(30);
+  it('holds the played chapters (the whole Rose Bed) as the main path and the whole reserve', () => {
+    expect(catalog.chapters.map((c) => c.id)).toEqual(['c1', 'c2', 'c3', 'c4', 'c5']);
+    expect(catalog.chapters.every((c) => c.area === 'Rose Bed')).toBe(true);
+    expect(catalog.mainPath).toHaveLength(50);
     expect(catalog.mainPath[0]).toBe(catalog.chapters[0]!.levels[0]);
     expect(catalog.reserve).toHaveLength(250);
     for (const id of catalog.mainPath) {
       const l = catalog.levels.get(id)!;
       expect(l.estimatedSeconds).toBeGreaterThan(0);
       expect(catalog.solution(id).size).toBe(catalog.level(id).solution!.length);
-      expect(catalog.place(id)?.chapter.id).toMatch(/^c[123]$/);
+      expect(catalog.place(id)?.chapter.id).toMatch(/^c[1-5]$/);
     }
   });
 

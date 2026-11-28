@@ -10,14 +10,16 @@ import { describe, expect, it } from 'vitest';
 import {
   buildBoard, cellIndex, combine, gradeLevel, hint, measure, parseLevel, PLAYER_CONFIG, rampRoles, simHintGroup, simSteps, simulate, type SimLevel,
 } from '../packages/core/src/index.ts';
+import { PLAYED_CHAPTERS } from '../apps/game/src/build.ts';
 
 const DIR = join(import.meta.dirname, '..', 'levels');
 const pack = JSON.parse(readFileSync(join(DIR, 'launch.json'), 'utf8')) as { levels: unknown[] };
 const byId = new Map(pack.levels.map((l) => parseLevel(l)).map((l) => [l.id, l]));
 const manifest = JSON.parse(readFileSync(join(DIR, 'manifest.json'), 'utf8')) as { chapters: { id: string; levels: string[] }[] };
 
-// The economy guardrails are about the opening: chapters 1 to 3.
-const simLevels: SimLevel[] = manifest.chapters.slice(0, 3).flatMap((c) => {
+// The economy guardrails cover the main path this build plays, in order.
+const played = PLAYED_CHAPTERS.map((id) => manifest.chapters.find((c) => c.id === id)!);
+const simLevels: SimLevel[] = played.flatMap((c) => {
   const graded = c.levels.map((id) => {
     const level = byId.get(id)!;
     const board = buildBoard(level);
@@ -64,12 +66,12 @@ describe('hint economy (simulated, shipped economy)', () => {
   });
 
   it('models hints the way the game gives them: the simulated hint matches the real one from the same position', () => {
-    // From every step of every chapter 1 to 3 level, with the fireflies placed so far and no X
+    // From every step of every played level, with the fireflies placed so far and no X
     // marks: does the real hint cross tiles or point, and does the simulated one (`simHintGroup`)
     // cross the same tiles? The real grader may pick a different first deduction from the real
-    // position, so this is close, not exact (2026-11-28: 323 and 283 of 335).
+    // position, so this is close, not exact (2026-11-28, the Rose Bed: 632 and 535 of 653).
     let n = 0, kind = 0, exact = 0;
-    for (const c of manifest.chapters.slice(0, 3)) {
+    for (const c of played) {
       for (const id of c.levels) {
         const level = byId.get(id)!;
         const board = buildBoard(level);

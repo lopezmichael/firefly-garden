@@ -165,9 +165,9 @@ order, the first group of empty steps still open on the board (one technique and
 most four, stopping at the next firefly to place): not crossed by a hint and not lit by a firefly
 already down (`SimStep.litAt`). The grader never reads the player's own marks, so that group may be
 tiles the player worked out long ago, and they stay stuck and ask again. `tests/economy.test.ts`
-holds the model to the real `hint`: from every step of chapters 1 to 3, the two agree on crossing
-versus pointing at least 95% of the time and on the exact tiles at least 80% (323 and 283 of 335
-on 2026-11-28). When no empty step is left before the firefly, the hint points and the player finds it
+holds the model to the real `hint`: from every step of every played garden, the two agree on
+crossing versus pointing at least 95% of the time and on the exact tiles at least 80% (632 and 535
+of 653 over the Rose Bed on 2026-11-28). When no empty step is left before the firefly, the hint points and the player finds it
 (`pointedTimeFactor`). Economy guardrails (`tests/economy.test.ts`) hold with this model.
 
 **The firefly jar (Phase 2, milestone 3).** The game shows how many fireflies the garden needs:

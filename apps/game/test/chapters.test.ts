@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { PLAYED_CHAPTERS } from '../src/build.ts';
 import { chapterFinishedBy, chapterLine, chapterTotals, formatDuration } from '../src/state/chapters.ts';
 
 const chapters = [
@@ -37,6 +38,12 @@ describe('the chapter card', () => {
   it('has a line for every chapter, with a fallback', () => {
     expect(chapterLine('c1')).toMatch(/glowing/);
     expect(chapterLine('c99')).toBe('Every garden in this bed is glowing.');
+  });
+
+  it('every chapter the build plays has its own line, never the fallback', () => {
+    const lines = PLAYED_CHAPTERS.map((id) => chapterLine(id));
+    for (const line of lines) expect(line).not.toBe(chapterLine('c99'));
+    expect(new Set(lines).size).toBe(lines.length);
   });
 
   it('formats durations as minutes and seconds', () => {
