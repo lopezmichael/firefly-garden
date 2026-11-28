@@ -1,7 +1,6 @@
 import { DIFFICULTY_CONFIG } from './difficulty.ts';
 import type { Board } from './board.ts';
 import type { Grade } from './grader.ts';
-import { HINT_CROSS_CAP } from './hints.ts';
 import { isDetour, nextLevel, type PlayRecord, type PolicyLevel } from './policy.ts';
 import { createRng, deriveSeed, type Rng } from './rng.ts';
 
@@ -65,8 +64,10 @@ export interface SimLevel {
   readonly role: LevelRole;
   readonly steps: readonly SimStep[];
   readonly fireflies: number;
-  /** Needed by the next-level policy (tier, score, estimate). */
+  /** Needed by the next-level policy (tier, score, estimate); also the hardest technique a hint uses here. */
   readonly tier?: number;
+  /** Tiles one hint may cross out here (`hintCap` of the level's board). Default 4. */
+  readonly hintCap?: number;
   readonly score?: number;
   readonly estimatedSeconds?: number;
 }
@@ -91,10 +92,12 @@ export interface PlayerProfile {
 }
 
 export interface Economy {
+  /** Coins at the start. Coins plant the garden map; they never buy hints. */
   readonly startingCoins: number;
   readonly coinsPerSolve: number;
-  readonly hintCost: number;
-  /** Hints one rewarded ad grants: one used now, the rest saved for later. */
+  /** Free hints each garden's play starts with (decided 2026-11-28: one tap, no sheet). */
+  readonly freeHints: number;
+  /** Hints one rewarded ad grants once the free ones are used: one used now, the rest saved for later. */
   readonly hintsPerAd: number;
   /** Coins for finishing a chapter's main path (the chapter card's bonus); none when absent. */
   readonly chapterBonus?: number;
@@ -135,12 +138,12 @@ export const PLAYER_CONFIG = {
     { id: 'expert', label: 'Expert', share: 0.05, skill: 4, speed: 0.7, patience: 600, learnSteps: 2, adWillingness: 0.2, churnOnQuit: 0.2 },
   ] as readonly PlayerProfile[],
   /**
-   * The shipped economy, chosen from the Phase 1 sweep (2026-11-12): enough
-   * starting coins for two hints so a stuck newcomer is never refused, and a
-   * price that still makes a hint cost three solves. Retention first; see the
-   * difficulty report for the rewarded-ad tradeoff.
+   * The shipped economy (2026-11-28, Michael): three free one-tap hints per garden, then an
+   * optional rewarded video for three more; coins only plant the garden map. Chosen from the
+   * allowance sweep (2, 3 and 5 free per garden, in the difficulty report): two refuses too
+   * many stuck players, five leaves the video almost no role.
    */
-  economy: { startingCoins: 60, coinsPerSolve: 10, hintCost: 30, hintsPerAd: 3, chapterBonus: 30 } as Economy,
+  economy: { startingCoins: 60, coinsPerSolve: 10, freeHints: 3, hintsPerAd: 3, chapterBonus: 30 } as Economy,
   /** Ad pacing from the project plan (Monetization, Ad placements). */
   ads: {
     /** No midgame ad until this many levels are complete (first session protection). */
@@ -157,10 +160,9 @@ export const PLAYER_CONFIG = {
   },
   /** Economies compared in the report's sweep. */
   sweep: {
-    startingCoins: [30, 60, 90],
-    coinsPerSolve: [10, 15],
-    hintCost: [30, 45, 60],
-    /** Hints per rewarded ad, compared at the shipped and a tight economy. */
+    /** Free hints per garden. */
+    freeHints: [2, 3, 4, 5],
+    /** Hints per rewarded ad, compared at the shipped and a tight (two free) economy. */
     hintsPerAd: [1, 2, 3, 5],
   },
   /** Simulated players per profile. */
@@ -188,9 +190,10 @@ export interface LevelOutcome {
   readonly churned: number;
   /** Attempts that used at least one hint. */
   readonly hintedPlays: number;
-  readonly coinHints: number;
+  /** Hints from the garden's free allowance. */
+  readonly freeHints: number;
   readonly adHints: number;
-  /** Times a stuck player wanted a hint but had no coins and skipped the ad. */
+  /** Times a stuck player wanted a hint past the free ones and skipped the ad. */
   readonly refusedHints: number;
   /** Hints taken from the bank an earlier rewarded ad filled. */
   readonly bankedHints: number;
@@ -218,7 +221,7 @@ export interface SimResult {
 
 interface Tally {
   reached: number; plays: number; solved: number; quits: number; churned: number;
-  hintedPlays: number; coinHints: number; adHints: number; refusedHints: number; bankedHints: number;
+  hintedPlays: number; freeHints: number; adHints: number; refusedHints: number; bankedHints: number;
   interstitials: number; solveSeconds: number;
 }
 
@@ -233,7 +236,7 @@ interface PlayerState {
 /** Simulate `runs` players of one profile through the levels in order. Deterministic for a seed. */
 export function simulate(levels: readonly SimLevel[], profile: PlayerProfile, economy: Economy, runs: number, seed: number): SimResult {
   const tallies: Tally[] = levels.map(() => ({
-    reached: 0, plays: 0, solved: 0, quits: 0, churned: 0, hintedPlays: 0, coinHints: 0, adHints: 0, refusedHints: 0, bankedHints: 0,
+    reached: 0, plays: 0, solved: 0, quits: 0, churned: 0, hintedPlays: 0, freeHints: 0, adHints: 0, refusedHints: 0, bankedHints: 0,
     interstitials: 0, solveSeconds: 0,
   }));
   let endCoins = 0;
@@ -254,11 +257,11 @@ export function simulate(levels: readonly SimLevel[], profile: PlayerProfile, ec
       for (let attempt = 0; attempt <= PLAYER_CONFIG.retries; attempt++) {
         t.plays++;
         const r = playOnce(levels[i]!, profile, economy, state, rng);
-        t.coinHints += r.coinHints;
+        t.freeHints += r.freeHints;
         t.adHints += r.adHints;
         t.refusedHints += r.refusedHints;
         t.bankedHints += r.bankedHints;
-        if (r.coinHints + r.adHints + r.bankedHints > 0) t.hintedPlays++;
+        if (r.freeHints + r.adHints + r.bankedHints > 0) t.hintedPlays++;
         clock += r.seconds + ads.levelTransitionSeconds;
         if (r.solved) {
           t.solved++;
@@ -304,7 +307,7 @@ export function simulate(levels: readonly SimLevel[], profile: PlayerProfile, ec
       return {
         id: l.id, chapter: l.chapter, role: l.role,
         reached: t.reached, plays: t.plays, solved: t.solved, quits: t.quits, churned: t.churned,
-        hintedPlays: t.hintedPlays, coinHints: t.coinHints, adHints: t.adHints, refusedHints: t.refusedHints,
+        hintedPlays: t.hintedPlays, freeHints: t.freeHints, adHints: t.adHints, refusedHints: t.refusedHints,
         bankedHints: t.bankedHints, interstitials: t.interstitials,
         meanSolveSeconds: t.solved ? t.solveSeconds / t.solved : 0,
       };
@@ -315,7 +318,7 @@ export function simulate(levels: readonly SimLevel[], profile: PlayerProfile, ec
 interface PlayResult {
   solved: boolean;
   seconds: number;
-  coinHints: number;
+  freeHints: number;
   adHints: number;
   refusedHints: number;
   bankedHints: number;
@@ -325,7 +328,7 @@ function playOnce(level: SimLevel, profile: PlayerProfile, economy: Economy, sta
   const cfg = PLAYER_CONFIG;
   const time = DIFFICULTY_CONFIG.time;
   const [n0, n1] = cfg.noise;
-  const out: PlayResult = { solved: false, seconds: level.fireflies * time.secondsPerTap * profile.speed, coinHints: 0, adHints: 0, refusedHints: 0, bankedHints: 0 };
+  const out: PlayResult = { solved: false, seconds: level.fireflies * time.secondsPerTap * profile.speed, freeHints: 0, adHints: 0, refusedHints: 0, bankedHints: 0 };
   /** Steps a hint has crossed out this play. */
   const crossed = new Set<number>();
 
@@ -360,7 +363,7 @@ function playOnce(level: SimLevel, profile: PlayerProfile, economy: Economy, sta
           break;
         }
         if (resolved) break; // the older model: the hint resolves the step
-        const group = simHintGroup(level.steps, k, crossed);
+        const group = simHintGroup(level.steps, k, crossed, level.hintCap ?? 4, level.tier);
         if (group.length === 0) {
           // Nothing left to rule out before this firefly: the hint points, the player finds it.
           out.seconds += base * profile.speed * cfg.pointedTimeFactor;
@@ -387,17 +390,16 @@ function playOnce(level: SimLevel, profile: PlayerProfile, economy: Economy, sta
 }
 
 /**
- * One hint for a stuck player: from the bank, with coins, or by watching an ad; refused
+ * One hint for a stuck player: from the garden's free allowance, the bank, or by watching an ad; refused
  * when none of those happens, and then they either quit or grind the step out.
  */
 function takeHint(profile: PlayerProfile, economy: Economy, state: PlayerState, rng: Rng, out: PlayResult): 'hint' | 'quit' | 'grind' {
   const cfg = PLAYER_CONFIG;
-  if (state.bank > 0) {
+  if (out.freeHints < economy.freeHints) {
+    out.freeHints++;
+  } else if (state.bank > 0) {
     state.bank--;
     out.bankedHints++;
-  } else if (state.coins >= economy.hintCost) {
-    state.coins -= economy.hintCost;
-    out.coinHints++;
   } else if (rng.next() < profile.adWillingness) {
     out.adHints++;
     out.seconds += cfg.adSeconds;
@@ -412,29 +414,34 @@ function takeHint(profile: PlayerProfile, economy: Economy, state: PlayerState, 
 /**
  * The steps the next hint crosses out for a player stuck on step `k`, as the real hint finds
  * them: the grader starts from the fireflies placed so far (every firefly step before `k`)
- * and the hint's own X marks, never the player's, so it re-finds, in trace order, the first
- * empty step that is still open on the board (not crossed by a hint, not lit by a firefly
- * already down), even one the player worked out long ago. It takes the run of open steps
- * sharing that step's technique and reason cells, at most `HINT_CROSS_CAP`, and stops at the
- * next firefly still to place. Empty when nothing is open before it (the hint points).
+ * and the hint's own X marks, never the player's, so it re-finds, in trace order, every
+ * empty step still open on the board (not crossed by a hint, not lit by a firefly already
+ * down), even ones the player worked out long ago, up to `cap`, looking past the next two
+ * fireflies still to place at most. Like the real hint it never uses a technique harder than `maxTier` (the garden's
+ * tier) or the next step, whichever is harder. Empty when nothing is open (the hint points).
  * Exported for tests.
  */
-export function simHintGroup(steps: readonly SimStep[], k: number, crossed: ReadonlySet<number>): number[] {
+export function simHintGroup(steps: readonly SimStep[], k: number, crossed: ReadonlySet<number>, cap: number, maxTier = Infinity): number[] {
   const open = (j: number) => {
     const st = steps[j]!;
     return st.value === 'empty' && !crossed.has(j) && !(st.litAt !== undefined && st.litAt < k);
   };
   const out: number[] = [];
-  let group: string | undefined;
-  for (let j = 0; j < steps.length && out.length < HINT_CROSS_CAP; j++) {
+  let limit: number | undefined;
+  let ahead = 0;
+  for (let j = 0; j < steps.length && out.length < cap; j++) {
     const st = steps[j]!;
+    if (st.value === 'firefly' && j < k) continue; // already on the board
+    if (st.value === 'empty' && !open(j)) continue;
+    // The first step still to make sets the limit, with the garden's own tier.
+    limit ??= Math.max(st.tier, maxTier);
+    // The real hint crosses whatever it can prove now, which in the full trace often comes
+    // a firefly or two later; past the second firefly still to place, it rarely can.
     if (st.value === 'firefly') {
-      if (j >= k) break; // the next firefly to place: the grader stops there
-      continue; // already on the board
+      if (++ahead > 2) break;
+      continue;
     }
-    if (!open(j)) continue;
-    if (group === undefined) group = st.group;
-    else if (st.group !== group) break;
+    if (st.tier > limit) continue;
     out.push(j);
   }
   return out;
@@ -509,7 +516,7 @@ export function simulateWithPolicy(
   for (const l of levels) chapterMains.set(l.chapter, [...(chapterMains.get(l.chapter) ?? []), l.id]);
 
   const tallies: Tally[] = levels.map(() => ({
-    reached: 0, plays: 0, solved: 0, quits: 0, churned: 0, hintedPlays: 0, coinHints: 0, adHints: 0, refusedHints: 0, bankedHints: 0,
+    reached: 0, plays: 0, solved: 0, quits: 0, churned: 0, hintedPlays: 0, freeHints: 0, adHints: 0, refusedHints: 0, bankedHints: 0,
     interstitials: 0, solveSeconds: 0,
   }));
   const detours: Record<string, number> = {};
@@ -548,15 +555,15 @@ export function simulateWithPolicy(
       if (mi !== undefined) {
         const t = tallies[mi]!;
         t.plays++;
-        t.coinHints += r.coinHints;
+        t.freeHints += r.freeHints;
         t.adHints += r.adHints;
         t.refusedHints += r.refusedHints;
         t.bankedHints += r.bankedHints;
-        if (r.coinHints + r.adHints + r.bankedHints > 0) t.hintedPlays++;
+        if (r.freeHints + r.adHints + r.bankedHints > 0) t.hintedPlays++;
       }
       history.push({
         levelId: level.id, reason: next.reason, solved: r.solved, seconds: r.seconds,
-        hints: r.coinHints + r.adHints + r.bankedHints, endedAt: clock * 1000 + gaps,
+        hints: r.freeHints + r.adHints + r.bankedHints, endedAt: clock * 1000 + gaps,
       });
 
       if (r.solved) {
@@ -626,7 +633,7 @@ export function simulateWithPolicy(
       return {
         id: l.id, chapter: l.chapter, role: l.role,
         reached: t.reached, plays: t.plays, solved: t.solved, quits: t.quits, churned: t.churned,
-        hintedPlays: t.hintedPlays, coinHints: t.coinHints, adHints: t.adHints, refusedHints: t.refusedHints,
+        hintedPlays: t.hintedPlays, freeHints: t.freeHints, adHints: t.adHints, refusedHints: t.refusedHints,
         bankedHints: t.bankedHints, interstitials: t.interstitials,
         meanSolveSeconds: t.solved ? t.solveSeconds / t.solved : 0,
       };

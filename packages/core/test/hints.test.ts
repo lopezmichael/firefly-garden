@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
-  buildBoard, canPlace, cellIndex, createRng, evaluate, generate, grade, hint, HINT_CROSS_CAP, HINT_REASONS, hintCell, hintStep,
+  buildBoard, canPlace, cellIndex, createRng, evaluate, generate, grade, hint, hintCap, HINT_CROSS_MAX, HINT_REASONS, hintCell, hintStep,
   parseLevel, REMOVE_REASONS, RULE_OUT_REASONS, ruleOutReason, STUCK_REASONS, TECHNIQUE_TIER, ZERO_BUSH_REASON, type Board, type Hint, type Level,
-  type TechniqueId,
+  type TechniqueId, type CrossPart,
 } from '../src/index.ts';
 
 const LEVELS = join(import.meta.dirname, '..', '..', '..', 'levels');
@@ -30,7 +30,7 @@ const answerOf = (board: Board, level: Level) => new Set(level.solution!.map((c)
 
 /** Tallies for the "reason reads true" check, reported by the property test. */
 const truth = {
-  crosses: 0, satisfied: 0, bushRoom: 0, countBound: 0, grouped: 0, needsAll: 0, oneSource: 0, false: [] as string[],
+  multiReason: 0, crosses: 0, satisfied: 0, bushRoom: 0, countBound: 0, grouped: 0, needsAll: 0, oneSource: 0, false: [] as string[],
 };
 
 /** What the player sees: fireflies (lanterns included), tiles they light, and the hint X marks. */
@@ -55,10 +55,28 @@ function fits(board: Board, cells: readonly number[], size: number): number[][] 
 }
 
 /** A cross hint's reason must hold on the board as the player sees it (fireflies plus hint X marks). */
+/**
+ * A cross hint: its parts add up to its cells, the lead part is repeated at the top, it stays
+ * within the board's cap, and each part's reason reads true on the board as the player sees
+ * it once the hint's earlier parts are crossed (a later X may rest on an earlier one).
+ */
 function checkCross(level: Level, board: Board, on: ReadonlySet<number>, crossed: ReadonlySet<number>, h: Extract<Hint, { kind: 'cross' }>) {
-  const { fly, seen, open } = visible(board, on, crossed);
   truth.crosses++;
   if (h.cells.length > 1) truth.grouped++;
+  if (h.parts.length > 1) truth.multiReason++;
+  if (h.parts.flatMap((p) => p.cells).join() !== h.cells.join()) truth.false.push(`${level.id}: parts don't add up to the cells`);
+  const lead = h.parts[0]!;
+  if (lead.technique !== h.technique || lead.reason !== h.reason || lead.because.join() !== h.because.join()) truth.false.push(`${level.id}: the top is not the lead part`);
+  if (h.cells.length > hintCap(board)) truth.false.push(`${level.id}: ${h.cells.length} X over the cap ${hintCap(board)}`);
+  const sofar = new Set(crossed);
+  for (const part of h.parts) {
+    checkPart(level, board, on, sofar, part);
+    for (const c of part.cells) sofar.add(c);
+  }
+}
+
+function checkPart(level: Level, board: Board, on: ReadonlySet<number>, crossed: ReadonlySet<number>, h: CrossPart) {
+  const { fly, seen, open } = visible(board, on, crossed);
   if (h.reason !== ruleOutReason(h.technique, h.cells.length, board, h.because)) truth.false.push(`${level.id}: reason is not the technique's`);
   if (h.cells.some((c) => !open(c))) truth.false.push(`${level.id}: crossed a tile the player already sees decided`);
   if (h.technique === 'T1-satisfied') {
@@ -197,7 +215,7 @@ describe('hint', () => {
     const kinds: string[] = [];
     const limit = 3 * board.paths.length + 4;
     for (let i = 0; i < limit; i++) {
-      const h = hint(board, answer, placed, new Set(), crossed);
+      const h = hint(board, answer, placed, new Set(), crossed, { maxTier: level.tier ?? 9 });
       kinds.push(h.kind === 'point' && h.technique === null ? 'stuck' : h.kind);
       if (h.kind === 'none') {
         if (!evaluate(board, placed).solved) problems.push(`${level.id}: "none" on an unsolved board`);
@@ -208,7 +226,11 @@ describe('hint', () => {
         if (!placed.has(h.cell)) problems.push(`${level.id}: removed a cell that was not a player firefly`);
         placed.delete(h.cell);
       } else if (h.kind === 'cross') {
-        if (h.cells.length === 0 || h.cells.length > HINT_CROSS_CAP) problems.push(`${level.id}: crossed ${h.cells.length} tiles`);
+        if (h.cells.length === 0 || h.cells.length > hintCap(board)) problems.push(`${level.id}: crossed ${h.cells.length} tiles`);
+        // Never harder than the garden (or than the next step, when that is harder still).
+        const next = grade(board, { start: placed, startEmpty: crossed, stopAtFirefly: true, knownCount: answer.size }).steps[0];
+        const limit = Math.max(next?.tier ?? 0, level.tier ?? 9);
+        if (h.parts.some((p) => TECHNIQUE_TIER[p.technique] > limit)) problems.push(`${level.id}: a hint harder than the garden`);
         for (const c of h.cells) {
           if (answer.has(c) || board.kind[c] !== 'path' || crossed.has(c) || placed.has(c)) problems.push(`${level.id}: crossed cell ${c}`);
         }
@@ -246,6 +268,7 @@ describe('hint', () => {
     expect(truth.false).toEqual([]);
     expect(truth.satisfied).toBeGreaterThan(100);
     expect(truth.grouped).toBeGreaterThan(100);
+    expect(truth.multiReason).toBeGreaterThan(50);
     expect(truth.bushRoom).toBeGreaterThan(0);
     expect(truth.needsAll).toBeGreaterThan(100);
     expect(truth.oneSource).toBeGreaterThan(100);
@@ -295,8 +318,10 @@ describe('hint', () => {
     expect(next.kind === 'cross' && next.cells.some((c) => h.cells.includes(c))).toBe(false);
   });
 
-  it(`never crosses more than ${HINT_CROSS_CAP} tiles at once; the rest come with the next hint`, () => {
-    // A 0 bush in the middle of a 3x3 garden: all eight neighbours are out, but one hint takes four.
+  it('crosses as many tiles as the board allows: 3 up to 5x5, 4 up to 7x7, 6 above; the rest come with the next hint', () => {
+    const open = (w: number, h: number) => buildBoard({ id: 'o', w, h, mask: Array.from({ length: h }, () => '#'.repeat(w)), bushes: [] });
+    expect([hintCap(open(5, 5)), hintCap(open(4, 8)), hintCap(open(7, 7)), hintCap(open(8, 7)), hintCap(open(12, 12))]).toEqual([3, 4, 4, HINT_CROSS_MAX, HINT_CROSS_MAX]);
+    // A 0 bush in the middle of a 5x5 garden: all eight neighbours are out, but one hint takes three.
     const level: Level = {
       id: 'zero', w: 5, h: 5, mask: ['#####', '#####', '#####', '#####', '#####'],
       bushes: [[2, 2, 0], [0, 2, null], [4, 2, null], [2, 0, null], [2, 4, null]],
@@ -305,14 +330,35 @@ describe('hint', () => {
     const board = buildBoard(level);
     const answer = answerOf(board, level);
     const h = hint(board, answer, []);
-    expect(h.kind === 'cross' && h.technique === 'T1-satisfied' && h.cells.length === HINT_CROSS_CAP).toBe(true);
+    expect(h.kind === 'cross' && h.technique === 'T1-satisfied' && h.cells.length === 3).toBe(true);
     if (h.kind !== 'cross') return;
     // A bush that wants none says so, rather than "already has all its fireflies".
     expect(h.reason).toBe(ZERO_BUSH_REASON);
     const next = hint(board, answer, [], new Set(), h.cells);
-    expect(next.kind === 'cross' && next.technique === 'T1-satisfied' && next.because[0] === h.because[0]).toBe(true);
-    if (next.kind !== 'cross') return;
-    expect(next.cells.some((c) => h.cells.includes(c))).toBe(false);
+    expect(next.kind === 'cross' && next.cells.some((c) => h.cells.includes(c))).toBe(false);
+  });
+
+  it('combines reasons in one hint, each X keeping its own: the status card shows the lead one', () => {
+    let found = false;
+    for (const level of firstChapters) {
+      const board = buildBoard(level);
+      const h = hint(board, answerOf(board, level), [], new Set(), [], { maxTier: level.tier! });
+      if (h.kind !== 'cross' || h.parts.length < 2) continue;
+      expect(h.parts[0]!.reason).toBe(h.reason);
+      expect(new Set(h.parts.map((p) => `${p.technique}|${p.because.join()}`)).size).toBe(h.parts.length);
+      found = true;
+      break;
+    }
+    expect(found).toBe(true);
+  });
+
+  it('never uses a technique harder than the garden: an Easy garden gets a point, not a count-bound X', () => {
+    // 0 1 2 B: the bush wants one, so 2 holds it. Counting (tier 3) could cross 0 and 1 first.
+    const level: Level = { id: 'need', w: 4, h: 1, mask: ['####'], bushes: [[0, 3, 1]], solution: [[0, 2]] };
+    const board = buildBoard(level);
+    const answer = answerOf(board, level);
+    expect(hint(board, answer, [])).toMatchObject({ kind: 'cross', technique: 'T3-count-bound', cells: [0, 1] });
+    expect(hint(board, answer, [], new Set(), [], { maxTier: 1 }).kind).toBe('point');
   });
 
   it('points at the bush or tile when the next deduction places a firefly, and never places it', () => {
@@ -321,7 +367,7 @@ describe('hint', () => {
     const level: Level = { id: 'need', w: 4, h: 1, mask: ['####'], bushes: [[0, 3, 1]], solution: [[0, 2]] };
     const board = buildBoard(level);
     const answer = answerOf(board, level);
-    const h = hint(board, answer, []);
+    const h = hint(board, answer, [], new Set(), [], { maxTier: 1 });
     expect(h).toEqual({ kind: 'point', technique: 'T1-needs-all', reason: HINT_REASONS['T1-needs-all'], because: [3], target: 2 });
     expect(hintCell(h as Exclude<Hint, { kind: 'none' }>)).toBe(2);
   });

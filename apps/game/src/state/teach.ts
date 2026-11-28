@@ -8,8 +8,9 @@ import type { Board, Evaluation } from '@firefly/core';
  */
 
 /** One-time tips. Seen tips are kept in the save, so each shows once per install. */
-export type TipId = 'cross';
-export const TIP_IDS: ReadonlySet<string> = new Set<TipId>(['cross']);
+/** `cross`: light can cross. `hold-x`: hold a tile to mark your own X (after a hint first crosses tiles). */
+export type TipId = 'cross' | 'hold-x';
+export const TIP_IDS: ReadonlySet<string> = new Set<TipId>(['cross', 'hold-x']);
 export const isTipId = (v: string): v is TipId => TIP_IDS.has(v);
 
 export interface CrossTipInput {

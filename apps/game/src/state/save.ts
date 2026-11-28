@@ -1,4 +1,4 @@
-import { cellCoord, cellIndex, canPlace, HINT_CROSS_CAP } from '@firefly/core';
+import { cellCoord, cellIndex, canPlace, HINT_CROSS_MAX } from '@firefly/core';
 import type { Board, Coord, NextReason, PlayRecord } from '@firefly/core';
 import type { Catalog } from './catalog.ts';
 import { isTechnique } from './play.ts';
@@ -61,6 +61,8 @@ export interface CurrentPlay {
   readonly undos: number;
   readonly restarts: number;
   readonly hints: number;
+  /** Hints this board took in earlier plays (a retry keeps its garden's free hints used). */
+  readonly priorHints: number;
 }
 
 export interface SaveData {
@@ -171,8 +173,9 @@ function parseCells(v: unknown, w: number, h: number): Coord[] | null {
 
 /**
  * Hint X groups: a list of `{ cells, technique, because }`. Every cell a path tile outside the
- * answer and in one group only; 1 to `HINT_CROSS_CAP` cells a group; `because` cells on the
- * board; the technique a known id. Any problem drops every group.
+ * answer and in one group only; 1 to `HINT_CROSS_MAX` cells a group; `because` cells on the
+ * board; the technique a known id, or `wrong` with a single cell (a lifted wrong firefly's
+ * tile). Any problem drops every group.
  */
 function parseCrossed(v: unknown, board: Board, solution: ReadonlySet<number>, problems: string[]): CrossGroup[] {
   const n = board.w * board.h;
@@ -186,7 +189,9 @@ function parseCrossed(v: unknown, board: Board, solution: ReadonlySet<number>, p
     const cellsRaw = isObject(raw) ? parseCells(own(raw, 'cells'), board.w, board.h) : null;
     const becauseRaw = isObject(raw) ? parseCells(own(raw, 'because'), board.w, board.h) : null;
     const technique = isObject(raw) ? own(raw, 'technique') : undefined;
-    if (!cellsRaw || !becauseRaw || !isTechnique(technique) || cellsRaw.length === 0 || cellsRaw.length > HINT_CROSS_CAP) {
+    // `wrong` marks one lifted wrong firefly's tile, so it is always a single cell.
+    if (!cellsRaw || !becauseRaw || !isTechnique(technique) || cellsRaw.length === 0 || cellsRaw.length > HINT_CROSS_MAX
+      || (technique === 'wrong' && cellsRaw.length !== 1)) {
       problems.push('current.crossed: a group is malformed; dropped');
       return [];
     }
@@ -272,6 +277,7 @@ function parseCurrent(v: unknown, catalog: Catalog, problems: string[]): Current
     levelId, key, reason: reason as NextReason, placed, locked, crossed, marks,
     seconds: isSeconds(seconds) ? Math.floor(seconds) : 0,
     placements: count('placements'), undos: count('undos'), restarts: count('restarts'), hints: count('hints'),
+    priorHints: count('priorHints'),
   };
 }
 
@@ -383,6 +389,7 @@ export function serializeSave(d: SaveData, catalog: Catalog): string {
     crossed: p.crossed.map((g) => ({ cells: coords(g.cells, p.levelId), technique: g.technique, because: coords(g.because, p.levelId) })),
     marks: coords(p.marks, p.levelId),
     seconds: p.seconds, placements: p.placements, undos: p.undos, restarts: p.restarts, hints: p.hints,
+    priorHints: p.priorHints,
   });
   return JSON.stringify({
     v: SAVE_VERSION,

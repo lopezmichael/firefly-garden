@@ -1,5 +1,7 @@
-import { HINT_CROSS_CAP, HINT_REASONS, PLAYER_CONFIG, REMOVE_REASONS, ruleOutReason, STUCK_REASONS, ZERO_BUSH_REASON } from '@firefly/core';
-import type { Evaluation, Hint, TechniqueId } from '@firefly/core';
+import { HINT_CROSS_MAX, HINT_REASONS, PLAYER_CONFIG, REMOVE_REASONS, ruleOutReason, STUCK_REASONS, ZERO_BUSH_REASON } from '@firefly/core';
+import type { Evaluation, TechniqueId } from '@firefly/core';
+import { WRONG_X_REASON } from '../src/state/play.ts';
+import type { ShownHint } from '../src/state/play.ts';
 import { readFileSync } from 'node:fs';
 import { boardStatus, finishedStatus, FIRST_GARDEN, introStatus, noticeStatus } from '../src/state/status.ts';
 import type { Notice, StatusText } from '../src/state/status.ts';
@@ -38,12 +40,17 @@ export function everyStatus(): StatusText[] {
   const dark = evaluation({ unlit: 888 });
   const notices: { readonly [K in Exclude<Notice['kind'], 'hint'>]: Extract<Notice, { kind: K }> } = {
     locked: { kind: 'locked' },
-    'no-coins': { kind: 'no-coins', coinsPerSolve: 1000 },
+    'no-hints': { kind: 'no-hints' },
+    'tip-hold': { kind: 'tip-hold' },
     reset: { kind: 'reset' },
     'jar-empty': { kind: 'jar-empty' },
     'tip-cross': { kind: 'tip-cross' },
   };
-  const hint = (h: Exclude<Hint, { kind: 'none' }>) => noticeStatus({ kind: 'hint', hint: h });
+  const hint = (h: ShownHint) => noticeStatus({ kind: 'hint', hint: h });
+  const cross = (cells: number[], technique: TechniqueId, reason: string): ShownHint => {
+    const part = { cells, technique, reason, because: [0] };
+    return { kind: 'cross', ...part, parts: [part] };
+  };
   const out: StatusText[] = [
     boardStatus(evaluation({ solved: true }), false, 1000),
     boardStatus(evaluation({ conflicts: [1, 2] }), false, coins),
@@ -58,13 +65,14 @@ export function everyStatus(): StatusText[] {
     ...shippedIntros().map(introStatus),
     ...Object.values(notices).map((n) => noticeStatus(n)),
   ];
-  out.push(hint({ kind: 'cross', cells: [0, 1, 2, 3], technique: 'T1-satisfied', reason: ZERO_BUSH_REASON, because: [0] }));
+  out.push(hint(cross([0, 1, 2, 3], 'T1-satisfied', ZERO_BUSH_REASON)));
+  out.push(hint({ kind: 'wrong-x', cell: 0, reason: WRONG_X_REASON }));
   for (const reason of Object.values(STUCK_REASONS)) out.push(hint({ kind: 'point', technique: null, reason, because: [0], target: 0 }));
   for (const reason of Object.values(REMOVE_REASONS)) out.push(hint({ kind: 'remove', cell: 0, reason }));
   for (const technique of Object.keys(HINT_REASONS) as TechniqueId[]) {
     out.push(hint({ kind: 'point', technique, reason: HINT_REASONS[technique], because: [0], target: 0 }));
-    for (const n of [1, HINT_CROSS_CAP]) {
-      out.push(hint({ kind: 'cross', cells: Array.from({ length: n }, (_, i) => i), technique, reason: ruleOutReason(technique, n), because: [0] }));
+    for (const n of [1, HINT_CROSS_MAX]) {
+      out.push(hint(cross(Array.from({ length: n }, (_, i) => i), technique, ruleOutReason(technique, n))));
     }
   }
   return out;

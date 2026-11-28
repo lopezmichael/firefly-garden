@@ -127,6 +127,13 @@ export interface GradeOptions {
    * never pass as a valid, too-easy grade.
    */
   readonly knownCount?: number;
+  /**
+   * Only ever decide tiles empty (hints that cross tiles out): a technique's firefly
+   * deductions are dropped, so the trace is every tile that can be ruled out from here,
+   * simplest technique first, until nothing more can (or `maxSteps`). The trace never
+   * places a firefly, so it is not a solve: only `steps` is meaningful.
+   */
+  readonly emptyOnly?: boolean;
 }
 
 export function grade(board: Board, options: GradeOptions = {}): Grade {
@@ -160,6 +167,7 @@ export function grade(board: Board, options: GradeOptions = {}): Grade {
     let found: Deduction[] = [];
     for (const finder of finders) {
       found = finder(board, s);
+      if (options.emptyOnly) found = found.filter((d) => d.value === 'empty');
       if (found.length > 0) break;
     }
     if (found.length === 0) {

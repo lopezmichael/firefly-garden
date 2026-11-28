@@ -70,37 +70,50 @@ describe('catalog', () => {
 describe('play', () => {
   const id = catalog.mainPath[5]!;
 
-  it('cycles a tile empty, firefly, X, empty; undo and reset cover X marks too; counts each', () => {
+  it('a tap places or lifts a firefly and never leaves an X; a hold marks or clears the player\'s X; undo and reset cover both', () => {
     const p = playOf(id);
     const [a, b] = [...catalog.solution(id)];
     expect(p.tap(a!)).toBe('placed');
     expect(p.tap(b!)).toBe('placed');
-    expect(p.tap(b!)).toBe('marked');
-    expect(p.placed.has(b!)).toBe(false);
+    expect(p.tap(b!)).toBe('removed');
+    expect(p.markOf(b!)).toBe('empty'); // lifting a firefly is not a deduction: no X
+    expect(p.mark(b!)).toBe('marked');
     expect(p.marks.has(b!)).toBe(true);
     expect(p.remaining).toBe(p.jarSize - 1); // an X takes nothing from the jar
-    expect(p.tap(b!)).toBe('cleared');
-    expect(p.markOf(b!)).toBe('empty');
+    expect(p.tap(b!)).toBe('cleared'); // a tap on your own X clears it
+    expect(p.mark(b!)).toBe('marked');
+    expect(p.mark(b!)).toBe('cleared'); // so does holding again
+    expect(p.mark(a!)).toBe('marked'); // a hold on a firefly sends it home and leaves the X
+    expect(p.placed.has(a!)).toBe(false);
     expect(p.undo()).toBe('undone');
-    expect(p.markOf(b!)).toBe('x');
-    expect(p.undo()).toBe('undone');
-    expect(p.markOf(b!)).toBe('firefly');
-    p.tap(b!); // back to an X
+    expect(p.markOf(a!)).toBe('firefly');
+    p.mark(b!);
     p.reset();
     expect(p.placed.size + p.marks.size).toBe(0);
     expect(p.undo()).toBe('undone'); // undo the reset: the firefly and the X come back
     expect(p.markOf(a!)).toBe('firefly');
     expect(p.markOf(b!)).toBe('x');
-    expect({ placements: p.placements, undos: p.undos, restarts: p.restarts }).toEqual({ placements: 2, undos: 3, restarts: 1 });
+    expect({ placements: p.placements, undos: p.undos, restarts: p.restarts }).toEqual({ placements: 2, undos: 2, restarts: 1 });
+  });
+
+  it('a drag after a hold paints the same X on each tile, passing over fireflies', () => {
+    const p = playOf(id);
+    const free = p.board.paths.filter((c) => !p.board.lantern[c]);
+    const [f, x1, x2] = free;
+    p.tap(f!);
+    p.mark(x1!);
+    expect(p.paint(x2!, true)).toBe(true);
+    expect(p.paint(f!, true)).toBe(false); // a firefly stays
+    expect(p.paint(x2!, true)).toBe(false); // already marked
+    expect([...p.marks].sort((m, n) => m - n)).toEqual([x1!, x2!].sort((m, n) => m - n));
+    expect(p.paint(x2!, false)).toBe(true);
+    expect(p.marks.has(x2!)).toBe(false);
   });
 
   it('never judges the player\'s X marks: one on an answer tile changes no hint', () => {
     const p = playOf(id);
     const before = p.peekHint();
-    for (const c of catalog.solution(id)) if (!p.board.lantern[c]) {
-      p.tap(c);
-      p.tap(c); // firefly, then X
-    }
+    for (const c of catalog.solution(id)) if (!p.board.lantern[c]) p.mark(c);
     expect(p.marks.size).toBeGreaterThan(0);
     expect(p.peekHint()).toEqual(before);
   });
@@ -118,6 +131,11 @@ describe('play', () => {
     const h = p.applyHint();
     expect(h).toMatchObject({ kind: 'remove', cell: w });
     expect(p.placed.has(w)).toBe(false);
+    // Its tile gets a hint X (it can never hold one), and tapping it says so.
+    expect(p.crossed.has(w)).toBe(true);
+    expect(p.crossGroups).toEqual([{ cells: [w], technique: 'wrong', because: [] }]);
+    expect(p.tap(w)).toBe('hint-x');
+    expect(p.shown).toMatchObject({ kind: 'wrong-x', cell: w });
     expect(p.canUndo).toBe(false);
     expect(p.undo()).toBe('nothing');
     expect(p.placed.has(w)).toBe(false);
@@ -137,7 +155,7 @@ describe('play', () => {
       const x = h.cells[0]!;
       expect(catalog.solution(lid).has(x)).toBe(false);
       expect(p.crossed.has(x)).toBe(true);
-      expect(p.crossGroups).toEqual([{ cells: h.cells, technique: h.technique, because: h.because }]);
+      expect(p.crossGroups).toEqual(h.parts.map((part) => ({ cells: part.cells, technique: part.technique, because: part.because })));
       expect(p.tap(x)).toBe('hint-x');
       const other = [...catalog.solution(lid)].find((c) => !p.board.lantern[c])!;
       p.tap(other);
@@ -155,8 +173,7 @@ describe('play', () => {
       const h = p.peekHint();
       if (h.kind !== 'cross') continue;
       const x = h.cells[0]!;
-      p.tap(x);
-      p.tap(x); // the player's own X
+      p.mark(x); // the player's own X
       expect(p.marks.has(x)).toBe(true);
       p.applyHint();
       expect(p.marks.has(x)).toBe(false);
@@ -174,8 +191,10 @@ describe('play', () => {
       if (h.kind !== 'cross') continue;
       p.tap([...catalog.solution(lid)].find((c) => !p.board.lantern[c])!);
       expect(p.shown).toBeNull();
-      expect(p.tap(h.cells.at(-1)!)).toBe('hint-x');
-      expect(p.shown).toEqual(h);
+      // Each X shows its own reason: the part it belongs to.
+      const part = h.parts.at(-1)!;
+      expect(p.tap(part.cells.at(-1)!)).toBe('hint-x');
+      expect(p.shown).toMatchObject({ kind: 'cross', technique: part.technique, reason: part.reason, because: part.because });
       return;
     }
     throw new Error('no level opens with a cross hint');
@@ -193,9 +212,8 @@ describe('play', () => {
           expect(p.repeatsPoint(p.peekHint())).toBe(true);
           // The player's own X marks don't change the position a hint reads.
           const free = p.board.paths.find((c) => p.markOf(c) === 'empty' && !p.crossed.has(c) && !p.board.lantern[c] && !p.evaluation.lit[c]);
-          if (free !== undefined && p.remaining > 0) {
-            p.tap(free);
-            p.tap(free);
+          if (free !== undefined) {
+            p.mark(free);
             expect(p.repeatsPoint(p.peekHint())).toBe(true);
           }
           pointed++;
@@ -234,6 +252,14 @@ describe('play', () => {
     expect(() => new Play(b, catalog.solution(id), fakeClock(), { placed: [bush] })).toThrow(RangeError);
   });
 
+  it('counts a garden\'s hints across its retries, so leaving and coming back never refills its free hints', () => {
+    const b = catalog.board(id);
+    const p = new Play(b, catalog.solution(id), fakeClock(), { priorHints: 2 });
+    expect(p.hints).toBe(0); // this play's own counter starts fresh
+    p.applyHint();
+    expect(p.boardHints).toBe(3);
+  });
+
   it('caps active time inside the analytics schema', () => {
     const clock = fakeClock();
     const p = new Play(catalog.board(id), catalog.solution(id), clock, { seconds: 7 * 86_400 - 2 });
@@ -266,14 +292,12 @@ describe('wallet', () => {
     expect(log).toEqual([[eco.startingCoins, eco.startingCoins, 'start']]);
   });
 
-  it('pays from the bank first, then coins, and charges nothing when it cannot pay', () => {
-    const w = new Wallet({ coins: eco.hintCost, bank: 1 });
-    expect(w.payForHint()).toBe('bank');
-    expect(w.coins).toBe(eco.hintCost);
-    expect(w.payForHint()).toBe('coins');
-    expect(w.coins).toBe(0);
-    expect(w.payForHint()).toBeNull();
-    expect(w.coins).toBe(0);
+  it('never spends coins on hints: a saved hint comes from the bank, and an empty bank changes nothing', () => {
+    const w = new Wallet({ coins: 50, bank: 1 });
+    expect(w.takeBanked()).toBe(true);
+    expect(w.bank).toBe(0);
+    expect(w.takeBanked()).toBe(false);
+    expect(w.coins).toBe(50);
   });
 
   it('a finished rewarded ad banks the hints not used now, capped', () => {
@@ -392,13 +416,10 @@ describe('play: the firefly jar', () => {
     const extra = free.find((c) => !p.placed.has(c))!;
     expect(p.tap(extra)).toBe('jar-empty');
     expect(p.placed.has(extra)).toBe(false);
-    // With every firefly out, the tap marks the tile with an X instead (free, undoable).
-    expect(p.marks.has(extra)).toBe(true);
-    expect(p.undo()).toBe('undone');
     expect(p.marks.has(extra)).toBe(false);
     // Calling one back frees a slot.
     const back = [...p.placed][0]!;
-    expect(p.tap(back)).toBe('marked');
+    expect(p.tap(back)).toBe('removed');
     expect(p.remaining).toBe(1);
   });
 
