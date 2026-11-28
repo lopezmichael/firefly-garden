@@ -1,4 +1,4 @@
-import { HINT_REASONS, PLAYER_CONFIG, REMOVE_REASONS, TRY_HERE_REASON } from '@firefly/core';
+import { HINT_CROSS_CAP, HINT_REASONS, PLAYER_CONFIG, REMOVE_REASONS, ruleOutReason, STUCK_REASONS, ZERO_BUSH_REASON } from '@firefly/core';
 import type { Evaluation, Hint, TechniqueId } from '@firefly/core';
 import { readFileSync } from 'node:fs';
 import { boardStatus, finishedStatus, FIRST_GARDEN, introStatus, noticeStatus } from '../src/state/status.ts';
@@ -43,7 +43,7 @@ export function everyStatus(): StatusText[] {
     'jar-empty': { kind: 'jar-empty' },
     'tip-cross': { kind: 'tip-cross' },
   };
-  const hint = (h: Exclude<Hint, { kind: 'none' }>) => noticeStatus({ kind: 'hint', hint: h }, dark);
+  const hint = (h: Exclude<Hint, { kind: 'none' }>) => noticeStatus({ kind: 'hint', hint: h });
   const out: StatusText[] = [
     boardStatus(evaluation({ solved: true }), false, 1000),
     boardStatus(evaluation({ conflicts: [1, 2] }), false, coins),
@@ -56,13 +56,15 @@ export function everyStatus(): StatusText[] {
     FIRST_GARDEN,
     // Every chapter intro the manifest ships (written in scripts/launch-plan.ts).
     ...shippedIntros().map(introStatus),
-    ...Object.values(notices).map((n) => noticeStatus(n, dark)),
-    hint({ kind: 'try-here', cell: 0, reason: TRY_HERE_REASON }),
+    ...Object.values(notices).map((n) => noticeStatus(n)),
   ];
+  out.push(hint({ kind: 'cross', cells: [0, 1, 2, 3], technique: 'T1-satisfied', reason: ZERO_BUSH_REASON, because: [0] }));
+  for (const reason of Object.values(STUCK_REASONS)) out.push(hint({ kind: 'point', technique: null, reason, because: [0], target: 0 }));
   for (const reason of Object.values(REMOVE_REASONS)) out.push(hint({ kind: 'remove', cell: 0, reason }));
   for (const technique of Object.keys(HINT_REASONS) as TechniqueId[]) {
-    for (const ruledOut of [[], [1]]) {
-      out.push(hint({ kind: 'place', cell: 0, technique, reason: HINT_REASONS[technique], because: [], ruledOut }));
+    out.push(hint({ kind: 'point', technique, reason: HINT_REASONS[technique], because: [0], target: 0 }));
+    for (const n of [1, HINT_CROSS_CAP]) {
+      out.push(hint({ kind: 'cross', cells: Array.from({ length: n }, (_, i) => i), technique, reason: ruleOutReason(technique, n), because: [0] }));
     }
   }
   return out;

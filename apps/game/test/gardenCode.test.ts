@@ -26,7 +26,7 @@ function garden(): SaveData {
     solved: new Set(catalog.mainPath.slice(0, 4)),
     history: catalog.mainPath.slice(0, 4).map((l, i) => ({ levelId: l, reason: 'main' as const, solved: true, seconds: 30 + i, hints: 0, endedAt: NOW - 1000 * (4 - i) })),
     playedReserve: new Set(), quitMain: new Set(),
-    current: { levelId: id, key: catalog.levelKey(id), reason: 'main', placed: [solution[1]!], locked: [solution[0]!], seconds: 12, placements: 3, undos: 1, restarts: 0, hints: 1 },
+    current: { levelId: id, key: catalog.levelKey(id), reason: 'main', placed: [solution[1]!], locked: [solution[0]!], crossed: [], marks: [], seconds: 12, placements: 3, undos: 1, restarts: 0, hints: 1 },
     parked: [], settings: { sound: false, motion: 'off' }, tips: new Set(['cross']), mapSeen: new Set(),
   };
 }

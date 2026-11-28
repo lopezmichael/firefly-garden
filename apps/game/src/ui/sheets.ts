@@ -106,11 +106,11 @@ export class HintSheet extends Sheet {
     const head = el('div', 'ff-sheet-head');
     const title = el('h2', 'ff-sheet-title', 'Use a hint');
     title.id = 'ff-hint-title';
-    // The hint's mark: firefly with a dashed seal-red ring, as on the board's hint firefly.
+    // The hint button's own mark (a firefly with a seal-red ring).
     const badge = el('span', 'ff-sheet-badge');
     badge.append(icon('hint'));
     head.append(badge, title);
-    const sub = el('p', 'ff-sheet-sub', "A hint places one firefly that's sure to be right, or lifts one that can't stay. Hint fireflies are locked in place.");
+    const sub = el('p', 'ff-sheet-sub', "A hint crosses out tiles that can't hold a firefly and says why, or lifts one that can't stay. Its X marks stay put.");
 
     this.primary = button('ff-sheet-primary', '', () => this.pick('pay'));
     this.ad = button('ff-sheet-ad', 'Watch a video for 3 hints', () => this.pick('ad'));

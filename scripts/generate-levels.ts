@@ -9,7 +9,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import {
   buildBoard, buildRamp, canonicalKey, cellIndex, combine, DIFFICULTY_CONFIG, generate, gradeLevel, measure, PLAYER_CONFIG, rampRoles,
-  simulate, simulateWithPolicy,
+  simSteps, simulate, simulateWithPolicy,
   type Economy, type SimLevel, type Generated, type GenSpec, type Level, type RampLevel, type ShapeId,
 } from '../packages/core/src/index.ts';
 import { launchPlan, reservePlan } from './launch-plan.ts';
@@ -207,7 +207,7 @@ const toSim = (id: string, chapter: string, role: SimLevel['role']): SimLevel =>
   const g = gradeLevel(level, board); // the firefly count is shown, so players' traces use it
   const d = measure(level, board, g);
   return {
-    id, chapter, role, steps: g.steps.map((s) => ({ tier: s.tier, width: s.width })), fireflies: g.fireflies.length,
+    id, chapter, role, steps: simSteps(g, board), fireflies: g.fireflies.length,
     tier: d.tier, score: d.score, estimatedSeconds: d.estimatedSeconds,
   };
 };

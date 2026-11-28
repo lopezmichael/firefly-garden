@@ -1,15 +1,18 @@
-import { canPlace, evaluate, hint as nextHint } from '@firefly/core';
-import type { Board, Evaluation, Hint } from '@firefly/core';
+import { canPlace, evaluate, hint as nextHint, ruleOutReason, TECHNIQUE_TIER } from '@firefly/core';
+import type { Board, Evaluation, Hint, TechniqueId } from '@firefly/core';
 
 /**
- * One play of one level: the player's fireflies, this play's locked hint
- * fireflies, undo, reset, hints, the counters `level_end` reports and the
+ * One play of one level: the player's fireflies and X marks, this play's hint
+ * X marks, undo, reset, hints, the counters `level_end` reports and the
  * active-time clock. Pure (the clock is injected), so it is tested in Node.
  *
- * Rules from docs/references/rules.md: a locked hint firefly can never be
- * toggled, undone or reset away (a paid hint is never lost); undo never brings
- * back a firefly a hint removed. The firefly jar holds exactly as many
+ * Rules from docs/references/rules.md: a hint never places a firefly; its X
+ * marks are locked (never toggled, undone or reset away: a paid hint is never
+ * lost), and undo never brings back a firefly a hint removed. Tapping cycles a
+ * tile: empty, firefly, X, empty. The player's own X marks are free and never
+ * judged, and hints never read them. The firefly jar holds exactly as many
  * fireflies as the answer needs: player plus locked fireflies never exceed it.
+ * `locked` holds hint fireflies from saves made before hints stopped placing them.
  */
 
 export interface Clock {
@@ -20,20 +23,42 @@ export interface Clock {
 /** Active time is capped just under the analytics schema's one-week bound. */
 export const MAX_PLAY_SECONDS = 7 * 86_400 - 1;
 
-/** `jar-empty`: every firefly the garden needs is already out; nothing was placed. */
 /** `jar-full`: undoing would bring back more fireflies than the jar has room for; nothing changed. */
 export type UndoResult = 'undone' | 'nothing' | 'jar-full';
 
-export type TapResult = 'placed' | 'removed' | 'locked' | 'blocked' | 'jar-empty';
+/**
+ * `placed`: empty to firefly. `marked`: firefly to X (the firefly goes home). `cleared`: X to
+ * empty. `hint-x`: a hint's X, which shows its reason again (`shown`). `locked`: an old hint firefly.
+ * `jar-empty`: an empty tile tapped with every firefly out: it took an X instead.
+ */
+export type TapResult = 'placed' | 'marked' | 'cleared' | 'hint-x' | 'locked' | 'blocked' | 'jar-empty';
+
+/** What a tile holds that the player can change. */
+export type TileMark = 'empty' | 'firefly' | 'x';
 
 type Op =
-  | { readonly kind: 'toggle'; readonly cell: number; readonly placed: boolean }
-  | { readonly kind: 'reset'; readonly cells: readonly number[] };
+  | { readonly kind: 'tile'; readonly cell: number; readonly from: TileMark; readonly to: TileMark }
+  | { readonly kind: 'reset'; readonly cells: readonly number[]; readonly marks: readonly number[] };
+
+/**
+ * One hint's X marks: the tiles, and the technique and reason cells behind them. Saved
+ * this way so tapping a hint X can show its reason again; the words come from the
+ * technique (`ruleOutReason`), never from the save.
+ */
+export interface CrossGroup {
+  readonly cells: readonly number[];
+  readonly technique: TechniqueId;
+  readonly because: readonly number[];
+}
 
 /** A saved play to resume (validated by `parseSave` first). */
 export interface PlayStart {
   readonly placed?: Iterable<number>;
   readonly locked?: Iterable<number>;
+  /** Hint X marks: path cells outside the answer. */
+  readonly crossed?: readonly CrossGroup[];
+  /** The player's own X marks: path cells holding nothing else. */
+  readonly marks?: Iterable<number>;
   /** Active seconds already spent. */
   readonly seconds?: number;
   readonly placements?: number;
@@ -42,8 +67,15 @@ export interface PlayStart {
   readonly hints?: number;
 }
 
-/** The last hint shown, for the board to draw (reason outlines, ruled-out marks). */
+/** The last hint shown, for the board to draw (the ring round its reason cells). */
 export type ShownHint = Exclude<Hint, { kind: 'none' }>;
+
+/** A hint group as the hint that made it, so its reason reads exactly as when it was bought. */
+export function crossHint(board: Board, g: CrossGroup): Extract<Hint, { kind: 'cross' }> {
+  return { kind: 'cross', cells: g.cells, technique: g.technique, reason: ruleOutReason(g.technique, g.cells.length, board, g.because), because: g.because };
+}
+
+export const isTechnique = (t: unknown): t is TechniqueId => typeof t === 'string' && Object.hasOwn(TECHNIQUE_TIER, t);
 
 export class Play {
   readonly board: Board;
@@ -51,6 +83,11 @@ export class Play {
   private readonly clock: Clock;
   private readonly placedSet = new Set<number>();
   private readonly lockedSet = new Set<number>();
+  private readonly crossedSet = new Set<number>();
+  private readonly groups: CrossGroup[] = [];
+  private readonly marksSet = new Set<number>();
+  /** The position (fireflies and hint X marks) a pointing hint was last shown for. */
+  private pointedAt: string | null = null;
   private ops: Op[] = [];
   private cached: Evaluation | null = null;
   private activeMs = 0;
@@ -71,9 +108,21 @@ export class Play {
       if (!solution.has(c) || board.lantern[c]) throw new RangeError(`locked cell ${c} is not a placeable answer cell`);
       this.lockedSet.add(c);
     }
+    for (const g of start.crossed ?? []) {
+      if (!isTechnique(g.technique)) throw new RangeError(`unknown technique ${String(g.technique)}`);
+      for (const c of g.cells) {
+        if (solution.has(c) || board.kind[c] !== 'path' || this.crossedSet.has(c)) throw new RangeError(`cell ${c} cannot hold a hint X`);
+        this.crossedSet.add(c);
+      }
+      this.groups.push({ cells: [...g.cells], technique: g.technique, because: [...g.because] });
+    }
     for (const c of start.placed ?? []) {
-      if (!canPlace(board, c, this.lockedSet)) throw new RangeError(`cell ${c} cannot hold a player firefly`);
+      if (!canPlace(board, c, this.lockedSet) || this.crossedSet.has(c)) throw new RangeError(`cell ${c} cannot hold a player firefly`);
       this.placedSet.add(c);
+    }
+    for (const c of start.marks ?? []) {
+      if (!canPlace(board, c, this.lockedSet) || this.crossedSet.has(c) || this.placedSet.has(c)) throw new RangeError(`cell ${c} cannot hold an X`);
+      this.marksSet.add(c);
     }
     if (this.placedSet.size + this.lockedSet.size > this.jarSize) {
       throw new RangeError(`${this.placedSet.size + this.lockedSet.size} fireflies do not fit a jar of ${this.jarSize}`);
@@ -91,6 +140,26 @@ export class Play {
 
   get locked(): ReadonlySet<number> {
     return this.lockedSet;
+  }
+
+  /** Every hint X on the board. */
+  get crossed(): ReadonlySet<number> {
+    return this.crossedSet;
+  }
+
+  /** The hint X marks by hint, oldest first (saved, and for showing a reason again). */
+  get crossGroups(): readonly CrossGroup[] {
+    return this.groups;
+  }
+
+  /** The player's own X marks. */
+  get marks(): ReadonlySet<number> {
+    return this.marksSet;
+  }
+
+  /** What a tile holds that the player can change. */
+  markOf(cell: number): TileMark {
+    return this.placedSet.has(cell) ? 'firefly' : this.marksSet.has(cell) ? 'x' : 'empty';
   }
 
   get evaluation(): Evaluation {
@@ -121,32 +190,40 @@ export class Play {
     return this.ops.length > 0;
   }
 
+  /** Cycle a tile: empty, firefly, X, empty. A hint's X shows its reason again instead. */
   tap(cell: number): TapResult {
     if (this.solved) return 'blocked';
     if (this.lockedSet.has(cell)) {
       this.shown = null;
       return 'locked';
     }
+    if (this.crossedSet.has(cell)) {
+      const g = this.groups.find((x) => x.cells.includes(cell));
+      this.shown = g ? crossHint(this.board, g) : null;
+      return 'hint-x';
+    }
     if (!canPlace(this.board, cell, this.lockedSet)) return 'blocked';
-    const placed = !this.placedSet.has(cell);
-    if (placed && this.remaining === 0) {
-      this.shown = null;
-      return 'jar-empty';
-    }
-    if (placed) {
-      this.placedSet.add(cell);
-      this.placements++;
-    } else {
-      this.placedSet.delete(cell);
-    }
-    this.ops.push({ kind: 'toggle', cell, placed });
+    const from = this.markOf(cell);
+    // With the jar empty, an empty tile skips the firefly and takes an X (X marks are free).
+    const jarEmpty = from === 'empty' && this.remaining === 0;
+    const to: TileMark = jarEmpty ? 'x' : from === 'empty' ? 'firefly' : from === 'firefly' ? 'x' : 'empty';
+    this.setMark(cell, to);
+    if (to === 'firefly') this.placements++;
+    this.ops.push({ kind: 'tile', cell, from, to });
     this.changed();
-    return placed ? 'placed' : 'removed';
+    return jarEmpty ? 'jar-empty' : to === 'firefly' ? 'placed' : to === 'x' ? 'marked' : 'cleared';
+  }
+
+  private setMark(cell: number, to: TileMark): void {
+    this.placedSet.delete(cell);
+    this.marksSet.delete(cell);
+    if (to === 'firefly') this.placedSet.add(cell);
+    else if (to === 'x') this.marksSet.add(cell);
   }
 
   /**
-   * Undo the last move. Because a hint rewrites history (`forgetCell`), undo
-   * can reach a solved position the player never had: callers must check
+   * Undo the last move (X marks included). Because a hint rewrites history (`forget`),
+   * undo can reach a solved position the player never had: callers must check
    * `solved` afterwards, as after a tap.
    */
   undo(): UndoResult {
@@ -156,25 +233,26 @@ export class Play {
     // Bringing fireflies back can't overfill the jar (a hint may have used a slot since).
     // Refuse instead of restoring part of it: the step stays, so it can be undone once
     // the player frees room, and nothing changes behind their back.
-    const returning = op.kind === 'toggle' ? (op.placed ? 0 : 1) : op.cells.length;
+    const returning = op.kind === 'tile' ? (op.from === 'firefly' ? 1 : 0) : op.cells.length;
     if (returning > this.remaining) return 'jar-full';
     this.ops.pop();
-    if (op.kind === 'toggle') {
-      if (op.placed) this.placedSet.delete(op.cell);
-      else this.placedSet.add(op.cell);
+    if (op.kind === 'tile') {
+      this.setMark(op.cell, op.from);
     } else {
       for (const c of op.cells) this.placedSet.add(c);
+      for (const c of op.marks) this.marksSet.add(c);
     }
     this.undos++;
     this.changed();
     return 'undone';
   }
 
-  /** Clears the player's fireflies; locked hint fireflies stay. */
+  /** Clears the player's fireflies and X marks; hint X marks (and old hint fireflies) stay. */
   reset(): void {
-    if (this.solved || this.placedSet.size === 0) return;
-    this.ops.push({ kind: 'reset', cells: [...this.placedSet] });
+    if (this.solved || (this.placedSet.size === 0 && this.marksSet.size === 0)) return;
+    this.ops.push({ kind: 'reset', cells: [...this.placedSet], marks: [...this.marksSet] });
     this.placedSet.clear();
+    this.marksSet.clear();
     this.restarts++;
     this.changed();
   }
@@ -184,38 +262,66 @@ export class Play {
     this.shown = null;
   }
 
-  /** What a hint would do now, without applying it (nothing is charged). */
+  /** What a hint would do now, without applying it (nothing is charged). The player's X marks are never read. */
   peekHint(): Hint {
-    return nextHint(this.board, this.solution, [...this.placedSet, ...this.lockedSet], this.lockedSet);
+    return nextHint(this.board, this.solution, [...this.placedSet, ...this.lockedSet], this.lockedSet, this.crossedSet);
+  }
+
+  /**
+   * True when `h` points exactly where the last pointing hint did, on the same position:
+   * asking again shows it again (`reshow`), free, since nothing new would be learned.
+   */
+  repeatsPoint(h: Hint): boolean {
+    return h.kind === 'point' && this.pointedAt === this.positionKey();
+  }
+
+  /** Show a repeated pointing hint again, uncharged. */
+  reshow(h: ShownHint): void {
+    this.shown = h;
   }
 
   /**
    * Apply the next hint. The caller charges for it first; this never fails
-   * once charged unless the board is already solved (returns `none`).
+   * once charged unless the board is already solved (returns `none`). A hint never
+   * places a firefly: it removes a wrong one, crosses tiles out, or points.
    */
   applyHint(): Hint {
     const h = this.peekHint();
     if (h.kind === 'none') return h;
     if (h.kind === 'remove') {
       this.placedSet.delete(h.cell);
-    } else {
-      this.placedSet.delete(h.cell);
-      this.lockedSet.add(h.cell);
+      this.forget([h.cell]);
+    } else if (h.kind === 'cross') {
+      for (const c of h.cells) {
+        // A player's X on the same tile becomes the hint's (locked) one.
+        this.marksSet.delete(c);
+        this.crossedSet.add(c);
+      }
+      this.groups.push({ cells: [...h.cells], technique: h.technique, because: [...h.because] });
+      this.forget(h.cells);
     }
-    this.forgetCell(h.cell);
     this.hints++;
     this.cached = null;
     this.shown = h;
+    this.pointedAt = h.kind === 'point' ? this.positionKey() : null;
     return h;
   }
 
-  /** Undo history must never re-add a removed wrong firefly or touch a locked one. */
-  private forgetCell(cell: number): void {
+  /** The position a hint reads: fireflies and hint X marks (never the player's X marks). */
+  private positionKey(): string {
+    const sorted = (s: Iterable<number>) => [...s].sort((a, b) => a - b).join(',');
+    return `${sorted([...this.placedSet, ...this.lockedSet])}|${sorted(this.crossedSet)}`;
+  }
+
+  /** Undo history must never re-add a removed wrong firefly or put anything on a hint's tile. */
+  private forget(cells: readonly number[]): void {
+    const gone = new Set(cells);
     this.ops = this.ops
       .map((op): Op | null => {
-        if (op.kind === 'toggle') return op.cell === cell ? null : op;
-        const cells = op.cells.filter((c) => c !== cell);
-        return cells.length > 0 ? { kind: 'reset', cells } : null;
+        if (op.kind === 'tile') return gone.has(op.cell) ? null : op;
+        const kept = op.cells.filter((c) => !gone.has(c));
+        const marks = op.marks.filter((c) => !gone.has(c));
+        return kept.length + marks.length > 0 ? { kind: 'reset', cells: kept, marks } : null;
       })
       .filter((op): op is Op => op !== null);
   }

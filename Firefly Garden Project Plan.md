@@ -203,7 +203,7 @@ Ads earn on session length, so the money follows retention: a game people keep p
 | Placement | When | Rules |
 | --- | --- | --- |
 | Midgame (interstitial) | On the level-complete screen, before the next board | None in the first session's first 5 levels. Request at every completion; the portal SDK enforces its own cap (CrazyGames: at most 1 per 3 minutes). Never on menu buttons |
-| Rewarded: hint | Player taps Hint | Fixes one wrong firefly or places one correct one. Optional, clearly marked with a video icon, equal-size "no thanks" |
+| Rewarded: hint | Player taps Hint | Fixes one wrong firefly, crosses out tiles that cannot hold one, or points at what to look at (never places a firefly; decided 2026-11-28). Optional, clearly marked with a video icon, equal-size "no thanks" |
 | Rewarded: coin doubler | Level-complete screen, occasionally | Never in the same break as a midgame ad (portal rule) |
 | Rewarded: streak saver | Daily puzzle missed | Keeps the streak once per week |
 | Banner | Not in v1 | Allowed only on screens open 5+ seconds, never during play; low value for this game |

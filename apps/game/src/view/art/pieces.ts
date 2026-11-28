@@ -322,14 +322,79 @@ export function drawHintHalo(ctx: CanvasRenderingContext2D, c: Css, cell: number
   });
 }
 
-/** Ruled out: a small pale brush cross on the dark tile. */
-export function drawRuledCross(ctx: CanvasRenderingContext2D, c: Css, cell: number): void {
+/**
+ * One soft brush stroke along a quadratic curve, `w` units at its widest and tapering to
+ * round ends (`tip` units), so it reads as a dab of paint rather than a vector line.
+ */
+function brushStroke(ctx: CanvasRenderingContext2D, x0: number, y0: number, cx: number, cy: number, x1: number, y1: number, w: number, tip: number): Path2D {
+  const N = 18;
+  const left: [number, number][] = [], right: [number, number][] = [];
+  for (let i = 0; i <= N; i++) {
+    const t = i / N, mt = 1 - t;
+    const x = mt * mt * x0 + 2 * mt * t * cx + t * t * x1, y = mt * mt * y0 + 2 * mt * t * cy + t * t * y1;
+    const dx = 2 * mt * (cx - x0) + 2 * t * (x1 - cx), dy = 2 * mt * (cy - y0) + 2 * t * (y1 - cy);
+    const len = Math.hypot(dx, dy) || 1;
+    // Fuller just after the start (where the brush lands), easing off toward the lift.
+    const half = (tip + (w / 2 - tip) * Math.sin(Math.PI * t) ** 0.7 * (1.08 - 0.16 * t)) / len;
+    left.push([x - dy * half, y + dx * half]);
+    right.push([x + dy * half, y - dx * half]);
+  }
+  const p = new Path2D();
+  p.moveTo(left[0]![0], left[0]![1]);
+  for (const [x, y] of left.slice(1)) p.lineTo(x, y);
+  p.arc(x1, y1, tip, Math.atan2(left[N]![1] - y1, left[N]![0] - x1), Math.atan2(right[N]![1] - y1, right[N]![0] - x1), true);
+  for (const [x, y] of right.reverse().slice(1)) p.lineTo(x, y);
+  p.arc(x0, y0, tip, Math.atan2(right.at(-1)![1] - y0, right.at(-1)![0] - x0), Math.atan2(left[0]![1] - y0, left[0]![0] - x0), true);
+  p.closePath();
+  ctx.fill(p);
+  return p;
+}
+
+/**
+ * The X mark, the same for a hint and the player's own: one hand-drawn coral X in two soft
+ * strokes over the tile's face (each a deep-coral edge, the coral body and a wet highlight),
+ * with a faint ink shadow so it sits on the paper.
+ */
+export function drawXMark(ctx: CanvasRenderingContext2D, c: Css, cell: number): void {
   inUnits(ctx, cell, () => {
-    // Two passes, the second thinner and nudged, so the stroke reads as a brush, not a vector line.
-    stroke(ctx, new Path2D('M34 31 q4 4 16 16 M50 31 q-5 5 -16 16'), c.ruled, 3);
-    ctx.globalAlpha = 0.5;
-    stroke(ctx, new Path2D('M34.6 30.4 q4 4.4 16 16.4 M50.4 31.6 q-5.4 4.8 -16.2 15.6'), c.ruled, 1.4);
+    // Strokes in the 84-unit tile: the face's centre is (42, 38). The second crosses a touch
+    // off-centre and steeper, the way a hand draws it.
+    const strokes: [number, number, number, number, number, number][] = [
+      [28.5, 24.5, 39, 35, 55, 51.5],
+      [55.5, 23.5, 44.5, 36.5, 29.5, 52.5],
+    ];
+    ctx.save();
+    ctx.globalAlpha = 0.28;
+    ctx.fillStyle = c.nightDeep;
+    ctx.translate(0.8, 2.2);
+    for (const [x0, y0, cx, cy, x1, y1] of strokes) brushStroke(ctx, x0, y0, cx, cy, x1, y1, 10.5, 3.2);
+    ctx.restore();
+    for (const [x0, y0, cx, cy, x1, y1] of strokes) {
+      ctx.fillStyle = c.markDeep;
+      brushStroke(ctx, x0, y0, cx, cy, x1, y1, 10.5, 3.2);
+      ctx.fillStyle = c.mark;
+      brushStroke(ctx, x0 + 0.3, y0 + 0.2, cx, cy - 0.4, x1 - 0.3, y1 - 0.4, 7.6, 2.1);
+      ctx.save();
+      ctx.globalAlpha = 0.75;
+      ctx.fillStyle = c.markLight;
+      // The highlight rides the upper edge of the stroke's first half, where the paint is wettest.
+      const mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+      brushStroke(ctx, x0 + 0.8, y0 - 0.6, (x0 + mx) / 2, (y0 + my) / 2 - 1.6, mx, my - 1.8, 2.2, 0.7);
+      ctx.restore();
+    }
   });
+}
+
+/** A grain of pollen for the puff as an X lifts away: a soft warm dot, `px` CSS pixels wide. */
+export function drawPollen(ctx: CanvasRenderingContext2D, c: Css, px: number): void {
+  const r = px / 2;
+  const g = ctx.createRadialGradient(r, r, 0, r, r, r);
+  g.addColorStop(0, c.pollen);
+  g.addColorStop(0.45, c.pollen);
+  g.addColorStop(0.7, `${c.pollen}80`);
+  g.addColorStop(1, `${c.pollen}00`);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, px, px);
 }
 
 /** A lit tile under fireflies that see each other: no warm centre, soft rose hatching. */
