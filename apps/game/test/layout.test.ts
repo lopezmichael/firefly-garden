@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bandFor, fitBoard, flightPath, HILLS, hillsFor, HOME_FIT, HOME_SCENE, homeFit, keepOrTurn, mapLayout, MIN_TAP, orientFor, segmentPoints, releasePath } from '../src/view/layout.ts';
+import { bandFor, fitBoard, flightPath, HILLS, hillsFor, HOME_FIT, HOME_SCENE, homeFit, keepOrTurn, MAP_FIELD, mapFieldHeight, mapLayout, MIN_TAP, orientFor, segmentPoints, releasePath } from '../src/view/layout.ts';
 import type { HomeFit } from '../src/view/layout.ts';
 
 describe('layout bands follow the screen shape', () => {
@@ -109,6 +109,16 @@ describe('the garden map path', () => {
       expect(p.x).toBeGreaterThan(40);
       expect(p.x).toBeLessThan(350);
     }
+  });
+
+  it('a field of the least height keeps any number of stops far enough apart for their labels', () => {
+    for (const n of [2, 4, 6, 11]) {
+      const h = mapFieldHeight(n);
+      const s = mapLayout(n, 320, MAP_FIELD.top, h - MAP_FIELD.bottom).stops;
+      for (let i = 1; i < n; i++) expect(s[i]!.y - s[i - 1]!.y).toBeGreaterThanOrEqual(MAP_FIELD.minStep);
+    }
+    // The four-stop field (three chapters and the teaser) still fits the old 360px floor.
+    expect(mapFieldHeight(4)).toBeLessThanOrEqual(360);
   });
 
   it('zig-zags, with each label on the open side', () => {

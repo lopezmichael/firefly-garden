@@ -150,7 +150,7 @@ test('a reload resumes the exact board', async ({ page }) => {
   expect(after.placed).toEqual(before.placed);
 });
 
-// No garden in this build is non-square (chapters 1 to 3 and the reserve), so the board never turns
+// No garden in this build is non-square (the Rose Bed and the reserve), so the board never turns
 // (rot90 is covered by the unit tests of the display mapping). This holds the board, undo and clock
 // through landscape and a fold, and says so if a non-square garden ever ships.
 test('landscape and a fold mid-level keep the board, the undo stack and the clock', async ({ page }) => {
@@ -596,6 +596,30 @@ test('the garden journal: a page per chapter with its seal and pressed gardens, 
     return top.scrollWidth <= top.clientWidth + 1 && map.scrollWidth <= map.clientWidth + 1;
   });
   expect(fits).toBe(true);
+});
+
+test('the map gives every chapter room on a small phone: no label over a stop, the chapter in play on screen', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await open(page);
+  const chapters = await page.evaluate(() => window.__ff.chapters());
+  const last = chapters.length - 1;
+  // Every chapter but the last finished, a few gardens into the last: the map's longest path.
+  await page.evaluate((ids) => window.__ff.markSolved(ids), [...chapters.slice(0, last).flat(), ...chapters[last]!.slice(0, 3)]);
+  await page.reload();
+  await page.locator('.ff-home:not([hidden]) .ff-home-go').click();
+  await expect(page.locator('.ff-map')).toBeVisible();
+  await expect(page.locator('.ff-mstop-ring')).toHaveCount(chapters.length);
+  const clash = await page.evaluate(() => {
+    const hit = (a: DOMRect, b: DOMRect) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+    const rings = [...document.querySelectorAll('.ff-mstop-ring, .ff-mstop-teaser')].map((n) => n.getBoundingClientRect());
+    const labels = [...document.querySelectorAll('.ff-map-bed, .ff-map-teaser')].map((n) => n.getBoundingClientRect());
+    return labels.flatMap((l, i) => rings.flatMap((r, j) => (hit(l, r) ? [`label ${i} over stop ${j}`] : [])));
+  });
+  expect(clash).toEqual([]);
+  // It opens scrolled to the chapter in play.
+  const now = await page.locator('.ff-mstop-now .ff-mstop-ring').boundingBox();
+  expect(now!.y).toBeGreaterThanOrEqual(0);
+  expect(now!.y + now!.height).toBeLessThanOrEqual(568);
 });
 
 test('every garden shows its difficulty beside its place in the chapter', async ({ page }) => {

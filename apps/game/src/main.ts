@@ -4,14 +4,13 @@ import './ui/game.css';
 import launch from '../../../levels/launch.json';
 import manifest from '../../../levels/manifest.json';
 import reserve from '../../../levels/reserve.json';
+import { PLAYED_CHAPTERS } from './build.ts';
 import { createPlatform } from './platform/index.ts';
 import { createCatalog } from './state/catalog.ts';
 import { GameApp } from './ui/app.ts';
 import { bakeChromePaper } from './view/art/textures.ts';
 import { readPalette } from './view/theme.ts';
 
-/** Chapters this build plays (Phase 2: the Rose Bed). */
-const CHAPTERS = ['c1', 'c2', 'c3'];
 
 async function start(): Promise<void> {
   const root = document.getElementById('app');
@@ -22,7 +21,7 @@ async function start(): Promise<void> {
   // A font that fails to load is not fatal: the CSS stacks fall back to system faces.
   await Promise.all([document.fonts.load('400 24px "Young Serif"'), document.fonts.load('400 15px Figtree'),
     document.fonts.load('600 15px Figtree'), document.fonts.load('700 15px Figtree')]).catch(() => undefined);
-  const catalog = createCatalog({ launch, reserve, manifest }, CHAPTERS);
+  const catalog = createCatalog({ launch, reserve, manifest }, PLAYED_CHAPTERS);
   const palette = readPalette();
   // One baked paper tile for the DOM chrome; components layer it over --ff-paper. It arrives a
   // moment after the first frame (plain paper until then), and the game never waits for it.

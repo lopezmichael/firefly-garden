@@ -235,6 +235,19 @@ export function hillsFor(band: Band, width: number, height: number, card: Rect):
   return { left, right, duskTop, mossTop, bottom: height, motes };
 }
 
+/**
+ * The garden map's field: room above the first stop and below the last, and the least room
+ * between two stops. A label sits beside its stop, on the side where the next stop sits, so
+ * stops closer than a stop's glow (40) plus half a label (26) and some air let the label cover
+ * its neighbour; the map grows (and scrolls) instead.
+ */
+export const MAP_FIELD = { top: 44, bottom: 36, minStep: 92 } as const;
+
+/** The least field height that keeps `stops` stops at least `MAP_FIELD.minStep` apart. */
+export function mapFieldHeight(stops: number): number {
+  return MAP_FIELD.top + MAP_FIELD.bottom + Math.max(0, stops - 1) * MAP_FIELD.minStep;
+}
+
 /** The garden map's stop x positions as fractions of the width, cycling (from the canvas board). */
 export const MAP_XS = [0.25, 0.74, 0.38, 0.77] as const;
 

@@ -50,7 +50,9 @@ export function chapterTotals(chapter: ChapterLevels, history: readonly Pick<Pla
 const LINES: Readonly<Record<string, string>> = {
   c1: 'Every garden in the first bed is glowing. You read a bush’s dots at a glance now.',
   c2: 'You learned to read two bushes together, where their numbers share a spot.',
-  c3: 'You learned to look one move ahead. The whole Rose Bed is glowing.',
+  c3: 'You learned to look one move ahead. Now you know every trick the roses teach.',
+  c4: 'Bigger beds, and you read them all: sharing bushes and moves ahead together.',
+  c5: 'The whole Rose Bed is glowing. Every trick you learned here, you used.',
 };
 
 export function chapterLine(chapterId: string): string {

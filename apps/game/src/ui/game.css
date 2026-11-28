@@ -382,7 +382,8 @@
 .ff-map-fill { height: 100%; width: 0; background: var(--ff-rose); }
 .ff-map-note { margin: 0; font-size: 14px; line-height: 1.4; color: var(--ff-sumi-soft); }
 /* The path and its stops, drawn by map.ts for the field's size; labels sit beside each stop. */
-.ff-map-field { flex: 1; min-height: 360px; }
+/* At least 360px, and tall enough that every stop has room (--ff-map-field, set per open from the stop count). */
+.ff-map-field { flex: 1; min-height: max(360px, var(--ff-map-field, 0px)); }
 .ff-map-drawing { position: absolute; inset: 0; overflow: visible; }
 .ff-map-path { fill: none; stroke: var(--ff-paper-quiet); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 0.1 9; opacity: 0.8; }
 .ff-mstop-ring { fill: var(--ff-paper); stroke: var(--ff-sumi); stroke-width: 2; }

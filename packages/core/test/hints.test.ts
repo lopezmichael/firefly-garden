@@ -11,10 +11,11 @@ const pack = (file: string): Level[] =>
   (JSON.parse(readFileSync(join(LEVELS, file), 'utf8')) as { levels: unknown[] }).levels.map((l) => parseLevel(l));
 const manifest = JSON.parse(readFileSync(join(LEVELS, 'manifest.json'), 'utf8')) as { chapters: { id: string; levels: string[] }[] };
 const launch = new Map(pack('launch.json').map((l) => [l.id, l]));
-const firstChapters = manifest.chapters.slice(0, 3).flatMap((c) => c.levels.map((id) => launch.get(id)!));
+// The chapters the game plays (apps/game/src/build.ts; core tests import nothing outside core): the Rose Bed.
+const firstChapters = manifest.chapters.slice(0, 5).flatMap((c) => c.levels.map((id) => launch.get(id)!));
 const reserve = pack('reserve.json');
 
-/** Generated boards with every twist (lanterns, moonlit, mushrooms), which chapters 1 to 3 do not have. */
+/** Generated boards with every twist (lanterns, moonlit, mushrooms), which the Rose Bed does not have. */
 const twisted: Level[] = [];
 for (let i = 0; i < 12; i++) {
   const gen = generate({
@@ -188,7 +189,7 @@ describe('hint', () => {
     return { problems, kinds };
   }
 
-  it('is always correct and repeated hints always finish the level (chapters 1 to 3, reserve, twists)', () => {
+  it('is always correct and repeated hints always finish the level (the Rose Bed, reserve, twists)', () => {
     const problems: string[] = [];
     const counts: Record<string, number> = {};
     const all = [...firstChapters, ...reserve, ...twisted];

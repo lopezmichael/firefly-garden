@@ -1,5 +1,5 @@
 import { drawScenery } from '../view/art/scenery.ts';
-import { hillsFor, mapLayout, segmentPoints } from '../view/layout.ts';
+import { hillsFor, MAP_FIELD, mapFieldHeight, mapLayout, segmentPoints } from '../view/layout.ts';
 import type { MapSegment, Point } from '../view/layout.ts';
 import type { Palette } from '../view/theme.ts';
 import { FIREFLY_SVG } from './flight.ts';
@@ -132,6 +132,8 @@ export class MapScreen {
   private flightTimer: ReturnType<typeof setTimeout> | null = null;
   /** The unlock flight has started for this open: a redraw (a resize) must never replay it. */
   private flown = false;
+  /** The map has been scrolled to the chapter in play for this open. */
+  private scrolled = false;
   /** The last layout's stops and path segments (field pixels), for flights and the moves in and out. */
   private stops: readonly Point[] = [];
   private segments: readonly MapSegment[] = [];
@@ -218,6 +220,8 @@ export class MapScreen {
     this.continueButton.focus({ preventScroll: true });
     this.stopFlight();
     this.flown = false;
+    this.scrolled = false;
+    this.field.style.setProperty('--ff-map-field', `${mapFieldHeight(view.beds.length + 1)}px`);
     this.queue();
   }
 
@@ -311,7 +315,7 @@ export class MapScreen {
     if (!view || this.root.hidden) return;
     const w = this.field.clientWidth, h = this.field.clientHeight;
     if (w < 1 || h < 1) return;
-    const layout = mapLayout(view.beds.length + 1, w, 44, Math.max(88, h - 36));
+    const layout = mapLayout(view.beds.length + 1, w, MAP_FIELD.top, Math.max(MAP_FIELD.top * 2, h - MAP_FIELD.bottom));
     this.stops = layout.stops;
     this.segments = layout.segments;
     this.drawing.setAttribute('viewBox', `0 0 ${w} ${h}`);
@@ -353,7 +357,23 @@ export class MapScreen {
         this.fly(seg);
       }
     }
+    if (!this.scrolled) this.scrollToFocus(view, layout.stops);
     for (const wait of this.drawWaiters.splice(0)) wait();
+  }
+
+  /**
+   * Once per open, before anything reads a stop's position: scroll the map (it grows past a short
+   * screen once an area has many chapters) so the chapter in play is in the middle, with its flight
+   * in view. A jump, never a smooth scroll, so it needs no reduced-motion path.
+   */
+  private scrollToFocus(view: MapView, stops: readonly Point[]): void {
+    this.scrolled = true;
+    const now = view.beds.findIndex((b) => b.state === 'now');
+    const index = now >= 0 ? now : view.flyFrom !== null ? view.flyFrom + 1 : view.beds.length - 1;
+    const p = stops[index];
+    if (!p) return;
+    const fieldTop = this.field.getBoundingClientRect().top - this.root.getBoundingClientRect().top + this.root.scrollTop;
+    this.root.scrollTop = Math.max(0, Math.round(fieldTop + p.y - this.root.clientHeight / 2));
   }
 
   private placeLabel(node: HTMLElement, p: Point, right: boolean, w: number): void {

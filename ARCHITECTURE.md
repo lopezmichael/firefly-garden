@@ -78,6 +78,10 @@ Plain DOM for the screens, PixiJS for the board, one controller between them.
 The look is ink and wash (`docs/design/assets.md`, plan `docs/plans/2026-11-12-ink-wash-theme.md`)
 over the Phase 2 baseline's structure (`docs/design/phase-2/`).
 
+Which chapters a build plays is one list, `PLAYED_CHAPTERS` in `src/build.ts` (data, no imports).
+The game, its tests, the hint-economy ratchet and the difficulty report all read it, so the
+guardrails check exactly the main path that ships.
+
 | Folder | Holds | May import |
 | --- | --- | --- |
 | `src/state/` | Level catalog (`catalog.ts`), one play with undo, reset, hints and active time (`play.ts`), coins and hint bank (`wallet.ts`), progress and the next-level policy (`session.ts`), status-card wording (`status.ts`), saved progress and its validation (`save.ts`), the local analytics log (`events.ts`), sound cues from a change of position (`cues.ts`), one-time tips and conflict words (`teach.ts`), cell words for screen readers (`describe.ts`), which solve finishes a chapter and its card's totals (`chapters.ts`), the garden code that carries progress between devices (`gardenCode.ts`; the deflate itself is injected), the journal's pages and garden sketches (`journal.ts`), difficulty labels from a garden's tier (`difficulty.ts`), what the home screen says and where its button goes (`home.ts`) | `@firefly/core` only, no browser globals (ratchet) |
