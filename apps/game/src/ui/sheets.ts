@@ -55,6 +55,8 @@ class Sheet {
     });
   }
 
+  private wasInert = new Map<HTMLElement, boolean>();
+
   get isOpen(): boolean {
     return !this.backdrop.hidden;
   }
@@ -62,7 +64,9 @@ class Sheet {
   protected show(focus: HTMLElement): void {
     this.returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     this.backdrop.hidden = false;
-    for (const el of this.background()) el.inert = true;
+    // Remember what was inert already (the board under the home screen or the map), to give it back.
+    this.wasInert = new Map(this.background().map((el) => [el, el.inert]));
+    for (const el of this.wasInert.keys()) el.inert = true;
     document.addEventListener('keydown', this.onKey);
     focus.focus({ preventScroll: true });
   }
@@ -70,7 +74,8 @@ class Sheet {
   close(): void {
     if (!this.isOpen) return;
     this.backdrop.hidden = true;
-    for (const el of this.background()) el.inert = false;
+    for (const [el, was] of this.wasInert) el.inert = was;
+    this.wasInert = new Map();
     document.removeEventListener('keydown', this.onKey);
     this.returnFocus?.focus({ preventScroll: true });
     this.onClose?.();

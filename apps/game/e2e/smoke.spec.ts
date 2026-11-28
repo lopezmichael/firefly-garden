@@ -21,9 +21,15 @@ declare global {
 
 const { startingCoins, hintCost, coinsPerSolve, hintsPerAd } = PLAYER_CONFIG.economy;
 
+/** Every launch opens on the home screen: press its button to carry on into the garden. */
+async function pastHome(page: Page): Promise<void> {
+  await page.locator('.ff-home:not([hidden]) .ff-home-go').click();
+  await page.waitForFunction(() => window.__ff?.level() != null);
+}
+
 async function open(page: Page): Promise<void> {
   await page.goto('/');
-  await page.waitForFunction(() => window.__ff?.level() != null);
+  await pastHome(page);
   // Web fonts landing late can resize the card and move the board under a test's taps.
   await page.evaluate(() => document.fonts.ready);
 }
@@ -61,8 +67,11 @@ async function solveByTaps(page: Page): Promise<void> {
 const answerCells = async (page: Page) => (await level(page)).answer;
 
 test('solves the first garden by tapping its answer, the complete card credits the coins, and Next moves on', async ({ page }) => {
-  await open(page);
+  await page.goto('/');
+  await expect(page.locator('.ff-home')).toBeVisible();
   expect((await page.evaluate(() => window.__ff.audio())).context).toBe('none'); // no sound before a gesture
+  await pastHome(page);
+  await page.evaluate(() => document.fonts.ready);
   const start = await page.evaluate(() => window.__ff.wallet());
   expect(start.coins).toBe(startingCoins);
   const l = await level(page);
@@ -130,7 +139,12 @@ test('a reload resumes the exact board', async ({ page }) => {
   expect(before.placed).toEqual([a]);
   await page.waitForTimeout(500); // saves are batched (300 ms)
   await page.reload();
-  await page.waitForFunction(() => window.__ff?.level() != null);
+  await expect(page.locator('.ff-home-go')).toContainText('Back to garden 1');
+  // A save while home is open (here the batched one after launch) keeps the board waiting.
+  await page.waitForTimeout(500);
+  await page.reload();
+  await expect(page.locator('.ff-home-go')).toContainText('Back to garden 1');
+  await pastHome(page);
   const after = await level(page);
   expect(after.id).toBe(before.id);
   expect(after.placed).toEqual(before.placed);
@@ -213,7 +227,7 @@ test('sound: silent while the tab is hidden, and the setting holds across a relo
   expect((await page.evaluate(() => window.__ff.audio())).reasons).toEqual(['setting']);
   await page.waitForTimeout(500);
   await page.reload();
-  await page.waitForFunction(() => window.__ff?.level() != null);
+  await pastHome(page);
   expect((await page.evaluate(() => window.__ff.audio())).reasons).toContain('setting');
 });
 
@@ -315,26 +329,32 @@ test('finishing a chapter: Finish the chapter, the card over the map with its bo
   await expect(page.locator('.ff-map-flier')).toHaveCount(1);
   await expect.poll(async () => (await level(page))?.id, { timeout: 10_000 }).toBe(next);
   await expect(page.locator('.ff-map')).toBeHidden();
-  // The flight is seen: a reload opens the new garden, never the flight again.
+  // The flight is seen: after a reload the home screen's button opens the new garden, never the flight again.
   await page.reload();
-  await page.waitForFunction(() => window.__ff?.level() != null);
+  await pastHome(page);
   expect((await level(page)).id).toBe(next);
+  await expect(page.locator('.ff-map')).toBeHidden();
 });
 
-test('a reload on the chapter card opens the map and plays the flight once', async ({ page }) => {
+test('a reload on the chapter card: home sends you to the map, which plays the flight once', async ({ page }) => {
   await open(page);
-  await toChapterEnd(page);
+  const { next } = await toChapterEnd(page);
   await solveByTaps(page);
   await page.locator('.ff-complete-next').click();
   await expect(page.locator('.ff-chapter-card')).toBeVisible();
   await page.reload();
+  await expect(page.locator('.ff-home-say')).toContainText('Chapter 1 is glowing');
+  await page.locator('.ff-home-go').click();
   await expect(page.locator('.ff-map')).toBeVisible();
   await expect(page.locator('.ff-map-flier')).toHaveCount(1);
   // The finished chapter's seal is stamped on the map.
   await expect(page.locator('.ff-mseal')).toHaveCount(1);
+  // Seen once: next time home carries straight on into the new chapter.
   await page.reload();
-  await expect(page.locator('.ff-map')).toBeVisible();
-  await page.waitForTimeout(1200);
+  await expect(page.locator('.ff-home-go')).toContainText('Light garden 1');
+  await pastHome(page);
+  expect((await level(page)).id).toBe(next);
+  await expect(page.locator('.ff-map')).toBeHidden();
   await expect(page.locator('.ff-map-flier')).toHaveCount(0);
 });
 
@@ -348,13 +368,17 @@ test('opening lines: the first garden teaches the goal, a chapter\'s first garde
   await expect(page.locator('.ff-status-title')).toHaveText(/^New: /);
 });
 
-test('a returning player is welcomed on the map, and a garden left unfinished is marked waiting', async ({ page }) => {
+test('a returning player is welcomed home, and a garden left unfinished is marked waiting on the map', async ({ page }) => {
   await open(page);
   await tapCell(page, (await level(page)).answer[0]!);
   await page.locator('.ff-top .ff-gear[aria-label="Garden map"]').click();
   await expect(page.locator('.ff-map-bed[data-waiting="true"]')).toContainText('a garden is waiting');
   await page.reload();
-  await expect(page.locator('.ff-map-note')).toContainText('Welcome back.');
+  await expect(page.locator('.ff-home-say-title')).toHaveText('Welcome back!');
+  await expect(page.locator('.ff-home-say-line')).toHaveText('Your first garden is still waiting for you.');
+  // The parked board comes back as it was left.
+  await pastHome(page);
+  expect((await level(page)).placed).toHaveLength(1);
 });
 
 test('the build\'s last chapter ends on the ending card, then the finished map', async ({ page }) => {
@@ -500,7 +524,7 @@ test('a garden code carries the garden to another device, after a yes; a bad cod
   expect(await solvedB()).toBe(0);
   await pb.evaluate(() => { Storage.prototype.setItem = (window as unknown as { realSetItem: Storage['setItem'] }).realSetItem; });
   await Promise.all([pb.waitForEvent('load'), pb.getByRole('button', { name: 'Replace my garden' }).click()]);
-  await pb.waitForFunction(() => window.__ff?.level() != null || document.querySelector('.ff-map:not([hidden])') != null);
+  await pb.waitForFunction(() => document.querySelector('.ff-home:not([hidden])') != null);
   await expect.poll(solvedB).toBe(4);
   // The garden moved; the device's analytics id did not.
   const after = await pb.evaluate(() => window.__ff.events());
@@ -512,17 +536,17 @@ test('a garden code carries the garden to another device, after a yes; a bad cod
   await b.close();
 });
 
-test('the garden journal: a page per chapter with its seal and pressed gardens, opened from the map', async ({ page }) => {
+test('the garden journal: a page per chapter with its seal and pressed gardens, opened from home and the map', async ({ page }) => {
   await open(page);
   const chapters = await page.evaluate(() => window.__ff.chapters());
   await page.evaluate((ids) => window.__ff.markSolved(ids), [...chapters[0]!, ...chapters[1]!.slice(0, 3)]);
   await page.reload();
-  await page.waitForFunction(() => document.querySelector('.ff-map:not([hidden])') != null);
-  const book = page.getByRole('button', { name: 'Garden journal' });
+  await page.waitForFunction(() => document.querySelector('.ff-home:not([hidden])') != null);
+  const book = page.locator('.ff-home').getByRole('button', { name: 'Garden journal' });
   await book.click();
   const journal = page.getByRole('dialog', { name: 'Garden journal' });
   await expect(journal).toBeVisible();
-  expect(await page.locator('.ff-map').evaluate((el) => (el as HTMLElement).inert)).toBe(true);
+  expect(await page.locator('.ff-home').evaluate((el) => (el as HTMLElement).inert)).toBe(true);
   // It opens on the chapter in play: chapter 2, three gardens grown, its seal not stamped yet.
   await expect(journal.getByRole('button', { name: /^Chapter 2/ })).toHaveAttribute('aria-current', 'page');
   await expect(journal).toContainText('3 of 10');
@@ -542,7 +566,7 @@ test('the garden journal: a page per chapter with its seal and pressed gardens, 
   await journal.locator('.ff-journal-line').click();
   await page.keyboard.press('Escape');
   await expect(journal).toBeHidden();
-  expect(await page.locator('.ff-map').evaluate((el) => (el as HTMLElement).inert)).toBe(false);
+  expect(await page.locator('.ff-home').evaluate((el) => (el as HTMLElement).inert)).toBe(false);
   await expect(book).toBeFocused();
   // Tab stays inside the journal and never lands on a dark chapter's tab.
   await book.click();
@@ -552,6 +576,15 @@ test('the garden journal: a page per chapter with its seal and pressed gardens, 
     expect(await page.evaluate(() => (document.activeElement as HTMLButtonElement | null)?.disabled ?? false)).toBe(false);
   }
   await page.keyboard.press('Escape');
+  // Chapter 1 glows and the map hasn't shown it yet: home's button opens the map, which has the book too.
+  await page.locator('.ff-home-go').click();
+  await expect(page.locator('.ff-map')).toBeVisible();
+  await page.locator('.ff-map-top').getByRole('button', { name: 'Garden journal' }).click();
+  await expect(journal).toBeVisible();
+  expect(await page.locator('.ff-map').evaluate((el) => (el as HTMLElement).inert)).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(journal).toBeHidden();
+  expect(await page.locator('.ff-map').evaluate((el) => (el as HTMLElement).inert)).toBe(false);
   // The map's header fits the narrowest phones with a big balance.
   await page.setViewportSize({ width: 320, height: 640 });
   await page.waitForTimeout(300); // let the map's resize redraw land first: it rewrites the coin count
@@ -591,3 +624,83 @@ test('every garden shows its difficulty beside its place in the chapter', async 
     expect(fits, `${width} px`).toBe(true);
   }
 });
+
+test('the home screen opens every launch: Pip greets, the garden lives behind, journal and settings open over it', async ({ page }) => {
+  await page.goto('/');
+  const home = page.locator('.ff-home');
+  await expect(home).toBeVisible();
+  await expect(page.locator('.ff-home-say-title')).toHaveText("Hello, I'm Pip!");
+  await expect(page.locator('.ff-home-go')).toContainText('Light the first garden');
+  await expect(page.locator('.ff-home-go')).toBeFocused();
+  await expect(home.locator('.ff-home-coins')).toHaveAccessibleName(`${startingCoins} coins`);
+  // The garden is drawn and moving; the board waits behind, out of reach.
+  await expect(home).toHaveAttribute('data-scene', 'ready');
+  const f0 = await page.evaluate(() => window.__ff.homeFrames());
+  await expect.poll(() => page.evaluate(() => window.__ff.homeFrames())).toBeGreaterThan(f0 + 5);
+  expect(await page.evaluate(() => window.__ff.level())).toBeNull();
+  expect(await page.locator('.ff-top').evaluate((el) => el.closest('[inert]') != null)).toBe(true);
+  // Settings opens over it and gives it back, with the board still out of reach.
+  await home.getByRole('button', { name: 'Settings' }).click();
+  await page.getByRole('button', { name: 'Done' }).click();
+  await expect(home).toBeVisible();
+  expect(await page.locator('.ff-top').evaluate((el) => el.closest('[inert]') != null)).toBe(true);
+  expect(await home.evaluate((el) => (el as HTMLElement).inert)).toBe(false);
+  // The button carries on into the first garden; the home garden's canvas is let go.
+  await pastHome(page);
+  await expect(home).toBeHidden();
+  await expect(home.locator('canvas')).toHaveCount(0);
+  expect((await level(page)).id).toBe((await page.evaluate(() => window.__ff.chapters()))[0]![0]);
+});
+
+test('the home garden holds still under reduced motion', async ({ browser }) => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, reducedMotion: 'reduce' });
+  const page = await ctx.newPage();
+  await page.goto('/');
+  await expect(page.locator('.ff-home')).toHaveAttribute('data-scene', 'ready');
+  await page.waitForTimeout(300);
+  const still = await page.evaluate(() => window.__ff.homeFrames());
+  expect(still).toBeGreaterThan(0);
+  await page.waitForTimeout(1000);
+  expect(await page.evaluate(() => window.__ff.homeFrames())).toBe(still);
+  await ctx.close();
+});
+
+for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 1280, height: 720 }, { width: 844, height: 390 }]) {
+  test(`the home screen fits at ${size.width} × ${size.height}: caption and buttons whole, on screen, apart`, async ({ page }) => {
+    await page.setViewportSize(size);
+    await page.goto('/');
+    await expect(page.locator('.ff-home')).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+    // The longest words the home screen can say.
+    await page.evaluate(() => {
+      document.querySelector('.ff-home-say-line')!.textContent = 'The garden\u2019s gone dark. Shall we light it?';
+      document.querySelector('.ff-home-go-label')!.textContent = 'Light the first garden';
+      document.querySelector('.ff-home-go-sub')!.textContent = 'Every garden is glowing';
+      document.querySelector('.ff-home-coins-n')!.textContent = '9999';
+    });
+    const box = (sel: string) => page.locator(sel).evaluate((el) => { const r = el.getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom }; });
+    const fits = await page.evaluate(() => {
+      const words = document.querySelector('.ff-home-say-words')!, say = document.querySelector('.ff-home-say')!;
+      const go = document.querySelector('.ff-home-go-label')!, sub = document.querySelector('.ff-home-go-sub')!, goB = document.querySelector('.ff-home-go')!;
+      return {
+        caption: words.getBoundingClientRect().bottom <= say.getBoundingClientRect().bottom - 2,
+        label: go.getBoundingClientRect().width <= goB.getBoundingClientRect().width - 8,
+        sub: sub.getBoundingClientRect().width <= goB.getBoundingClientRect().width - 8,
+      };
+    });
+    expect(fits).toEqual({ caption: true, label: true, sub: true });
+    const [title, say, actions, coins] = [await box('.ff-home-title'), await box('.ff-home-say'), await box('.ff-home-actions'), await box('.ff-home-coins')];
+    for (const r of [say, actions, coins]) {
+      expect(r.l).toBeGreaterThanOrEqual(0);
+      expect(r.r).toBeLessThanOrEqual(size.width);
+      expect(r.t).toBeGreaterThanOrEqual(0);
+      expect(r.b).toBeLessThanOrEqual(size.height);
+    }
+    const apart = (a: typeof say, b: typeof say) => a.r <= b.l || b.r <= a.l || a.b <= b.t || b.b <= a.t;
+    expect(apart(say, actions)).toBe(true);
+    expect(apart(say, coins)).toBe(true);
+    expect(apart(title, actions)).toBe(true);
+    expect(apart(title, coins)).toBe(true);
+    expect(say.t).toBeGreaterThanOrEqual(title.b - 6);
+  });
+}

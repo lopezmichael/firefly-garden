@@ -82,6 +82,21 @@
   --ff-level-expert: #e2553d;
   --ff-level-expert-text: #f58a72;   /* the word on the night sky: lighter, so it reads */
 
+  /* Home screen (docs/plans/2026-11-28-home-screen.md). The painted scene's light: the arch lantern
+     and each friend's lantern, as tints for one shared glow. The bands match the painting's own
+     edges (sky, haze at the horizon, meadow, the dark foreground), so on a wide screen its sides
+     melt into them. */
+  --ff-lantern-light: #ffb050;
+  --ff-friend-mint: #8ce6aa;
+  --ff-friend-peach: #ffa06e;
+  --ff-friend-sky: #8cbeff;
+  --ff-friend-lilac: #bea5ff;
+  --ff-home-sky-top: #0a0f23;
+  --ff-home-sky: #131e3e;
+  --ff-home-haze: #324769;
+  --ff-home-meadow: #1f4029;
+  --ff-home-ground: #081013;
+
   --ff-font-display: 'Young Serif', Georgia, serif;
   --ff-font-body: 'Figtree', system-ui, sans-serif;
   /* The garden code: characters that must read apart (l, 1, I). */

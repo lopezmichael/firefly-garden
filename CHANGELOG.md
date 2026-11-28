@@ -5,6 +5,15 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Added
+- **The home screen:** every launch now opens on a painted night garden instead of going straight to a garden or the map.
+  - A rose arch with a lantern, a cobbled path winding over the meadow's folds to a glowing glasshouse, the moon, and fireflies drifting and blinking over the grass.
+  - **Pip,** a lantern firefly with a wildflower garland, sits on the arch and waves, with hearts rising. Five friends in their own lantern colours bob in the meadow, and every part of them moves: breathing, wings, antennae, head tilts, blinks, wandering eyes, waves and grins.
+  - Pip's caption says where you are ("Hello, I'm Pip!" on the first launch; "Welcome back!" with your progress after). The big button says where it goes: the first garden, back to the garden you left, the next garden, or the map when a finished chapter's unlock is waiting. The book opens the journal and the gear opens settings.
+  - It fits phones edge to edge, shows as a column on tablets and desktops, and puts the scene beside a panel on a phone turned sideways. Reduced motion holds the scene still, and nothing is drawn while the tab is hidden.
+  - The art is painted once by `npm run art:home` and ships as two images (about 180 KB).
+
+### Changed
+- **The map no longer says "Welcome back":** the home screen welcomes returning players.
 - **Difficulty labels:** every garden shows its difficulty beside its place in the chapter: one to four leaves and a word (Easy, Medium, Hard, Expert), from the garden's stored tier. The leaves warm with difficulty: moss green, gold, amber, then red, and the word takes the colour from Hard up. On narrow phones the leaves stand alone and the word stays for screen readers. The progress line reads "3 of 10" to make room (screen readers still hear "Garden 3 of 10"). The journal shows each garden's coloured leaves under its sketch.
 
 ### Fixed
