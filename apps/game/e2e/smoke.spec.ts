@@ -24,6 +24,8 @@ const { startingCoins, hintCost, coinsPerSolve, hintsPerAd } = PLAYER_CONFIG.eco
 async function open(page: Page): Promise<void> {
   await page.goto('/');
   await page.waitForFunction(() => window.__ff?.level() != null);
+  // Web fonts landing late can resize the card and move the board under a test's taps.
+  await page.evaluate(() => document.fonts.ready);
 }
 
 const level = (page: Page) => page.evaluate(() => window.__ff.level()!);
@@ -33,6 +35,26 @@ async function tapCell(page: Page, cell: number): Promise<void> {
   const p = await page.evaluate((c) => window.__ff.cellPoint(c), cell);
   if (!p) throw new Error(`cell ${cell} is not on screen`);
   await page.mouse.click(p.x, p.y);
+}
+
+/**
+ * Solve the garden on screen by real taps. A tap aims at where its cell is drawn now; if the board
+ * moved between aiming and clicking (a late layout on a slow CI machine), the next round lifts any
+ * stray firefly and places what's missing, so the test checks the game, not the timing.
+ */
+async function solveByTaps(page: Page): Promise<void> {
+  for (let round = 0; round < 4 && !(await level(page)).solved; round++) {
+    const l = await level(page);
+    const answer = new Set(l.answer);
+    for (const c of l.placed) if (!answer.has(c) && !l.locked.includes(c)) await tapCell(page, c);
+    for (const c of l.answer) {
+      const now = await level(page);
+      if (now.solved) return;
+      if (!now.placed.includes(c) && !now.locked.includes(c)) await tapCell(page, c);
+    }
+    await page.waitForTimeout(200);
+  }
+  await expect.poll(async () => (await level(page)).solved).toBe(true);
 }
 
 /** Answer cells the player places (lanterns are already on the board and can't be tapped). */
@@ -258,7 +280,7 @@ test('finishing a chapter: Finish the chapter, the card over the map with its bo
   const { last, next } = await toChapterEnd(page);
   await expect.poll(async () => (await level(page)).id).toBe(last);
   const coins = (await page.evaluate(() => window.__ff.wallet())).coins;
-  for (const c of (await level(page)).answer) await tapCell(page, c);
+  await solveByTaps(page);
   const nextButton = page.locator('.ff-complete-next');
   await expect(nextButton).toHaveText(/Finish the chapter/);
   await expect(nextButton).toBeFocused();
@@ -302,7 +324,7 @@ test('finishing a chapter: Finish the chapter, the card over the map with its bo
 test('a reload on the chapter card opens the map and plays the flight once', async ({ page }) => {
   await open(page);
   await toChapterEnd(page);
-  for (const c of (await level(page)).answer) await tapCell(page, c);
+  await solveByTaps(page);
   await page.locator('.ff-complete-next').click();
   await expect(page.locator('.ff-chapter-card')).toBeVisible();
   await page.reload();
@@ -345,7 +367,7 @@ test('the build\'s last chapter ends on the ending card, then the finished map',
     window.__ff.openLevel(id);
   }, { ids: all.slice(0, -1), id: last });
   await expect.poll(async () => (await level(page)).id).toBe(last);
-  for (const c of (await level(page)).answer) await tapCell(page, c);
+  await solveByTaps(page);
   await page.locator('.ff-complete-next').click();
   const card = page.locator('.ff-chapter-card');
   await expect(card).toContainText('Every garden is glowing');
