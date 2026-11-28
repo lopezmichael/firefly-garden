@@ -75,7 +75,26 @@
 
 .ff-top { grid-area: top; position: relative; display: flex; align-items: center; gap: 10px; }
 .ff-chapter { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.ff-progress-row { display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; }
 .ff-chapter-label { font-size: 13px; font-weight: 600; color: var(--ff-paper-quiet); }
+.ff-difficulty { min-width: 0; display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; color: var(--ff-paper-quiet); }
+.ff-difficulty[hidden] { display: none; }
+.ff-leaves { width: 40px; height: 11px; min-width: 20px; flex-shrink: 1; }
+.ff-chapter { container: ff-chapter / inline-size; }
+/* Narrow phones: the leaves alone (the word stays for screen readers). */
+@container ff-chapter (max-width: 150px) {
+  .ff-difficulty-word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+.ff-leaf-on { fill: var(--ff-moss-hi); stroke: var(--ff-sumi); stroke-width: 0.6; }
+/* Leaves warm with difficulty; the word takes the colour from Hard up. */
+[data-leaves='2'] .ff-leaf-on { fill: var(--ff-gold); }
+[data-leaves='3'] .ff-leaf-on { fill: var(--ff-level-hard); }
+[data-leaves='4'] .ff-leaf-on { fill: var(--ff-level-expert); }
+.ff-difficulty[data-leaves='3'] .ff-difficulty-word { color: var(--ff-level-hard); }
+.ff-difficulty[data-leaves='4'] .ff-difficulty-word { color: var(--ff-level-expert-text); }
+.ff-journal .ff-leaf-off { stroke: var(--ff-sumi-quiet); }
+.ff-journal-garden .ff-leaves { width: 30px; height: 8px; }
+.ff-leaf-off { fill: none; stroke: var(--ff-paper-quiet); stroke-width: 0.8; opacity: 0.7; }
 .ff-dots { display: flex; gap: 4px; }
 .ff-dot { width: 16px; height: 4px; border-radius: 2px; background: var(--ff-dusk-quiet); }
 .ff-dot[data-state='done'] { background: var(--ff-gold); }
@@ -346,7 +365,12 @@
 .ff-app .ff-map .ff-moon { left: auto; right: max(26px, calc(50% - 234px)); top: 70px; width: 50px; height: 48px; }
 .ff-map-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .ff-map-top-right { display: flex; align-items: center; gap: 10px; }
-.ff-map-title { margin: 0; font-family: var(--ff-font-display); font-weight: 400; font-size: 24px; color: var(--ff-paper); }
+.ff-map-title { margin: 0; min-width: 0; font-family: var(--ff-font-display); font-weight: 400; font-size: 24px; color: var(--ff-paper); }
+/* Narrow phones: the header holds the book, the coins and the gear beside the title. */
+@media (max-width: 380px) {
+  .ff-map-title { font-size: 20px; }
+  .ff-map-top-right { gap: 6px; }
+}
 .ff-map-card {
   border: 2px solid var(--ff-sumi); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px;
   color: var(--ff-sumi); background: var(--ff-paper-texture, none) 0 0 / 128px 128px, var(--ff-paper);
@@ -519,7 +543,7 @@
 }
 .ff-chapter-stat { display: flex; flex-direction: column; gap: 2px; }
 .ff-chapter-num { font-family: var(--ff-font-display); font-size: 24px; }
-.ff-chapter-label { font-size: 13px; font-weight: 600; color: var(--ff-sumi-quiet); }
+.ff-chapter-stat-label { font-size: 13px; font-weight: 600; color: var(--ff-sumi-quiet); }
 .ff-chapter-bonus {
   display: flex; align-items: center; gap: 8px; padding: 6px 12px; border: 2px solid var(--ff-sumi); border-radius: 18px;
   background: var(--ff-paper-warm); font-weight: 700; font-size: 16px;
@@ -547,3 +571,70 @@
 .ff-app[data-motion='reduced'] .ff-enter .ff-chapter-card,
 .ff-app[data-motion='reduced'] .ff-enter .ff-chapter-scrim,
 .ff-app[data-motion='reduced'] .ff-enter .ff-chapter-seal { animation: none; }
+
+/* The garden journal (design canvas "Garden journal: a page per chapter"): a paper book over the map. */
+.ff-journal-layer {
+  position: absolute; inset: 0; z-index: 6; box-sizing: border-box; overflow-y: auto; background: var(--ff-night);
+  padding: 16px 14px max(20px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: center; gap: 12px;
+}
+.ff-journal-layer[hidden] { display: none; }
+.ff-journal-head, .ff-journal { width: 100%; max-width: 520px; box-sizing: border-box; }
+.ff-journal-head { display: flex; align-items: center; justify-content: space-between; }
+.ff-journal-title { margin: 0; font-family: var(--ff-font-display); font-weight: 400; font-size: 24px; color: var(--ff-paper); }
+.ff-journal-close {
+  width: 44px; height: 44px; box-sizing: border-box; border-radius: 10px; border: 2px solid var(--ff-sumi); padding: 0; cursor: pointer;
+  background: var(--ff-paper); color: var(--ff-sumi); display: flex; align-items: center; justify-content: center;
+}
+.ff-journal-close .ff-icon { width: 22px; height: 22px; }
+.ff-journal {
+  position: relative; padding: 58px 18px 16px 30px; border: 2px solid var(--ff-sumi); border-radius: 6px 14px 14px 6px; color: var(--ff-sumi);
+  background: var(--ff-paper-texture, none) 0 0 / 128px 128px, var(--ff-paper);
+}
+/* The stitched spine. */
+.ff-journal::before { content: ''; position: absolute; left: 12px; top: 10px; bottom: 10px; border-left: 2px dashed var(--ff-paper-rule); }
+.ff-journal-tabs { position: absolute; right: 16px; top: -2px; display: flex; gap: 6px; }
+.ff-journal-tab {
+  width: 48px; height: 46px; border: 2px solid var(--ff-sumi); border-top: 0; border-radius: 0 0 10px 10px; padding: 0; cursor: pointer;
+  background: var(--ff-paper); color: var(--ff-sumi); font: 400 20px var(--ff-font-display);
+}
+.ff-journal-tab[aria-current='page'] { background: var(--ff-seal); color: var(--ff-on-seal); }
+.ff-journal-tab:disabled { background: var(--ff-paper-dim); opacity: 0.7; cursor: default; }
+.ff-journal-page { display: flex; flex-direction: column; gap: 14px; }
+.ff-journal-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.ff-journal-words { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ff-journal-kicker { font-size: 13px; font-weight: 700; color: var(--ff-sumi-soft); }
+.ff-journal-area { overflow-wrap: anywhere; margin: 0; font-family: var(--ff-font-display); font-weight: 400; font-size: 28px; line-height: 1.1; }
+.ff-journal-line { overflow-wrap: anywhere; margin: 0; font-size: 14px; line-height: 1.45; color: var(--ff-sumi-soft); font-style: italic; }
+.ff-journal-seal { width: 68px; height: 68px; flex-shrink: 0; transform: rotate(-9deg); }
+.ff-journal-seal svg { width: 100%; height: 100%; display: block; }
+.ff-journal-seal-empty { transform: none; box-sizing: border-box; border: 2px dashed var(--ff-paper-rule); border-radius: 50%; }
+.ff-journal-stats {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 10px 0; text-align: center;
+  border-top: 2px dashed var(--ff-paper-rule); border-bottom: 2px dashed var(--ff-paper-rule);
+}
+.ff-journal-stat { display: flex; flex-direction: column; gap: 2px; }
+.ff-journal-num { overflow-wrap: anywhere; font-family: var(--ff-font-display); font-size: 22px; }
+.ff-journal-label { font-size: 12px; font-weight: 600; color: var(--ff-sumi-soft); }
+.ff-journal-sub { margin: 0; font-size: 14px; font-weight: 700; }
+.ff-journal-gardens { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); row-gap: 12px; column-gap: 6px; }
+.ff-journal-garden { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.ff-journal-frame {
+  width: 100%; max-width: 64px; aspect-ratio: 1; box-sizing: border-box; padding: 5px; border-radius: 4px;
+  border: 1.5px solid var(--ff-sumi-soft); background: var(--ff-paper-warm); transform: rotate(var(--ff-tilt, 0deg));
+}
+.ff-journal-frame-empty { background: transparent; border-style: dashed; border-color: var(--ff-paper-rule); transform: none; }
+.ff-journal-sketch { width: 100%; height: 100%; display: block; }
+.ff-js-path { fill: var(--ff-paper); stroke: var(--ff-sumi-quiet); stroke-width: 0.05; }
+.ff-js-bush { fill: var(--ff-moss); stroke: var(--ff-sumi); stroke-width: 0.06; }
+.ff-js-fly { fill: var(--ff-gold); stroke: var(--ff-sumi); stroke-width: 0.09; }
+.ff-js-lantern { fill: var(--ff-seal); }
+.ff-journal-garden-n { font-size: 12px; font-weight: 700; color: var(--ff-sumi-soft); }
+.ff-journal-pager { display: flex; align-items: center; justify-content: space-between; }
+.ff-journal-where { font-size: 13px; font-weight: 600; color: var(--ff-sumi-soft); }
+.ff-journal-arrow {
+  width: 44px; height: 44px; box-sizing: border-box; border-radius: 10px; border: 2px solid var(--ff-sumi); padding: 0; cursor: pointer;
+  background: transparent; color: var(--ff-sumi); display: flex; align-items: center; justify-content: center;
+}
+.ff-journal-arrow:disabled { opacity: 0.3; cursor: default; }
+.ff-journal-arrow .ff-icon { width: 20px; height: 20px; }
+.ff-journal :focus-visible { outline-color: var(--ff-sumi); }
