@@ -17,6 +17,8 @@ export const COLOR_TOKENS = [
   'ruled', 'firefly-rib', 'wing',
   'jar-paper', 'jar-rib',
   'level-hard', 'level-expert', 'level-expert-text',
+  'lantern-light', 'friend-mint', 'friend-peach', 'friend-sky', 'friend-lilac',
+  'home-sky-top', 'home-sky', 'home-haze', 'home-meadow', 'home-ground',
 ] as const;
 
 type Camel<S extends string> = S extends `${infer A}-${infer B}` ? `${A}${Capitalize<Camel<B>>}` : S;

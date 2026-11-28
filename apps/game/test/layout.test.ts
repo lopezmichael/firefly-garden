@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { bandFor, fitBoard, flightPath, HILLS, hillsFor, keepOrTurn, mapLayout, MIN_TAP, orientFor, segmentPoints, releasePath } from '../src/view/layout.ts';
+import { bandFor, fitBoard, flightPath, HILLS, hillsFor, HOME_FIT, HOME_SCENE, homeFit, keepOrTurn, mapLayout, MIN_TAP, orientFor, segmentPoints, releasePath } from '../src/view/layout.ts';
+import type { HomeFit } from '../src/view/layout.ts';
 
 describe('layout bands follow the screen shape', () => {
   it.each([
@@ -152,5 +153,54 @@ describe('a released firefly flies to the progress track', () => {
     const path = releasePath({ x: 700, y: 300 }, { x: 60, y: 40 }, 2);
     expect(path.at(-1)!.x).toBeCloseTo(60);
     expect(Math.max(...path.map((p) => p.x))).toBeLessThan(800);
+  });
+});
+
+describe('the home scene fit', () => {
+  const shown = (f: HomeFit, vh: number) => (Math.min(vh, f.y + f.h) - Math.max(0, f.y)) / f.k;
+  it.each([
+    ['phone', 390, 844], ['small phone', 320, 568], ['iPhone SE', 375, 667], ['big phone', 430, 932], ['narrow Android', 360, 800],
+  ] as const)('%s: covered edge to edge, scale kept, most of the scene shown', (_n, vw, vh) => {
+    const f = homeFit(vw, vh);
+    expect(f.column).toBe(false);
+    expect(f.x).toBeLessThanOrEqual(0);
+    expect(f.x + f.w).toBeGreaterThanOrEqual(vw - 1e-9);
+    expect(f.chrome).toEqual({ x: 0, w: vw });
+    expect(f.y).toBeLessThanOrEqual(0);
+    expect(f.y + f.h).toBeGreaterThanOrEqual(vh - 1e-9);
+    expect(f.w / f.h).toBeCloseTo(HOME_SCENE.w / HOME_SCENE.h, 9);
+    expect(shown(f, vh)).toBeGreaterThanOrEqual(HOME_SCENE.h * HOME_FIT.minShown - 1e-9);
+  });
+
+  it('crops a wide phone mostly from the foreground, keeping the sky and Pip', () => {
+    const f = homeFit(375, 667);
+    const top = -f.y, bottom = f.y + f.h - 667;
+    expect(top).toBeGreaterThan(0);
+    expect(top / (top + bottom)).toBeCloseTo(HOME_FIT.topShare, 9);
+    expect(f.y + 232 * f.k).toBeGreaterThan(150); // Pip stays well below the title
+  });
+
+  it.each([['desktop', 1280, 720], ['iPad', 820, 1180]] as const)('%s: the whole scene as a centred column, the chrome at least its minimum width', (_n, vw, vh) => {
+    const f = homeFit(vw, vh);
+    expect(f.column).toBe(true);
+    expect(f.split).toBe(false);
+    expect(f.h).toBe(vh);
+    expect(f.x).toBeCloseTo((vw - f.w) / 2, 9);
+    expect(f.chrome.w).toBeGreaterThanOrEqual(Math.min(HOME_FIT.chromeMin, f.w));
+    expect(f.chrome.x + f.chrome.w / 2).toBeCloseTo(vw / 2, 9);
+    expect(f.text).toBeGreaterThanOrEqual(HOME_FIT.textScale[0]);
+    expect(f.text).toBeLessThanOrEqual(HOME_FIT.textScale[1]);
+  });
+
+  it.each([['phone landscape', 844, 390], ['small landscape', 640, 360], ['portal frame', 800, 450]] as const)('%s: the scene beside a panel, nothing overlapping or off screen', (_n, vw, vh) => {
+    const f = homeFit(vw, vh);
+    expect(f.split).toBe(true);
+    expect(f.x).toBeGreaterThanOrEqual(0);
+    expect(f.chrome.x).toBeGreaterThanOrEqual(f.x + f.w);
+    expect(f.chrome.x + f.chrome.w).toBeLessThanOrEqual(vw);
+    expect(f.chrome.w).toBeGreaterThanOrEqual(300);
+    // The band with the arch, Pip and the friends fills the height.
+    expect(f.y + HOME_FIT.splitWindow[0] * f.k).toBeCloseTo(0, 9);
+    expect(f.y + HOME_FIT.splitWindow[1] * f.k).toBeCloseTo(vh, 9);
   });
 });

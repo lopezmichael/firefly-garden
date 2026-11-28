@@ -17,6 +17,7 @@ about the code today.
 | `npm run e2e` | Playwright smoke test against the e2e build (own CI job; locally uses the preinstalled Chromium) |
 | `npm run check` | All of the above, in order. The pre-commit hook runs this |
 | `npm run dev` | Vite dev server for the game |
+| `npm run art:home` | Re-bake the home screen's painting (`art/home/` → `apps/game/src/assets/home/`, deterministic). Never hand-edit those files |
 | `npm run levels` | Regenerate `levels/` (launch + reserve packs) and `reports/` (deterministic, ~30 s). Never hand-edit packs; change `scripts/launch-plan.ts` |
 
 ## Codebase facts
@@ -46,7 +47,9 @@ about the code today.
 - Colors and fonts come from tokens in `apps/game/src/theme.css`; never hardcode them. The board
   reads each colour token by its own name (`view/tokens.ts`); add a token there and in theme.css.
 - The look is ink and wash (`docs/design/assets.md`). Art is drawn with 2D canvas and baked per
-  size (`view/art/`); never put a live SVG filter on screen. Every animation needs a reduced-motion
+  size (`view/art/`); never put a live SVG filter on screen. The one exception is the home
+  screen's painting: too slow to paint at launch, it is baked offline by `npm run art:home` and
+  only its sprites move (`view/home/`). Every animation needs a reduced-motion
   path that still lands the state (`apps/game/test/motion-css.test.ts` checks the CSS).
 - Anything that changes the status card's or complete card's height resizes the board, which
   cancels a firefly in flight: measure wording and fonts against the reserved space.

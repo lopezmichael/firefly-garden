@@ -16,6 +16,7 @@
     "dev": "npm run dev -w @firefly/game",
     "prepare": "node scripts/install-hooks.mjs",
     "levels": "node scripts/generate-levels.ts",
+    "art:home": "node scripts/bake-home.ts",
     "e2e": "playwright test"
   },
   "engines": {
