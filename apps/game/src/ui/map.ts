@@ -44,6 +44,7 @@ export interface MapView {
 export interface MapHandlers {
   continue(): void;
   settings(): void;
+  journal(): void;
 }
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -160,8 +161,13 @@ export class MapScreen {
     gear.setAttribute('aria-label', 'Settings');
     gear.append(icon('settings'));
     gear.addEventListener('click', () => handlers.settings());
+    const book = el('button', 'ff-gear ff-map-book');
+    book.type = 'button';
+    book.setAttribute('aria-label', 'Garden journal');
+    book.append(icon('book'));
+    book.addEventListener('click', () => handlers.journal());
     const right = el('div', 'ff-map-top-right');
-    right.append(coinBox, gear);
+    right.append(book, coinBox, gear);
     top.append(title, right);
 
     const card = el('div', 'ff-map-card');

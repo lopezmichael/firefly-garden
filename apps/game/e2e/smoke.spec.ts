@@ -376,7 +376,7 @@ test('the build\'s last chapter ends on the ending card, then the finished map',
   await expect(card).toBeHidden();
   await expect(page.locator('.ff-map')).toBeVisible();
   await expect(page.locator('.ff-map-flier')).toHaveCount(0);
-  await expect(page.locator('.ff-map-top .ff-gear')).toBeFocused();
+  await expect(page.locator('.ff-map-top').getByRole('button', { name: 'Settings' })).toBeFocused();
 });
 
 test('every voice makes a sound and none clips (rendered offline)', async ({ page }) => {
@@ -510,4 +510,36 @@ test('a garden code carries the garden to another device, after a yes; a bad cod
   const backup = await pb.evaluate(() => localStorage.getItem('firefly-garden:progress-backup'));
   expect(JSON.parse(backup!).install).toBe(installB);
   await b.close();
+});
+
+test('the garden journal: a page per chapter with its seal and pressed gardens, opened from the map', async ({ page }) => {
+  await open(page);
+  const chapters = await page.evaluate(() => window.__ff.chapters());
+  await page.evaluate((ids) => window.__ff.markSolved(ids), [...chapters[0]!, ...chapters[1]!.slice(0, 3)]);
+  await page.reload();
+  await page.waitForFunction(() => document.querySelector('.ff-map:not([hidden])') != null);
+  const book = page.getByRole('button', { name: 'Garden journal' });
+  await book.click();
+  const journal = page.getByRole('dialog', { name: 'Garden journal' });
+  await expect(journal).toBeVisible();
+  expect(await page.locator('.ff-map').evaluate((el) => (el as HTMLElement).inert)).toBe(true);
+  // It opens on the chapter in play: chapter 2, three gardens grown, its seal not stamped yet.
+  await expect(journal.getByRole('button', { name: /^Chapter 2/ })).toHaveAttribute('aria-current', 'page');
+  await expect(journal).toContainText('3 of 10');
+  await expect(journal.locator('.ff-journal-sketch')).toHaveCount(3);
+  await expect(journal.getByRole('img', { name: 'The seal, not stamped yet' })).toBeVisible();
+  await expect(journal.getByRole('button', { name: 'Chapter 3, still dark' })).toBeDisabled();
+  // Back a page: chapter 1 is done, sealed, every garden pressed.
+  await journal.getByRole('button', { name: 'Previous chapter' }).click();
+  await expect(journal.getByRole('button', { name: /^Chapter 1/ })).toHaveAttribute('aria-current', 'page');
+  await expect(journal.getByRole('img', { name: "Chapter 1's seal" })).toBeVisible();
+  await expect(journal.locator('.ff-journal-sketch')).toHaveCount(chapters[0]!.length);
+  await expect(journal.getByRole('button', { name: 'Next chapter' })).toBeFocused();
+  // Escape closes it even after a tap on the page's text dropped focus, the map takes taps again
+  // and focus goes back to the book.
+  await journal.locator('.ff-journal-line').click();
+  await page.keyboard.press('Escape');
+  await expect(journal).toBeHidden();
+  expect(await page.locator('.ff-map').evaluate((el) => (el as HTMLElement).inert)).toBe(false);
+  await expect(book).toBeFocused();
 });

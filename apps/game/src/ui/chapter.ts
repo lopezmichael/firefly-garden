@@ -36,7 +36,7 @@ export interface ChapterStat {
 }
 
 // Constant markup, never game or player data: the chapter's seal, a rose stamped in seal ink.
-const SEAL_SVG = '<svg viewBox="0 0 76 76" aria-hidden="true">'
+export const SEAL_SVG = '<svg viewBox="0 0 76 76" aria-hidden="true">'
   + '<circle class="ff-seal-disc" cx="38" cy="38" r="33"></circle>'
   + '<circle class="ff-seal-rim" cx="38" cy="38" r="27"></circle>'
   + '<path class="ff-seal-rose" d="M38 38 m-3 0 a4.5 4.5 0 1 1 7.5 3.6 a9 9 0 1 1 -13.8 -7.8 a13.8 13.8 0 1 1 20.4 13.2"></path>'
