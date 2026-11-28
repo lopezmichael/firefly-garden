@@ -26,6 +26,10 @@ const ICONS = {
   log: '<path d="M6 3.5 H14.5 L18.5 7.5 V20.5 H6 Z" stroke-width="1.9"></path><path d="M14.5 3.5 V7.5 H18.5 M9 12 H15.5 M9 15.5 H14" stroke-width="1.7"></path>',
   // Not one of the twelve: the garden code's tag (settings).
   code: '<path d="M4 9.5 L9.5 4 H20 V14.5 L14.5 20 H4 Z" stroke-width="1.9"></path><circle class="ff-i-gold" cx="15" cy="9" r="2.1" stroke-width="1.4"></circle><path d="M7.5 13.5 H12.5 M7.5 16.5 H10.5" stroke-width="1.7"></path>',
+  // Not one of the twelve: the garden journal's book (map header) and its page arrows.
+  book: '<path d="M3.5 5.5 C6.8 4.4 9.8 4.8 12 6.6 C14.2 4.8 17.2 4.4 20.5 5.5 V19 C17.2 18 14.2 18.4 12 20.2 C9.8 18.4 6.8 18 3.5 19 Z" stroke-width="1.8"></path><path d="M12 6.6 V20.2" stroke-width="1.6"></path><circle class="ff-i-gold" cx="16.4" cy="10" r="1.7" stroke-width="1"></circle>',
+  prev: '<path d="M15 6 L9 12 L15 18" stroke-width="2"></path>',
+  forward: '<path d="M9 6 L15 12 L9 18" stroke-width="2"></path>',
   // Not one of the twelve: the hint sheet's rewarded-video button.
   video: '<rect x="3" y="5" width="18" height="14" rx="3" stroke-width="1.9"></rect><path class="ff-i-ink" d="M10 9 L15 12 L10 15 Z"></path>',
 } as const;
@@ -80,4 +84,24 @@ export function lantern(): SVGSVGElement {
 /** The crescent moon (from the canvas's night). */
 export function moon(): SVGSVGElement {
   return svg('304 74 50 48', 'ff-moon', '<path class="ff-moon-face" d="M330 78 a24 24 0 1 0 20 37 a18 18 0 1 1 -20 -37 z"></path>');
+}
+
+/**
+ * A difficulty label's leaves: `filled` of `total` small leaves, the rest drawn as outlines
+ * (constant markup; the count is a number). Decorative: the word beside them is what's read out.
+ */
+export function leaves(filled: number, total: number): SVGSVGElement {
+  total = Math.max(1, Math.min(4, Math.floor(total))); // a label has at most four leaves
+  const s = document.createElementNS(SVG_NS, 'svg');
+  s.setAttribute('viewBox', `0 0 ${total * 9} 10`);
+  s.setAttribute('aria-hidden', 'true');
+  s.setAttribute('class', 'ff-leaves');
+  for (let k = 0; k < total; k++) {
+    const p = document.createElementNS(SVG_NS, 'path');
+    // A leaf leaning right, its stem at the foot.
+    p.setAttribute('d', `M${k * 9 + 2} 9 C${k * 9 + 0.5} 5.5 ${k * 9 + 2.5} 2 ${k * 9 + 7.5} 1 C${k * 9 + 7.5} 5.5 ${k * 9 + 5.5} 8.5 ${k * 9 + 2} 9 Z`);
+    p.setAttribute('class', k < filled ? 'ff-leaf-on' : 'ff-leaf-off');
+    s.append(p);
+  }
+  return s;
 }

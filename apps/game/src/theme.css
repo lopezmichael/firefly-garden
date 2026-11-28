@@ -77,6 +77,11 @@
   --ff-jar-paper: #ffd97a;
   --ff-jar-rib: #8a5a2b;
 
+  /* Difficulty labels: leaves warm from moss (Easy) and gold (Medium) to amber (Hard) and red (Expert). */
+  --ff-level-hard: #e8913a;
+  --ff-level-expert: #e2553d;
+  --ff-level-expert-text: #f58a72;   /* the word on the night sky: lighter, so it reads */
+
   --ff-font-display: 'Young Serif', Georgia, serif;
   --ff-font-body: 'Figtree', system-ui, sans-serif;
   /* The garden code: characters that must read apart (l, 1, I). */

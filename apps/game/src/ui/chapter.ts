@@ -36,7 +36,7 @@ export interface ChapterStat {
 }
 
 // Constant markup, never game or player data: the chapter's seal, a rose stamped in seal ink.
-const SEAL_SVG = '<svg viewBox="0 0 76 76" aria-hidden="true">'
+export const SEAL_SVG = '<svg viewBox="0 0 76 76" aria-hidden="true">'
   + '<circle class="ff-seal-disc" cx="38" cy="38" r="33"></circle>'
   + '<circle class="ff-seal-rim" cx="38" cy="38" r="27"></circle>'
   + '<path class="ff-seal-rose" d="M38 38 m-3 0 a4.5 4.5 0 1 1 7.5 3.6 a9 9 0 1 1 -13.8 -7.8 a13.8 13.8 0 1 1 20.4 13.2"></path>'
@@ -50,7 +50,7 @@ export class ChapterCard {
   private readonly title = el('h2', 'ff-chapter-title');
   private readonly line = el('p', 'ff-chapter-line');
   private readonly nums = [el('span', 'ff-chapter-num'), el('span', 'ff-chapter-num'), el('span', 'ff-chapter-num')] as const;
-  private readonly labels = [el('span', 'ff-chapter-label'), el('span', 'ff-chapter-label'), el('span', 'ff-chapter-label')] as const;
+  private readonly labels = [el('span', 'ff-chapter-stat-label'), el('span', 'ff-chapter-stat-label'), el('span', 'ff-chapter-stat-label')] as const;
   private readonly bonus = el('div', 'ff-chapter-bonus');
   private readonly bonusText = el('span');
   private readonly button = el('button', 'ff-chapter-go');

@@ -5,6 +5,14 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Added
+- **Difficulty labels:** every garden shows its difficulty beside its place in the chapter: one to four leaves and a word (Easy, Medium, Hard, Expert), from the garden's stored tier. The leaves warm with difficulty: moss green, gold, amber, then red, and the word takes the colour from Hard up. On narrow phones the leaves stand alone and the word stays for screen readers. The progress line reads "3 of 10" to make room (screen readers still hear "Garden 3 of 10"). The journal shows each garden's coloured leaves under its sketch.
+
+### Fixed
+- **The play screen's "Garden 3 of 10" line was drawn in dark ink on the night sky:** the chapter card's stat labels shared its class name, and their rule won. The card's labels have their own class now.
+- **The garden journal:** a book button on the map's header opens a paper journal with a page per chapter.
+  - Each page has the chapter's name and line, its red seal once every garden glows (a dashed space until then), its totals, and a pressed sketch of each garden grown: its layout with the fireflies that lit it.
+  - Gardens not grown yet are dashed frames. Ribbon tabs and arrows turn the pages; chapters still dark can't be opened.
+  - It opens on the chapter you're playing. It is a modal: Escape closes it and focus returns to the book. Reduced motion swaps pages without the slide.
 - **The garden code:** Settings → Garden code moves a garden to another device or browser by copy and paste, with no account and no server.
   - **Copy my garden code** puts one line (`FG1.…`, a few hundred characters) on the clipboard. Where the clipboard is refused, as in some portal frames, the code is shown so it can be copied by hand.
   - **Enter a garden code** reads a pasted code and says what it holds against what this device has (and warns if it has fewer gardens). Nothing changes until **Replace my garden**. This device's garden is kept in the backup slot, and the game reloads into the new one only once storage has really taken it.
