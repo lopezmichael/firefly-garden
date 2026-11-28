@@ -8,25 +8,27 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
-  buildBoard, combine, gradeLevel, measure, parseLevel, PLAYER_CONFIG, rampRoles, simulate, type SimLevel,
+  buildBoard, cellIndex, combine, gradeLevel, hint, measure, parseLevel, PLAYER_CONFIG, rampRoles, simHintGroup, simSteps, simulate, type SimLevel,
 } from '../packages/core/src/index.ts';
+import { PLAYED_CHAPTERS } from '../apps/game/src/build.ts';
 
 const DIR = join(import.meta.dirname, '..', 'levels');
 const pack = JSON.parse(readFileSync(join(DIR, 'launch.json'), 'utf8')) as { levels: unknown[] };
 const byId = new Map(pack.levels.map((l) => parseLevel(l)).map((l) => [l.id, l]));
 const manifest = JSON.parse(readFileSync(join(DIR, 'manifest.json'), 'utf8')) as { chapters: { id: string; levels: string[] }[] };
 
-// The economy guardrails are about the opening: chapters 1 to 3.
-const simLevels: SimLevel[] = manifest.chapters.slice(0, 3).flatMap((c) => {
+// The economy guardrails cover the main path this build plays, in order.
+const played = PLAYED_CHAPTERS.map((id) => manifest.chapters.find((c) => c.id === id)!);
+const simLevels: SimLevel[] = played.flatMap((c) => {
   const graded = c.levels.map((id) => {
     const level = byId.get(id)!;
     const board = buildBoard(level);
     const g = gradeLevel(level, board); // the count is shown, so players' traces use it
-    return { id, g, score: measure(level, board, g).score };
+    return { id, g, board, score: measure(level, board, g).score };
   });
   const roles = rampRoles(graded);
-  return graded.map(({ id, g }, i) => ({
-    id, chapter: c.id, role: roles[i]!, steps: g.steps.map((s) => ({ tier: s.tier, width: s.width })), fireflies: g.fireflies.length,
+  return graded.map(({ id, g, board }, i) => ({
+    id, chapter: c.id, role: roles[i]!, steps: simSteps(g, board), fireflies: g.fireflies.length,
   }));
 });
 const results = PLAYER_CONFIG.profiles.map((p, k) => simulate(simLevels, p, PLAYER_CONFIG.economy, PLAYER_CONFIG.runs, 4242 + k));
@@ -61,5 +63,34 @@ describe('hint economy (simulated, shipped economy)', () => {
   it('has no level where more than 40% of plays need a hint', () => {
     const worst = population.reduce((m, l) => Math.max(m, l.hintRate), 0);
     expect(worst).toBeLessThanOrEqual(0.4);
+  });
+
+  it('models hints the way the game gives them: the simulated hint matches the real one from the same position', () => {
+    // From every step of every played level, with the fireflies placed so far and no X
+    // marks: does the real hint cross tiles or point, and does the simulated one (`simHintGroup`)
+    // cross the same tiles? The real grader may pick a different first deduction from the real
+    // position, so this is close, not exact (2026-11-28, the Rose Bed: 632 and 535 of 653).
+    let n = 0, kind = 0, exact = 0;
+    for (const c of played) {
+      for (const id of c.levels) {
+        const level = byId.get(id)!;
+        const board = buildBoard(level);
+        const g = gradeLevel(level, board);
+        const steps = simSteps(g, board);
+        const answer = level.solution!.map((x) => cellIndex(board, x));
+        g.steps.forEach((_, k) => {
+          const on = g.steps.slice(0, k).filter((s) => s.value === 'firefly').map((s) => s.cell);
+          const h = hint(board, answer, on);
+          const real = h.kind === 'cross' ? h.cells.join() : '';
+          const sim = simHintGroup(steps, k, new Set()).map((j) => g.steps[j]!.cell).join();
+          n++;
+          if ((real === '') === (sim === '')) kind++;
+          if (real === sim) exact++;
+        });
+      }
+    }
+    expect(n).toBeGreaterThan(300);
+    expect(kind / n).toBeGreaterThanOrEqual(0.95);
+    expect(exact / n).toBeGreaterThanOrEqual(0.8);
   });
 });

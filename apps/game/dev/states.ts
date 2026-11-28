@@ -19,7 +19,7 @@ interface Specimen {
   readonly bushes: readonly BushSpec[];
   readonly flies?: readonly Coord[];
   readonly locked?: readonly Coord[];
-  readonly ruledOut?: readonly Coord[];
+  readonly crossed?: readonly Coord[];
   readonly because?: readonly Coord[];
 }
 
@@ -29,7 +29,8 @@ const SPECIMENS: readonly Specimen[] = [
   { label: 'Your firefly', w: 1, h: 1, bushes: [], flies: [[0, 0]] },
   { label: 'Hint firefly', w: 1, h: 1, bushes: [], flies: [[0, 0]], locked: [[0, 0]] },
   { label: 'Conflict: they see each other', w: 2, h: 1, bushes: [], flies: [[0, 0], [0, 1]] },
-  { label: 'Ruled out', w: 1, h: 1, bushes: [], ruledOut: [[0, 0]] },
+  { label: 'X mark (hint or yours)', w: 1, h: 1, bushes: [], crossed: [[0, 0]] },
+  { label: 'X mark on a lit tile', w: 2, h: 1, bushes: [], flies: [[0, 0]], crossed: [[0, 1]] },
   { label: 'Lit by two, still one lit tile', w: 3, h: 1, bushes: [], flies: [[0, 0], [0, 2]] },
   { label: 'Wanting 3, one so far', w: 3, h: 3, bushes: [[1, 1, 3]], flies: [[0, 0]] },
   { label: 'Happy: roses, number gold', w: 3, h: 3, bushes: [[1, 1, 3]], flies: [[0, 0], [1, 2], [2, 1]] },
@@ -66,7 +67,8 @@ async function show(s: Specimen): Promise<void> {
     evaluation: evaluate(board, (s.flies ?? []).map(idx)),
     locked: new Set((s.locked ?? []).map(idx)),
     because: new Set((s.because ?? []).map(idx)),
-    ruledOut: new Set((s.ruledOut ?? []).map(idx)),
+    crossed: new Set((s.crossed ?? []).map(idx)),
+    marks: new Set<number>(),
     solved: false,
   }, { quiet: true });
 }
@@ -91,7 +93,7 @@ async function showLevel(id: string, placed: number | null, width: number): Prom
   const view = await BoardView.create(host, { palette: pal, reducedMotion: reduced, onTap: () => undefined });
   view.setLevel(board, 'identity');
   view.resize(width, width);
-  const at = (flies: number[]) => ({ evaluation: evaluate(board, flies), locked: new Set<number>(), because: new Set<number>(), ruledOut: new Set<number>(), solved: evaluate(board, flies).solved });
+  const at = (flies: number[]) => ({ evaluation: evaluate(board, flies), locked: new Set<number>(), because: new Set<number>(), crossed: new Set<number>(), marks: new Set<number>(), solved: evaluate(board, flies).solved });
   if (!new URLSearchParams(location.search).has('solve')) {
     view.render(at(sol), { quiet: true });
     return;

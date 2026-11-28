@@ -1,4 +1,4 @@
-import { hintStep, PLAYER_CONFIG } from '@firefly/core';
+import { hintCell, hintStep, PLAYER_CONFIG } from '@firefly/core';
 import type { Evaluation, NextLevel, Transform } from '@firefly/core';
 import { AudioEngine } from '../audio/engine.ts';
 import type { AudioState, Voice } from '../audio/engine.ts';
@@ -57,15 +57,28 @@ const VOICE: { readonly [K in Cue['kind']]: Voice } = {
   place: 'place', hint: 'hint', lift: 'lift', bush: 'bush', conflict: 'conflict', solve: 'solve', empty: 'empty',
 };
 
+/** The parts of a play a save keeps (validated again by `parseSave` on the way back in). */
+function boardOf(p: Play): Omit<CurrentPlay, 'levelId' | 'key' | 'reason'> {
+  return {
+    placed: [...p.placed], locked: [...p.locked], marks: [...p.marks], seconds: p.seconds,
+    crossed: p.crossGroups.map((g) => ({ cells: [...g.cells], technique: g.technique, because: [...g.because] })),
+    placements: p.placements, undos: p.undos, restarts: p.restarts, hints: p.hints,
+  };
+}
+
 /** What the end-to-end tests read and drive (built only with `--mode e2e`). */
 export interface E2EHooks {
   level(): {
     id: string; transform: Transform; w: number; h: number; placed: number[]; locked: number[];
+    /** Hint X marks and the player's own X marks. */
+    crossed: number[]; marks: number[];
     /** The answer's cells the player places (lanterns excluded). */
     answer: number[];
     canUndo: boolean; seconds: number; solved: boolean; remaining: number; notice: string | null; focus: number | null;
   } | null;
   cellPoint(cell: number): { x: number; y: number } | null;
+  /** What the next hint would be (its kind), without buying it. */
+  peekHint(): string | null;
   wallet(): { coins: number; bank: number };
   tips(): string[];
   audio(): AudioState;
@@ -164,7 +177,7 @@ export class GameApp {
     this.screen = new PlayScreen({
       undo: () => this.undo(),
       reset: () => this.move('reset', () => {
-        if (this.play?.placed.size) {
+        if (this.play && this.play.placed.size + this.play.marks.size > 0) {
           this.play.reset();
           this.notice = { kind: 'reset' };
         }
@@ -294,8 +307,7 @@ export class GameApp {
     const current: CurrentPlay | null = p && this.current && !p.solved
       ? {
         levelId: this.current.id, key: this.catalog.levelKey(this.current.id), reason: this.current.reason,
-        placed: [...p.placed], locked: [...p.locked], seconds: p.seconds,
-        placements: p.placements, undos: p.undos, restarts: p.restarts, hints: p.hints,
+        ...boardOf(p),
       }
       // The home screen is open over a saved board it hasn't resumed yet: keep it saved.
       : this.launchSave;
@@ -567,7 +579,9 @@ export class GameApp {
     try {
       // The retry keeps the board's fireflies but starts its own counters: its level_end and
       // history describe this attempt, so breather triggers (long solve, hint streak) stay fair.
-      const play = new Play(this.catalog.board(levelId), this.catalog.solution(levelId), this.clock, { placed: saved!.placed, locked: saved!.locked });
+      const play = new Play(this.catalog.board(levelId), this.catalog.solution(levelId), this.clock, {
+        placed: saved!.placed, locked: saved!.locked, crossed: saved!.crossed, marks: saved!.marks,
+      });
       // A parked board can't be already solved (only edited saves get here): start fresh instead.
       return play.solved ? undefined : play;
     } catch (err) {
@@ -609,8 +623,7 @@ export class GameApp {
       if (this.catalog.mainIds.has(cur.id)) {
         this.parked.push({
           levelId: cur.id, key: this.catalog.levelKey(cur.id), reason: cur.reason,
-          placed: [...play.placed], locked: [...play.locked], seconds: play.seconds,
-          placements: play.placements, undos: play.undos, restarts: play.restarts, hints: play.hints,
+          ...boardOf(play),
         });
         this.parked = this.parked.slice(-MAX_PARKED);
       }
@@ -916,7 +929,17 @@ export class GameApp {
       this.screen.shakeJar();
       this.playCues(cuesFor(before, play.evaluation, { kind: 'jar-empty' }));
       this.refresh();
-      if (viaKeyboard) this.screen.announce('The jar is empty. Call a firefly back first.');
+      if (viaKeyboard) this.screen.announce('The jar is empty, so the tile took an X. Call a firefly back first.');
+      this.scheduleSave();
+      return;
+    }
+    if (r === 'hint-x') {
+      // A hint's X: its reason again, with the ring round the bush or tiles behind it.
+      const shown = play.shown;
+      this.notice = shown ? { kind: 'hint', hint: shown } : null;
+      this.refresh();
+      if (viaKeyboard) this.announceFocus(false);
+      if (shown && viaKeyboard) this.screen.announce(shown.reason);
       return;
     }
     this.notice = r === 'locked' ? { kind: 'locked' } : null;
@@ -928,16 +951,16 @@ export class GameApp {
       this.tips.add('cross');
       this.notice = { kind: 'tip-cross' };
     }
-    // A placed firefly flies out of the jar and lands when it arrives; a lifted one flies home.
-    const flew = r === 'placed' ? this.flight(cell, 'out', false) : r === 'removed' ? this.flight(cell, 'home', false) : false;
-    if (r === 'placed' || r === 'removed') {
+    // A placed firefly flies out of the jar and lands when it arrives; one turned into an X flies home.
+    const flew = r === 'placed' ? this.flight(cell, 'out', false) : r === 'marked' ? this.flight(cell, 'home', false) : false;
+    if (r === 'placed' || r === 'marked') {
       this.playCues(cuesFor(before, play.evaluation, r === 'placed' ? this.placeMove('placed', cell) : { kind: 'removed' }), flew ? FLIGHT_MS - 80 : 0);
     }
     this.refresh(false, null, flew && r === 'placed' ? cell : null);
     if (viaKeyboard) this.announceFocus(true);
     if (r === 'placed') this.platform.haptic?.('light');
     if (play.solved) this.solved();
-    else this.scheduleSave();
+    else if (r !== 'locked') this.scheduleSave();
   }
 
   private undo(): void {
@@ -967,7 +990,17 @@ export class GameApp {
 
   private async hint(): Promise<void> {
     const play = this.play;
-    if (!play || play.solved || this.blocked() || play.peekHint().kind === 'none') return;
+    if (!play || play.solved || this.blocked()) return;
+    const peek = play.peekHint();
+    if (peek.kind === 'none') return;
+    // The same pointing hint on the same board: show it again, free (nothing new to learn).
+    if (play.repeatsPoint(peek)) {
+      play.reshow(peek);
+      this.notice = { kind: 'hint', hint: peek };
+      this.refresh();
+      this.screen.announce(peek.reason);
+      return;
+    }
     play.pause();
     const choice = await this.hintSheet.ask({
       bank: this.wallet.bank, coins: this.wallet.coins, cost: this.wallet.economy.hintCost,
@@ -995,13 +1028,14 @@ export class GameApp {
     const before = play.evaluation;
     const h = play.applyHint();
     if (h.kind === 'none') return;
-    this.emit({ type: 'hint', level: this.current!.id, source, step: hintStep(this.catalog.grade(this.current!.id), h.cell) });
+    this.emit({ type: 'hint', level: this.current!.id, source, step: hintStep(this.catalog.grade(this.current!.id), hintCell(h)) });
     this.notice = { kind: 'hint', hint: h };
-    // A placing hint sends a gold firefly from the jar; a removal sends the wrong one home.
-    const flew = this.flight(h.cell, h.kind === 'remove' ? 'home' : 'out', h.kind !== 'remove');
-    this.playCues(cuesFor(before, play.evaluation, h.kind === 'remove' ? { kind: 'hint-removed' } : this.placeMove('hint-placed', h.cell)),
-      flew && h.kind !== 'remove' ? FLIGHT_MS - 80 : 0);
-    this.refresh(false, flew ? null : h.kind === 'remove' ? h.cell : null, flew && h.kind !== 'remove' ? h.cell : null);
+    // A removal sends the wrong firefly home; crossed tiles get their X with a boop (the board);
+    // a pointing hint only rings its bush or tile. Nothing is ever placed.
+    const flew = h.kind === 'remove' && this.flight(h.cell, 'home', false);
+    this.playCues(cuesFor(before, play.evaluation, h.kind === 'remove' ? { kind: 'hint-removed' } : { kind: 'hint-shown' }));
+    this.refresh(false, h.kind === 'remove' && !flew ? h.cell : null);
+    this.screen.announce(h.reason);
     if (play.solved) this.solved();
     else this.scheduleSave();
   }
@@ -1080,7 +1114,7 @@ export class GameApp {
   }
 
   /** A placement as a sound move: its row as drawn on screen, so higher tiles ring higher. */
-  private placeMove(kind: 'placed' | 'hint-placed', cell: number): Move {
+  private placeMove(kind: 'placed', cell: number): Move {
     const b = this.play!.board;
     return { kind, row: displayCell(this.transform, b.w, b.h, cell)[0], rows: displayDims(this.transform, b.w, b.h)[1] };
   }
@@ -1108,12 +1142,12 @@ export class GameApp {
 
   // ---------------------------------------------------------------- keyboard
 
-  /** Arrows move a focus ring over the board, space/enter toggles, Z undoes, H hints (plan E). */
+  /** Arrows move a focus ring over the board, space/enter cycles a tile like a tap, Z undoes, H hints (plan E). */
   private setupKeyboard(): void {
     const host = this.screen.boardHost;
     host.tabIndex = 0;
     host.setAttribute('aria-roledescription', 'puzzle board');
-    host.setAttribute('aria-label', 'Garden board. Arrow keys move, space places or lifts a firefly, Z undoes, H asks for a hint.');
+    host.setAttribute('aria-label', 'Garden board. Arrow keys move, space cycles a tile through firefly, X and empty, Z undoes, H asks for a hint.');
     host.addEventListener('focus', () => {
       // A mouse or touch focus shows no ring; keyboard focus (Tab) does.
       if (host.matches(':focus-visible')) this.showFocus();
@@ -1191,7 +1225,7 @@ export class GameApp {
       return `row ${r + 1}, column ${col + 1}`;
     };
     const [r, c] = displayCell(this.transform, b.w, b.h, this.focusCell);
-    let text = describeCell(b, ev, play.locked, this.focusCell, r, c);
+    let text = describeCell(b, ev, play.locked, this.focusCell, r, c, play.crossed.has(this.focusCell) ? 'hint' : play.marks.has(this.focusCell) ? 'own' : null);
     if (afterToggle && !ev.solved) text += `. ${play.remaining} in the jar.`;
     const clash = afterToggle && ev.conflicts.includes(this.focusCell) ? conflictWords(b, ev.fireflies, name) : null;
     if (clash) text += ` ${clash}`;
@@ -1226,11 +1260,13 @@ export class GameApp {
         if (!p || !cur) return null;
         return {
           id: cur.id, transform: this.transform, w: p.board.w, h: p.board.h, placed: [...p.placed], locked: [...p.locked],
+          crossed: [...p.crossed], marks: [...p.marks],
           answer: [...p.solution].filter((c) => !p.board.lantern[c]), canUndo: p.canUndo, seconds: p.seconds, solved: p.solved, remaining: p.remaining,
           notice: this.notice?.kind ?? null, focus: this.focusRing ? this.focusCell : null,
         };
       },
       cellPoint: (cell) => this.board.cellScreenCenter(cell),
+      peekHint: () => this.play?.peekHint().kind ?? null,
       wallet: () => ({ coins: this.wallet.coins, bank: this.wallet.bank }),
       tips: () => [...this.tips],
       audio: () => this.audio.state,
@@ -1355,11 +1391,12 @@ export class GameApp {
     this.board.render({
       evaluation: ev,
       locked: play.locked,
-      because: new Set(shown?.kind === 'place' ? shown.because : []),
-      ruledOut: new Set(shown?.kind === 'place' ? shown.ruledOut : []),
+      because: new Set(shown && shown.kind !== 'remove' ? shown.because : []),
+      crossed: play.crossed,
+      marks: play.marks,
       solved: ev.solved,
     }, { quiet, removed, arriving, arrivalMs: FLIGHT_MS - 80 });
-    const untouched = play.placements === 0 && play.locked.size === 0;
+    const untouched = play.placements === 0 && play.locked.size === 0 && play.crossed.size === 0 && play.marks.size === 0;
     // An untouched board may open with its own line: the first garden's teaching, or what a
     // chapter brings on its first garden (flow plan C).
     const opening = this.opening && opensUntouched({
@@ -1368,10 +1405,10 @@ export class GameApp {
     const status = opening ? opening
       : ev.solved || !this.notice
         ? boardStatus(ev, untouched, PLAYER_CONFIG.economy.coinsPerSolve, play.remaining)
-        : noticeStatus(this.notice, ev);
+        : noticeStatus(this.notice);
     this.screen.setStatus(status);
     this.screen.setJar(play.remaining, play.jarSize);
-    this.screen.setMoves(play.canUndo, play.placed.size > 0, ev.solved);
+    this.screen.setMoves(play.canUndo, play.placed.size + play.marks.size > 0, ev.solved);
     this.screen.setCoins(this.wallet.coins, this.wallet.economy.hintCost, this.wallet.bank);
   }
 }

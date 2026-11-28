@@ -8,7 +8,7 @@ import type { BoardFit } from './layout.ts';
 import type { Palette } from './theme.ts';
 import { BEAM, BEAM_SOURCE, beamEnds, beamRetract, beamReveal, bushLayout, gazeMotes, quiver, dotPositions, FACE_CENTER_Y, bloomDelays, cappedRipple, CELEBRATION, flightAt, FLY_BOXES, FLY_MOTION, haloStrength, MOTION_TIMING, outlinePolylines, pulse, rippleDelays, ROSE_SLOTS, roseVariants, SWAY_ORIGIN, syncFlash, UNIT, WING_ROOT } from './art/geometry.ts';
 import type { BushKind, UnitBox } from './art/geometry.ts';
-import { drawBush, drawConflictTile, drawMote, drawPetal, drawDarkTile, drawFlyBody, drawFlyGlow, drawFlyShadow, drawFlyWing, drawHintHalo, drawLitTile, drawRose, drawRuledCross, drawHalo, drawSpark } from './art/pieces.ts';
+import { drawBush, drawConflictTile, drawMote, drawPetal, drawDarkTile, drawFlyBody, drawFlyGlow, drawFlyShadow, drawFlyWing, drawHintHalo, drawLitTile, drawPollen, drawRose, drawXMark, drawHalo, drawSpark } from './art/pieces.ts';
 import type { FlyKind } from './art/pieces.ts';
 
 /**
@@ -21,14 +21,20 @@ import type { FlyKind } from './art/pieces.ts';
 export interface BoardState {
   readonly evaluation: Evaluation;
   readonly locked: ReadonlySet<number>;
-  /** Cells a hint points at (dashed outline). */
+  /** Cells a hint points at, or whose reason a hint X shows (the ring). */
   readonly because: ReadonlySet<number>;
-  /** Cells a hint showed as "no firefly here". */
-  readonly ruledOut: ReadonlySet<number>;
+  /** Hint X marks (locked). Drawn exactly like the player's own. */
+  readonly crossed: ReadonlySet<number>;
+  /** The player's own X marks. */
+  readonly marks: ReadonlySet<number>;
   readonly solved: boolean;
 }
 
 const TAU = Math.PI * 2;
+/** The X's pivot: the tile face's centre (38 of 84 units down), so it boops from the middle. */
+const X_PIVOT_Y = 38 / 84;
+/** The X mark's moments, in ms (skipped under reduced motion: it simply appears and goes). */
+const X_MOTION = { boopMs: 300, liftMs: 380, puffMs: 620, grains: 7 } as const;
 const easeOutBack = (t: number) => 1 + 2.7 * (t - 1) ** 3 + 1.7 * (t - 1) ** 2;
 
 /** One cell size's firefly drawings, baked into the board's texture cache. */
@@ -158,7 +164,8 @@ interface CellView {
   tile?: Sprite;
   look?: TileLook;
   fly?: FlyView;
-  ruled?: Sprite;
+  /** The X mark, anchored at the face's centre so it boops from the middle. */
+  mark?: Sprite;
   clue?: Text;
   pips?: Graphics;
   /** The bush drawing (swapped for the wilted one when it has too many). */
@@ -430,6 +437,77 @@ export class BoardView {
     });
   }
 
+  private markTexture(cell: number): Texture {
+    return this.texture('x-mark', cell, (ctx) => drawXMark(ctx, this.pal.css, cell));
+  }
+
+  /** The X sprite's resting scale (its texture is baked at the cell size). */
+  private markScale(): number {
+    const tex = this.fit ? this.markTexture(this.fit.cell) : null;
+    return tex && this.fit ? this.fit.cell / tex.width : 1;
+  }
+
+  /** An X lands: it pops up from nothing, overshoots a little and settles (a small boop). */
+  private boop(v: CellView, at: number): void {
+    const sp = v.mark!, base = this.markScale();
+    sp.scale.set(0);
+    this.tweens.push({
+      start: at, dur: X_MOTION.boopMs,
+      step: (t) => {
+        const k = easeOutBack(t);
+        // A touch wider than tall on the way in, like a stamp pressed down.
+        sp.scale.set(base * k * (1 + 0.08 * Math.sin(t * Math.PI)), base * k * (1 - 0.06 * Math.sin(t * Math.PI)));
+        if (t >= 1) sp.scale.set(base);
+      },
+    });
+  }
+
+  /** An X lifts away: a fading copy rises and shrinks while a puff of pollen drifts off. */
+  private puff(v: CellView): void {
+    if (!this.fit) return;
+    const cell = this.fit.cell, base = this.markScale(), at = this.time;
+    const ghost = new Sprite(this.markTexture(cell));
+    ghost.anchor.set(0.5, X_PIVOT_Y);
+    const x0 = v.root.x + cell / 2, y0 = v.root.y + cell * X_PIVOT_Y;
+    ghost.position.set(x0, y0);
+    ghost.scale.set(base);
+    this.particleLayer.addChild(ghost);
+    this.tweens.push({
+      start: at, dur: X_MOTION.liftMs,
+      step: (t) => {
+        ghost.alpha = 1 - t;
+        ghost.y = y0 - cell * 0.12 * t;
+        ghost.scale.set(base * (1 - 0.35 * t));
+        if (t >= 1) ghost.destroy();
+      },
+    });
+    const px = Math.max(4, Math.round(cell * 0.12));
+    const tex = this.texture('pollen', px, (ctx) => drawPollen(ctx, this.pal.css, px));
+    const rnd = (k: number, n: number) => (Math.imul(v.cell * 97 + k * 31 + n * 13 + 5, 0x9e3779b1) >>> 0) / 4294967296;
+    for (let k = 0; k < X_MOTION.grains; k++) {
+      const angle = (k / X_MOTION.grains) * TAU + rnd(k, 1) * 0.8;
+      const reach = cell * (0.22 + 0.16 * rnd(k, 2)), dur = X_MOTION.puffMs * (0.8 + 0.4 * rnd(k, 3));
+      const sp = new Sprite(tex);
+      sp.anchor.set(0.5);
+      sp.width = sp.height = px * (0.7 + 0.6 * rnd(k, 4));
+      const s0 = sp.scale.x;
+      sp.position.set(x0, y0);
+      this.particleLayer.addChild(sp);
+      this.tweens.push({
+        start: at + k * 18, dur,
+        step: (t) => {
+          const e = 1 - (1 - t) * (1 - t);
+          sp.x = x0 + Math.cos(angle) * reach * e;
+          // Pollen drifts: out first, then a little upward float.
+          sp.y = y0 + Math.sin(angle) * reach * e - cell * 0.1 * t;
+          sp.alpha = t < 0.3 ? 1 : 1 - (t - 0.3) / 0.7;
+          sp.scale.set(s0 * (1 - 0.4 * t));
+          if (t >= 1) sp.destroy();
+        },
+      });
+    }
+  }
+
   private bushTexture(cell: number, kind: BushKind): Texture {
     return this.texture(`bush-${kind}`, cell, (ctx) => drawBush(ctx, this.pal.css, cell, kind));
   }
@@ -525,12 +603,14 @@ export class BoardView {
           v.tile = new Sprite(this.tileTexture(cell, 'dark'));
           v.tile.width = v.tile.height = cell;
           v.look = 'dark';
-          v.ruled = new Sprite(this.texture('ruled', cell, (ctx) => drawRuledCross(ctx, this.pal.css, cell)));
-          v.ruled.width = v.ruled.height = cell;
-          v.ruled.visible = false;
+          v.mark = new Sprite(this.markTexture(cell));
+          v.mark.anchor.set(0.5, X_PIVOT_Y);
+          v.mark.width = v.mark.height = cell;
+          v.mark.position.set(cell / 2, cell * X_PIVOT_Y);
+          v.mark.visible = false;
           v.fly = new FlyView(cell, art, ((dr * 7 + dc * 5) % 8) * 0.8);
           v.fly.root.visible = false;
-          root.addChild(v.tile, v.ruled, v.fly.root);
+          root.addChild(v.tile, v.mark, v.fly.root);
           root.eventMode = 'static';
           root.cursor = 'pointer';
           root.hitArea = new Rectangle(-gap / 2, -gap / 2, cell + gap, cell + gap);
@@ -638,7 +718,16 @@ export class BoardView {
         } else {
           v.fly!.root.visible = false;
         }
-        v.ruled!.visible = state.ruledOut.has(v.cell) && !has;
+        const marked = (state.crossed.has(v.cell) || state.marks.has(v.cell)) && !has;
+        if (marked !== v.mark!.visible) {
+          v.mark!.visible = marked;
+          if (animate) {
+            if (marked) this.boop(v, landAt);
+            else this.puff(v);
+          } else {
+            v.mark!.scale.set(this.markScale());
+          }
+        }
       } else if (v.kind === 'bush' && v.bush && v.roses) {
         const s = bushes.get(v.cell);
         const want = s?.want ?? 0, have = s?.have ?? 0, st = s?.state ?? 'under';

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { combine, PLAYER_CONFIG, rampRoles, simulate, simulateWithPolicy, type PlayerProfile, type SimLevel } from '../src/index.ts';
+import {
+  buildBoard, combine, grade, PLAYER_CONFIG, rampRoles, simSteps, simulate, simulateWithPolicy, type PlayerProfile, type SimLevel, type SimStep,
+} from '../src/index.ts';
 
 const step = (tier: number, width = 3) => ({ tier, width });
 const level = (id: string, tiers: number[], width = 3): SimLevel =>
@@ -8,6 +10,33 @@ const profile = (over: Partial<PlayerProfile> = {}): PlayerProfile => ({
   id: 'p', label: 'P', share: 1, skill: 2, speed: 1, patience: 300, learnSteps: 3, adWillingness: 0.5, churnOnQuit: 0.5, ...over,
 });
 const economy = { startingCoins: 60, coinsPerSolve: 10, hintCost: 30, hintsPerAd: 1 };
+
+describe('hints that rule out (simulated)', () => {
+  const rich = { ...economy, startingCoins: 100_000 };
+  const lone = (steps: SimStep[]): SimLevel[] => [{ id: 'x', chapter: 'c', role: 'climb', steps, fireflies: 2 }];
+  const hintsOf = (lv: SimLevel[], seed: number) => {
+    const o = simulate(lv, profile({ skill: 1, patience: 1e9 }), rich, 400, seed).levels[0]!;
+    return (o.coinHints + o.bankedHints + o.adHints) / Math.max(1, o.hintedPlays);
+  };
+
+  it('carries each step\'s value and technique plus reason cells from the grader', () => {
+    const board = buildBoard({ id: 'r', w: 4, h: 1, mask: ['####'], bushes: [[0, 3, 1]] });
+    expect(simSteps(grade(board), board)[0]).toEqual({ tier: 1, width: 1, value: 'firefly', group: 'T1-needs-all:3' });
+  });
+
+  it('a hint re-finds empty steps the player had worked out: stuck on the firefly after them takes three hints', () => {
+    // Easy, wide empty steps (never stuck) and then a beyond-skill firefly (tier 4 for a skill-1 player).
+    const empty = (group: string): SimStep => ({ tier: 1, width: 4, value: 'empty', group });
+    const fly: SimStep = { tier: 4, width: 3, value: 'firefly', group: 'f' };
+    // The grader reads only the hint's X marks, so hint 1 crosses group a (four steps, the cap),
+    // hint 2 crosses group b, and only hint 3 points at the firefly.
+    expect(hintsOf(lone([empty('a'), empty('a'), empty('a'), empty('a'), empty('b'), fly]), 21)).toBe(3);
+    // With nothing to rule out first, one hint points straight at it.
+    expect(hintsOf(lone([fly]), 21)).toBe(1);
+    // A run of five in one group still takes two hints: at most four tiles a hint.
+    expect(hintsOf(lone([empty('a'), empty('a'), empty('a'), empty('a'), empty('a'), fly]), 21)).toBe(3);
+  });
+});
 
 describe('simulate', () => {
   it('is deterministic for a seed', () => {

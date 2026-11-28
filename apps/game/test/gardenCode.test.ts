@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { deflateRawSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import { createRng } from '@firefly/core';
+import { PLAYED_CHAPTERS } from '../src/build.ts';
 import { createCatalog } from '../src/state/catalog.ts';
 import { checksum, fromBase64Url, MAX_CODE_CHARS, readGardenCode, toBase64Url, writeGardenCode } from '../src/state/gardenCode.ts';
 import { browserCodec } from '../src/ui/deflate.ts';
@@ -12,7 +13,7 @@ import type { SaveData } from '../src/state/save.ts';
 
 const LEVELS = join(import.meta.dirname, '../../../levels');
 const read = (f: string): unknown => JSON.parse(readFileSync(join(LEVELS, f), 'utf8'));
-const catalog = createCatalog({ launch: read('launch.json'), reserve: read('reserve.json'), manifest: read('manifest.json') }, ['c1', 'c2', 'c3']);
+const catalog = createCatalog({ launch: read('launch.json'), reserve: read('reserve.json'), manifest: read('manifest.json') }, PLAYED_CHAPTERS);
 const NOW = Date.UTC(2026, 10, 27, 18);
 const id = catalog.mainPath[4]!;
 const solution = [...catalog.solution(id)];
@@ -25,7 +26,7 @@ function garden(): SaveData {
     solved: new Set(catalog.mainPath.slice(0, 4)),
     history: catalog.mainPath.slice(0, 4).map((l, i) => ({ levelId: l, reason: 'main' as const, solved: true, seconds: 30 + i, hints: 0, endedAt: NOW - 1000 * (4 - i) })),
     playedReserve: new Set(), quitMain: new Set(),
-    current: { levelId: id, key: catalog.levelKey(id), reason: 'main', placed: [solution[1]!], locked: [solution[0]!], seconds: 12, placements: 3, undos: 1, restarts: 0, hints: 1 },
+    current: { levelId: id, key: catalog.levelKey(id), reason: 'main', placed: [solution[1]!], locked: [solution[0]!], crossed: [], marks: [], seconds: 12, placements: 3, undos: 1, restarts: 0, hints: 1 },
     parked: [], settings: { sound: false, motion: 'off' }, tips: new Set(['cross']), mapSeen: new Set(),
   };
 }

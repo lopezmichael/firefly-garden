@@ -5,7 +5,10 @@ import type { Board, Evaluation } from '@firefly/core';
  * Rows and columns are as drawn on screen (the caller maps rotation), counted
  * from 1. Pure so the wording is tested.
  */
-export function describeCell(board: Board, ev: Evaluation, locked: ReadonlySet<number>, cell: number, row: number, col: number): string {
+/** `x`: the tile's X mark, if any: a hint's (locked, always right) or the player's own. */
+export function describeCell(
+  board: Board, ev: Evaluation, locked: ReadonlySet<number>, cell: number, row: number, col: number, x: 'hint' | 'own' | null = null,
+): string {
   const where = `Row ${row + 1}, column ${col + 1}`;
   const kind = board.kind[cell];
   if (kind === 'void') return `${where}: outside the garden`;
@@ -21,5 +24,6 @@ export function describeCell(board: Board, ev: Evaluation, locked: ReadonlySet<n
     const what = board.lantern[cell] ? 'lantern' : locked.has(cell) ? 'hint firefly, locked' : 'firefly';
     return `${where}: ${what}${ev.conflicts.includes(cell) ? ', sees another firefly' : ''}`;
   }
-  return `${where}: ${ev.lit[cell] ? 'lit' : 'dark'} path`;
+  const mark = x === 'hint' ? ', crossed out by a hint' : x === 'own' ? ', marked with an X' : '';
+  return `${where}: ${ev.lit[cell] ? 'lit' : 'dark'} path${mark}`;
 }

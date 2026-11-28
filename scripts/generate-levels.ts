@@ -9,10 +9,11 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import {
   buildBoard, buildRamp, canonicalKey, cellIndex, combine, DIFFICULTY_CONFIG, generate, gradeLevel, measure, PLAYER_CONFIG, rampRoles,
-  simulate, simulateWithPolicy,
+  simSteps, simulate, simulateWithPolicy,
   type Economy, type SimLevel, type Generated, type GenSpec, type Level, type RampLevel, type ShapeId,
 } from '../packages/core/src/index.ts';
 import { launchPlan, reservePlan } from './launch-plan.ts';
+import { PLAYED_CHAPTERS } from '../apps/game/src/build.ts';
 
 const SIZES = [4, 5, 6, 7, 8, 9, 10];
 const PER_SIZE_PER_MODE = 18;
@@ -187,17 +188,18 @@ writeFileSync('reports/dash/census.json', JSON.stringify(census.map(({ row: r })
 }))));
 let position = 0;
 const sizeOf = new Map([...made.values()].map((m) => [m.level.id, m.size]));
-const firstChapters = chapters.slice(0, 3);
+// The chapters the game plays: the ramp and the simulated players follow the shipped main path.
+const playedChapters = PLAYED_CHAPTERS.map((id) => chapters.find((c) => c.id === id)!);
 const roles = new Map(chapters.flatMap((c) => {
   const r = rampRoles(c.levels);
   return c.levels.map((l, i) => [l.id, r[i]!] as const);
 }));
-writeFileSync('reports/dash/ramp.json', JSON.stringify(firstChapters.flatMap((c) => c.levels.map((l, i) => ({
+writeFileSync('reports/dash/ramp.json', JSON.stringify(playedChapters.flatMap((c) => c.levels.map((l, i) => ({
   position: ++position, chapter: c.id, title: c.title, inChapter: i + 1, id: l.id, size: sizeOf.get(l.id),
   tier: l.tier, score: l.score, seconds: l.estimatedSeconds, role: roles.get(l.id),
 })))));
 
-// 4. Simulated players through chapters 1 to 3, and the hint-economy sweep.
+// 4. Simulated players through the played chapters, and the hint-economy sweep.
 const levelById = new Map([...launchLevels, ...reserveLevels].map((l) => [l.id, l]));
 const toSim = (id: string, chapter: string, role: SimLevel['role']): SimLevel => {
   const level = levelById.get(id)!;
@@ -205,11 +207,11 @@ const toSim = (id: string, chapter: string, role: SimLevel['role']): SimLevel =>
   const g = gradeLevel(level, board); // the firefly count is shown, so players' traces use it
   const d = measure(level, board, g);
   return {
-    id, chapter, role, steps: g.steps.map((s) => ({ tier: s.tier, width: s.width })), fireflies: g.fireflies.length,
+    id, chapter, role, steps: simSteps(g, board), fireflies: g.fireflies.length,
     tier: d.tier, score: d.score, estimatedSeconds: d.estimatedSeconds,
   };
 };
-const simLevels: SimLevel[] = firstChapters.flatMap((c) => c.levels.map((l) => toSim(l.id, c.id, roles.get(l.id)!)));
+const simLevels: SimLevel[] = playedChapters.flatMap((c) => c.levels.map((l) => toSim(l.id, c.id, roles.get(l.id)!)));
 const runAll = (economy: Economy) => PLAYER_CONFIG.profiles.map((p, k) => simulate(simLevels, p, economy, PLAYER_CONFIG.runs, 4242 + k));
 const shipped = runAll(PLAYER_CONFIG.economy);
 const pop = combine(shipped, PLAYER_CONFIG.profiles);

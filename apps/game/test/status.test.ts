@@ -37,15 +37,17 @@ describe('status card', () => {
     expect(boardStatus(p.evaluation, false, coins).title).toMatch(/see each other/);
   });
 
-  it('heads hints with a short line, gives the reason below, and names crossed-out tiles only when there are some', () => {
-    const ev = new Play(catalog.board(id), catalog.solution(id), clock).evaluation;
-    const base = { kind: 'place', cell: 0, technique: 'T1-needs-all', reason: 'R', because: [1] } as const;
-    expect(noticeStatus({ kind: 'hint', hint: { ...base, ruledOut: [] } }, ev)).toMatchObject({ title: 'A firefly goes here', sub: 'R' });
-    expect(noticeStatus({ kind: 'hint', hint: { ...base, ruledOut: [5] } }, ev)).toMatchObject({ title: 'Crossed-out tiles stay empty', sub: 'R' });
-    expect(noticeStatus({ kind: 'hint', hint: { kind: 'try-here', cell: 0, reason: 'T' } }, ev).sub).toMatch(/still dark/);
-    expect(noticeStatus({ kind: 'hint', hint: { kind: 'remove', cell: 0, reason: 'X' } }, ev)).toMatchObject({ title: "That firefly can't stay", sub: 'X' });
-    expect(noticeStatus({ kind: 'no-coins', coinsPerSolve: coins }, ev).sub).toContain(String(coins));
-    expect(noticeStatus({ kind: 'jar-empty' }, ev).title).toBe('The jar is empty');
+  it('heads hints with a short line and gives the reason below: crossed tiles, a ring, or a firefly that must go', () => {
+    const cross = { kind: 'cross', technique: 'T1-satisfied', reason: 'R', because: [1] } as const;
+    expect(noticeStatus({ kind: 'hint', hint: { ...cross, cells: [5] } })).toMatchObject({ title: 'No firefly on this tile', sub: 'R' });
+    expect(noticeStatus({ kind: 'hint', hint: { ...cross, cells: [5, 6] } })).toMatchObject({ title: 'No fireflies on these tiles', sub: 'R' });
+    const point = { kind: 'point', reason: 'P', because: [1], target: 2 } as const;
+    expect(noticeStatus({ kind: 'hint', hint: { ...point, technique: 'T2-one-source' } })).toMatchObject({ title: 'Look at this dark tile', sub: 'P' });
+    expect(noticeStatus({ kind: 'hint', hint: { ...point, technique: 'T1-needs-all' } }).title).toBe('Look at this bush');
+    expect(noticeStatus({ kind: 'hint', hint: { ...point, technique: null } }).title).toBe('Look around here');
+    expect(noticeStatus({ kind: 'hint', hint: { kind: 'remove', cell: 0, reason: 'X' } })).toMatchObject({ title: "That firefly can't stay", sub: 'X' });
+    expect(noticeStatus({ kind: 'no-coins', coinsPerSolve: coins }).sub).toContain(String(coins));
+    expect(noticeStatus({ kind: 'jar-empty' }).title).toBe('The jar is empty');
   });
 
   it('an empty jar on an unsolved board says so, after conflicts and overfull bushes', () => {
@@ -85,7 +87,7 @@ describe('status wording fits the card', () => {
 
   it('every title fits on one line and every sub-line in two', () => {
     const all = everyStatus();
-    expect(all).toHaveLength(42);
+    expect(all).toHaveLength(53);
     for (const s of all) {
       expect(s.title.length, s.title).toBeLessThanOrEqual(TITLE_MAX);
       expect(s.sub.length, s.sub).toBeLessThanOrEqual(SUB_MAX);

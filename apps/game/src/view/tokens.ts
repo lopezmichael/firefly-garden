@@ -14,7 +14,7 @@ export const COLOR_TOKENS = [
   'moss', 'moss-lo', 'moss-hi', 'moss-plain', 'moss-plain-lo', 'leaf', 'wilt', 'wilt-lo',
   'rose', 'rose-deep', 'rose-pale', 'rose-spiral', 'rose-leaf',
   'warn', 'warn-hatch', 'warn-glow',
-  'ruled', 'firefly-rib', 'wing',
+  'ruled', 'mark', 'mark-deep', 'mark-light', 'pollen', 'firefly-rib', 'wing',
   'jar-paper', 'jar-rib',
   'level-hard', 'level-expert', 'level-expert-text',
   'lantern-light', 'friend-mint', 'friend-peach', 'friend-sky', 'friend-lilac',

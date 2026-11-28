@@ -103,6 +103,14 @@ export interface GradeOptions {
    */
   readonly start?: Iterable<number>;
   /**
+   * Tiles already known to hold no firefly (a hint's X marks), so the trace
+   * continues from what the player has been shown. Like `start`, the grader
+   * cannot check them: callers pass only cells outside the unique solution.
+   * Never the player's own X marks, which may be wrong. Throws RangeError for a
+   * non-path cell or one that holds a start firefly or lantern.
+   */
+  readonly startEmpty?: Iterable<number>;
+  /**
    * Stop right after the first step that places a firefly (hints need only
    * the steps up to there). The trace is then partial: only `steps` is
    * meaningful, and `solved`/`maxTier` describe an unfinished grade.
@@ -128,6 +136,10 @@ export function grade(board: Board, options: GradeOptions = {}): Grade {
   for (const c of options.start ?? []) {
     if (board.kind[c] !== 'path') throw new RangeError(`start cell ${c} cannot hold a firefly`);
     if (!place(board, s, c)) throw new RangeError(`start cell ${c} sees another firefly`);
+  }
+  for (const c of options.startEmpty ?? []) {
+    if (board.kind[c] !== 'path' || s.st[c] === FLY) throw new RangeError(`cell ${c} cannot be known empty`);
+    s.st[c] = NO;
   }
 
   let finders = FINDERS;

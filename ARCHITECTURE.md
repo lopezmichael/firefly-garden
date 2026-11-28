@@ -42,7 +42,7 @@ line is swappable.
 | `solver.ts` | `solve` / `isUnique`: exact search with propagation, stops at a solution limit |
 | `transform.ts` | The 8 rotations/mirrors, so one stored orientation serves portrait and landscape; `canonicalKey` spots disguised duplicates |
 | `grader.ts` | Human-style technique solver: one deduction at a time, simplest first, records the trace (tier, width, reason); can start from a position. `gradeLevel` grades a shipped level as players see it (firefly count known); every difficulty decision goes through it |
-| `hints.ts` | `hint`: removes a wrong firefly or places the grader's next one from the player's position (count known), with a one-line reason; `hintStep` maps a hint to the full trace for analytics |
+| `hints.ts` | `hint`: from the player's position (count known, the hint's own X marks as known-empty tiles, never the player's), removes a wrong firefly, crosses out the grader's first group of ruled-out tiles (`cross`, one technique and reason, at most four) or rings what the next firefly step is about (`point`); never places a firefly. One-line reasons per technique (`RULE_OUT_REASONS`, `HINT_REASONS`); `hintCell` and `hintStep` map a hint to the full trace for analytics |
 | `difficulty.ts` | Features, score, tier and estimated solve time from a trace; all weights in `DIFFICULTY_CONFIG` |
 | `rng.ts` | Seeded PRNG so every generated level can be regenerated from its spec |
 | `shapes.ts` | Garden masks: rectangle, ring, L, bridge, crescent |
@@ -50,7 +50,7 @@ line is swappable.
 | `ramp.ts` | Picks levels for each chapter, orders them as a sawtooth, swaps in a teaching level where each new tier first appears, and places that debut early in the chapter with practice alternating with easier levels |
 | `policy.ts` | Next-level policy: main path by default, one detour (warm-up after a break; breather after a quit, a long solve or repeated hints) from a reserve pool, never two in a row |
 | `events.ts` | Analytics event schema and `validateEvent`; what Phase 2 logs and Phase 4 refits from (`docs/references/analytics.md`) |
-| `players.ts` | Simulated players (four kinds of portal player) walking grader traces with skill, learning, patience, hints and churn; the shipped hint economy (`PLAYER_CONFIG`) |
+| `players.ts` | Simulated players (four kinds of portal player) walking grader traces (`simSteps`) with skill, learning, patience, hints and churn; a hint crosses out the first group of empty steps no hint has crossed (it may re-find what the player already knew) or points; the shipped hint economy (`PLAYER_CONFIG`) |
 
 Rules of the package: no DOM, no Node APIs, no dependencies, relative imports
 only (enforced by `tests/ratchets.test.ts` and its tsconfig). Everything is
@@ -78,11 +78,15 @@ Plain DOM for the screens, PixiJS for the board, one controller between them.
 The look is ink and wash (`docs/design/assets.md`, plan `docs/plans/2026-11-12-ink-wash-theme.md`)
 over the Phase 2 baseline's structure (`docs/design/phase-2/`).
 
+Which chapters a build plays is one list, `PLAYED_CHAPTERS` in `src/build.ts` (data, no imports).
+The game, its tests, the hint-economy ratchet and the difficulty report all read it, so the
+guardrails check exactly the main path that ships.
+
 | Folder | Holds | May import |
 | --- | --- | --- |
-| `src/state/` | Level catalog (`catalog.ts`), one play with undo, reset, hints and active time (`play.ts`), coins and hint bank (`wallet.ts`), progress and the next-level policy (`session.ts`), status-card wording (`status.ts`), saved progress and its validation (`save.ts`), the local analytics log (`events.ts`), sound cues from a change of position (`cues.ts`), one-time tips and conflict words (`teach.ts`), cell words for screen readers (`describe.ts`), which solve finishes a chapter and its card's totals (`chapters.ts`), the garden code that carries progress between devices (`gardenCode.ts`; the deflate itself is injected), the journal's pages and garden sketches (`journal.ts`), difficulty labels from a garden's tier (`difficulty.ts`), what the home screen says and where its button goes (`home.ts`) | `@firefly/core` only, no browser globals (ratchet) |
+| `src/state/` | Level catalog (`catalog.ts`), one play with the tap cycle (firefly, X, empty), undo, reset, hints and their locked X marks, and active time (`play.ts`), coins and hint bank (`wallet.ts`), progress and the next-level policy (`session.ts`), status-card wording (`status.ts`), saved progress and its validation (`save.ts`), the local analytics log (`events.ts`), sound cues from a change of position (`cues.ts`), one-time tips and conflict words (`teach.ts`), cell words for screen readers (`describe.ts`), which solve finishes a chapter and its card's totals (`chapters.ts`), the garden code that carries progress between devices (`gardenCode.ts`; the deflate itself is injected), the journal's pages and garden sketches (`journal.ts`), difficulty labels from a garden's tier (`difficulty.ts`), what the home screen says and where its button goes (`home.ts`) | `@firefly/core` only, no browser globals (ratchet) |
 | `src/view/` | Pure layout math: bands, board fit, orientation, display ↔ canonical cells, keyboard focus steps and the key map, hills and map placement (`layout.ts`); the PixiJS board (`board.ts`: tiles, fireflies, conflict beams, and the solve's celebration); colour token names (`tokens.ts`) read into a palette (`theme.ts`) | `state/`, `pixi.js` |
-| `src/view/art/` | The ink and wash art, drawn with 2D canvas, no live filters: seeded noise (`noise.ts`, pure), the texture kit (`textures.ts`: grain, fibre, wash edges, the chrome's paper), board pieces and fireflies (`pieces.ts`), their placement, motion and celebration timing (`geometry.ts`, pure: `CELEBRATION`), the scenery (`scenery.ts`) | `view/` |
+| `src/view/art/` | The ink and wash art, drawn with 2D canvas, no live filters: seeded noise (`noise.ts`, pure), the texture kit (`textures.ts`: grain, fibre, wash edges, the chrome's paper), board pieces, fireflies and the X mark (`pieces.ts`), their placement, motion and celebration timing (`geometry.ts`, pure: `CELEBRATION`), the scenery (`scenery.ts`) | `view/` |
 | `src/view/home/` | The home screen's living garden: the baked art's manifest (`art.ts`), how each character moves (`cast.ts`), the cut-out rig (`rig.ts`) and the PixiJS scene (`scene.ts`) | `view/`, `pixi.js`, `assets/home/` |
 | `src/ui/` | The play screen's DOM (`screen.ts`, `game.css`) including the lantern jar and the scenery layer, the icon set (`icons.ts`), the hint and settings sheets (`sheets.ts`, including the garden code), the browser's deflate for the garden code (`deflate.ts`), the garden map (`map.ts`), the level-complete card (`complete.ts`, tap to continue), the chapter and ending card (`chapter.ts`), the garden journal (`journal.ts`), the home screen (`home.ts`), page-level flights (`flight.ts`: jar to tile, and released fireflies to the progress track) and the controller (`app.ts`, which also runs the two-tap chapter sequence) | `state/`, `view/`, `platform/` |
 | `src/audio/` | Web Audio synth (`engine.ts`: ten designed voices and a generated reverb, no audio files; no context before the first gesture; suspended while muted) and the mute rules (`gate.ts`: setting, hidden tab, ad) | nothing game-specific |
@@ -91,7 +95,7 @@ over the Phase 2 baseline's structure (`docs/design/phase-2/`).
 - **Layout follows the screen's shape** (`bandFor`): tall (phones in portrait), square
   (iPhone Duo, tablets), wide (landscape, desktop). The board picks its rotation when a level
   starts and keeps it through a resize or fold unless cells would drop under 44 px.
-- **The board draws, the state decides.** `BoardView.render` takes a `BoardState` (evaluation,
+- **The board draws, the state decides.** `BoardView.render` takes a `BoardState` (evaluation, hint X marks and the player's own, drawn alike,
   locked cells, hint outlines) and reports taps as canonical cell indices, so rotation never
   reaches game state, saves or events.
 - **Saved progress is untrusted.** One versioned document (`state/save.ts`) under one key, read
@@ -122,11 +126,11 @@ over the Phase 2 baseline's structure (`docs/design/phase-2/`).
 - **The board draws only while something moves.** A still board (every board in reduced motion,
   an empty one otherwise) draws once per change and stops its ticker (moments on the tween list keep it running until they land); the browser smoke test
   holds this.
-- **Keyboard:** arrows move a focus ring in screen space (rotation-aware), space or enter toggles
-  the focused tile, Z undoes, H asks for a hint; the board announces the focused cell to screen
+- **Keyboard:** arrows move a focus ring in screen space (rotation-aware), space or enter cycles
+  the focused tile like a tap (firefly, X, empty), Z undoes, H asks for a hint; the board announces the focused cell to screen
   readers.
 - **Browser smoke test:** `apps/game/e2e/` (Playwright, its own CI job) plays the e2e build: a
-  solve by real taps, a hint, a cancelled and a finished ad, reload, rotation and fold, keyboard,
+  solve by real taps, a hint crossing tiles out and a pointing one, a player cycling a tile, a cancelled and a finished ad, reload, rotation and fold, keyboard,
   sound muting, the status card's height at 320 and 360 px for every message, idle frames.
 - **Hosting:** Vercel (team Lopez Studio, project `firefly-garden`) builds from the repo root
   (`vercel.json`: `npm ci`, `npm run build`, output `apps/game/dist`). Production deploys from

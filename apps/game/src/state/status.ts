@@ -1,4 +1,4 @@
-import type { Evaluation, Hint } from '@firefly/core';
+import type { Evaluation, Hint, TechniqueId } from '@firefly/core';
 
 /**
  * The status card's words: it teaches by reacting to the board (design
@@ -22,6 +22,19 @@ export type Notice =
   | { readonly kind: 'jar-empty' }
   /** One-time tip: beams crossed for the first time (state/teach.ts). */
   | { readonly kind: 'tip-cross' };
+
+/** A pointing hint's heading: what the ring is round. */
+const POINT_TITLES: Readonly<Record<TechniqueId, string>> = {
+  'T1-needs-all': 'Look at this bush',
+  'T2-bush-room': 'Look at this bush',
+  'T1-satisfied': 'Look at this bush',
+  'T3-overlap': 'Look at these two bushes',
+  'T2-one-source': 'Look at this dark tile',
+  'T4-lookahead': 'Look along these tiles',
+  'T5-trial': 'Look along these tiles',
+  'T1-count-complete': 'Look at the jar',
+  'T3-count-bound': 'Look at the jar',
+};
 
 /** `jarLeft`: fireflies still in the jar (an empty jar on an unsolved board gets its own line). */
 export function boardStatus(ev: Evaluation, firstMove: boolean, coinsPerSolve: number, jarLeft = 1): StatusText {
@@ -47,18 +60,17 @@ export function boardStatus(ev: Evaluation, firstMove: boolean, coinsPerSolve: n
   return { title: 'Every path is lit', sub: 'Now make each bush match its number.', tone: 'plain' };
 }
 
-/** Words for a notice. `ev` supplies the board's progress line under hint titles. */
-export function noticeStatus(n: Notice, ev: Evaluation): StatusText {
-  const dark = ev.unlit > 0 ? `${ev.unlit} path ${ev.unlit === 1 ? 'tile' : 'tiles'} still dark.` : 'Every path is lit.';
+/** Words for a notice. */
+export function noticeStatus(n: Notice): StatusText {
   switch (n.kind) {
     case 'locked':
       return { title: 'Hint fireflies stay put', sub: "A hint firefly is always right, so it's locked in place.", tone: 'glow' };
     case 'no-coins':
       return { title: 'Not enough coins for a hint', sub: `Solve a garden to earn ${n.coinsPerSolve} more.`, tone: 'plain' };
     case 'jar-empty':
-      return { title: 'The jar is empty', sub: 'Tap a firefly on the board to call it back, then try another spot.', tone: 'plain' };
+      return { title: 'The jar is empty', sub: 'Every firefly is out. Tap one to call it back; empty tiles take an X.', tone: 'plain' };
     case 'reset':
-      return { title: 'Board cleared', sub: 'Your hint fireflies stay.', tone: 'plain' };
+      return { title: 'Board cleared', sub: 'A hint\u2019s X marks stay.', tone: 'plain' };
     case 'tip-cross':
       return { title: 'Light can cross', sub: "Only fireflies can't see each other.", tone: 'glow' };
     case 'hint': {
@@ -66,8 +78,10 @@ export function noticeStatus(n: Notice, ev: Evaluation): StatusText {
       // never grows the card (see the status-length test).
       const h = n.hint;
       if (h.kind === 'remove') return { title: "That firefly can't stay", sub: h.reason, tone: 'glow' };
-      if (h.kind === 'try-here') return { title: 'Try a firefly here', sub: dark, tone: 'glow' };
-      return { title: h.ruledOut.length > 0 ? 'Crossed-out tiles stay empty' : 'A firefly goes here', sub: h.reason, tone: 'glow' };
+      if (h.kind === 'cross') {
+        return { title: h.cells.length === 1 ? 'No firefly on this tile' : 'No fireflies on these tiles', sub: h.reason, tone: 'glow' };
+      }
+      return { title: h.technique === null ? 'Look around here' : POINT_TITLES[h.technique], sub: h.reason, tone: 'glow' };
     }
   }
 }
