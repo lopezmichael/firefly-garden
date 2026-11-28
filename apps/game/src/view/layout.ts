@@ -277,3 +277,79 @@ export function segmentPoints(s: MapSegment, n = 24): Point[] {
   }
   return out;
 }
+
+/** The home screen's painted scene, in its own 390-wide phone space (docs/plans/2026-11-28-home-screen.md). */
+export const HOME_SCENE = { w: 390, h: 844 } as const;
+export const HOME_FIT = {
+  /** Cover a phone edge to edge while at least this much of the scene's height shows; else a column. */
+  minShown: 0.72,
+  /** Of what a phone crops, this share comes off the sky; the rest off the foreground (under the buttons). */
+  topShare: 0.1,
+  /** Text laid over the scene scales with it, within these bounds (it never gets tiny on a desktop). */
+  textScale: [0.88, 1.15],
+  /** The chrome over a column is at least this wide (wider than a short screen's column), if the screen allows. */
+  chromeMin: 380,
+  /** A column narrower than this splits instead: the scene beside a panel holding the chrome. */
+  splitBelow: 330,
+  /** In a split, the band of the scene that shows (the arch, Pip and the friends), its gap and the panel's width. */
+  splitWindow: [130, 760],
+  splitGap: 24,
+  panel: 340,
+} as const;
+
+export interface HomeFit {
+  /** The scene's box on screen, in CSS pixels (it may hang past the edges: cropped). */
+  readonly x: number;
+  readonly y: number;
+  readonly w: number;
+  readonly h: number;
+  /** CSS pixels per scene pixel. */
+  readonly k: number;
+  /** A centred column with the night beside it (wide screens), rather than edge to edge. */
+  readonly column: boolean;
+  /** Short and wide (a phone on its side): the scene beside the chrome's panel, not under it. */
+  readonly split: boolean;
+  /** Where the title, caption and buttons go: over the shown scene, or the panel beside it. */
+  readonly chrome: { readonly x: number; readonly w: number };
+  /** Scale for the title and Pip's caption. */
+  readonly text: number;
+}
+
+/**
+ * Where the home scene sits on a `vw × vh` screen. A phone is covered edge to edge: a wider phone
+ * crops the scene's height (mostly the foreground, which the buttons cover), a narrower one its
+ * sides. Once covering would hide too much of it (tablets, desktops), the whole scene shows as a
+ * centred column.
+ */
+export function homeFit(vw: number, vh: number): HomeFit {
+  const { w: SW, h: SH } = HOME_SCENE;
+  const text = (k: number) => Math.min(HOME_FIT.textScale[1], Math.max(HOME_FIT.textScale[0], k));
+  const byWidth = vw / SW;
+  const over = (x: number, w: number) => ({ x: Math.max(0, x), w: Math.min(vw, x + w) - Math.max(0, x) });
+  if (SH * byWidth >= vh) {
+    // Tall enough: cover the width, crop the height.
+    if (vh / (SH * byWidth) >= HOME_FIT.minShown) {
+      const h = SH * byWidth;
+      return { x: 0, y: -(h - vh) * HOME_FIT.topShare, w: vw, h, k: byWidth, column: false, split: false, chrome: over(0, vw), text: text(byWidth) };
+    }
+  } else {
+    // Narrower than the scene: cover the height, crop the sides evenly.
+    const k = vh / SH, w = SW * k, x = (vw - w) / 2;
+    return { x, y: 0, w, h: vh, k, column: false, split: false, chrome: over(x, w), text: text(k) };
+  }
+  const k = vh / SH, w = SW * k;
+  if (w >= HOME_FIT.splitBelow) {
+    // A column, the chrome over it a little wider than it when it is narrow.
+    const x = (vw - w) / 2, cw = Math.max(w, Math.min(vw - 32, HOME_FIT.chromeMin));
+    return { x, y: 0, w, h: vh, k, column: true, split: false, chrome: { x: (vw - cw) / 2, w: cw }, text: text(k) };
+  }
+  // Short and wide: the scene's middle band fills the height, the panel stands beside it.
+  const [top, bottom] = HOME_FIT.splitWindow;
+  const sk = vh / (bottom - top), sw = SW * sk;
+  const panel = Math.min(HOME_FIT.panel, Math.max(0, vw - sw - HOME_FIT.splitGap - 16));
+  const x = (vw - (sw + HOME_FIT.splitGap + panel)) / 2;
+  return {
+    x, y: -top * sk, w: sw, h: SH * sk, k: sk, column: true, split: true,
+    chrome: { x: x + sw + HOME_FIT.splitGap, w: panel }, text: HOME_FIT.textScale[0],
+  };
+}

@@ -80,10 +80,11 @@ over the Phase 2 baseline's structure (`docs/design/phase-2/`).
 
 | Folder | Holds | May import |
 | --- | --- | --- |
-| `src/state/` | Level catalog (`catalog.ts`), one play with undo, reset, hints and active time (`play.ts`), coins and hint bank (`wallet.ts`), progress and the next-level policy (`session.ts`), status-card wording (`status.ts`), saved progress and its validation (`save.ts`), the local analytics log (`events.ts`), sound cues from a change of position (`cues.ts`), one-time tips and conflict words (`teach.ts`), cell words for screen readers (`describe.ts`), which solve finishes a chapter and its card's totals (`chapters.ts`), the garden code that carries progress between devices (`gardenCode.ts`; the deflate itself is injected), the journal's pages and garden sketches (`journal.ts`), difficulty labels from a garden's tier (`difficulty.ts`) | `@firefly/core` only, no browser globals (ratchet) |
+| `src/state/` | Level catalog (`catalog.ts`), one play with undo, reset, hints and active time (`play.ts`), coins and hint bank (`wallet.ts`), progress and the next-level policy (`session.ts`), status-card wording (`status.ts`), saved progress and its validation (`save.ts`), the local analytics log (`events.ts`), sound cues from a change of position (`cues.ts`), one-time tips and conflict words (`teach.ts`), cell words for screen readers (`describe.ts`), which solve finishes a chapter and its card's totals (`chapters.ts`), the garden code that carries progress between devices (`gardenCode.ts`; the deflate itself is injected), the journal's pages and garden sketches (`journal.ts`), difficulty labels from a garden's tier (`difficulty.ts`), what the home screen says and where its button goes (`home.ts`) | `@firefly/core` only, no browser globals (ratchet) |
 | `src/view/` | Pure layout math: bands, board fit, orientation, display ↔ canonical cells, keyboard focus steps and the key map, hills and map placement (`layout.ts`); the PixiJS board (`board.ts`: tiles, fireflies, conflict beams, and the solve's celebration); colour token names (`tokens.ts`) read into a palette (`theme.ts`) | `state/`, `pixi.js` |
 | `src/view/art/` | The ink and wash art, drawn with 2D canvas, no live filters: seeded noise (`noise.ts`, pure), the texture kit (`textures.ts`: grain, fibre, wash edges, the chrome's paper), board pieces and fireflies (`pieces.ts`), their placement, motion and celebration timing (`geometry.ts`, pure: `CELEBRATION`), the scenery (`scenery.ts`) | `view/` |
-| `src/ui/` | The play screen's DOM (`screen.ts`, `game.css`) including the lantern jar and the scenery layer, the icon set (`icons.ts`), the hint and settings sheets (`sheets.ts`, including the garden code), the browser's deflate for the garden code (`deflate.ts`), the garden map (`map.ts`), the level-complete card (`complete.ts`, tap to continue), the chapter and ending card (`chapter.ts`), the garden journal (`journal.ts`), page-level flights (`flight.ts`: jar to tile, and released fireflies to the progress track) and the controller (`app.ts`, which also runs the two-tap chapter sequence) | `state/`, `view/`, `platform/` |
+| `src/view/home/` | The home screen's living garden: the baked art's manifest (`art.ts`), how each character moves (`cast.ts`), the cut-out rig (`rig.ts`) and the PixiJS scene (`scene.ts`) | `view/`, `pixi.js`, `assets/home/` |
+| `src/ui/` | The play screen's DOM (`screen.ts`, `game.css`) including the lantern jar and the scenery layer, the icon set (`icons.ts`), the hint and settings sheets (`sheets.ts`, including the garden code), the browser's deflate for the garden code (`deflate.ts`), the garden map (`map.ts`), the level-complete card (`complete.ts`, tap to continue), the chapter and ending card (`chapter.ts`), the garden journal (`journal.ts`), the home screen (`home.ts`), page-level flights (`flight.ts`: jar to tile, and released fireflies to the progress track) and the controller (`app.ts`, which also runs the two-tap chapter sequence) | `state/`, `view/`, `platform/` |
 | `src/audio/` | Web Audio synth (`engine.ts`: ten designed voices and a generated reverb, no audio files; no context before the first gesture; suspended while muted) and the mute rules (`gate.ts`: setting, hidden tab, ad) | nothing game-specific |
 | `src/platform/` | The `Platform` interface and adapters; the only door to SDKs (ratchet) | |
 
@@ -102,6 +103,15 @@ over the Phase 2 baseline's structure (`docs/design/phase-2/`).
 - **Art is baked, never filtered live.** Textures and pieces are drawn once per cell size into
   the board's texture cache (pruned on resize); the scenery is one canvas behind the DOM,
   redrawn only when the layout changes; the chrome's paper is one tile baked at startup.
+- **The home screen's painting is baked offline** (`npm run art:home`): the painter in
+  `art/home/` is too slow to run at launch, so `scripts/bake-home.ts` runs it in headless
+  Chromium and commits `apps/game/src/assets/home/` (the still plate, an atlas of every moving
+  part of Pip and the friends, and `home.json` with each part's place and pivot). The game only
+  moves sprites; its lights are one glow texture tinted by colour tokens. Plan:
+  `docs/plans/2026-11-28-home-screen.md`.
+- **Every launch opens on the home screen.** Its button runs what launch used to: back into a
+  saved unfinished board, the map when a chapter's unlock flight waits or every garden glows,
+  otherwise the next garden. Everything under it is inert while it is open.
 - **Motion is optional.** Every moment (flights, the light spreading, roses, the bloom, the map's
   orbits and unlock flight) is skipped under reduced motion with the state change kept; the
   board's moments run on one tween list (`board.ts`), CSS ones are ratchet-checked.

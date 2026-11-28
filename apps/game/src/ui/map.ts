@@ -34,8 +34,6 @@ export interface MapView {
   readonly continueLabel: string;
   readonly continueSub: string;
   readonly finished: boolean;
-  /** The card's line under the area's progress (a returning player's welcome), or the default. */
-  readonly note?: string;
   /** Index of a newly finished chapter whose unlock flight plays now, or null. */
   readonly flyFrom: number | null;
   readonly motion: boolean;
@@ -119,7 +117,7 @@ export class MapScreen {
   private readonly areaName = el('h2', 'ff-map-area');
   private readonly areaCount = el('span', 'ff-map-count');
   private readonly areaFill = el('div', 'ff-map-fill');
-  private readonly note = el('p', 'ff-map-note');
+  private readonly note = el('p', 'ff-map-note', 'Each garden you light brings more roses back.');
   private readonly field = el('div', 'ff-map-field');
   private readonly drawing = svg('svg', {}, 'ff-map-drawing');
   private readonly beds = el('ol', 'ff-map-beds');
@@ -202,7 +200,6 @@ export class MapScreen {
     this.areaName.textContent = `The ${view.area}`;
     this.areaCount.textContent = `${view.solved} of ${view.total}`;
     this.areaFill.style.width = `${view.total === 0 ? 0 : Math.round((view.solved / view.total) * 100)}%`;
-    this.note.textContent = view.note ?? 'Each garden you light brings more roses back.';
     this.beds.replaceChildren(...view.beds.map((b) => {
       const li = el('li', 'ff-map-bed');
       li.dataset.state = b.state;

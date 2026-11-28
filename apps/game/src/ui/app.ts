@@ -33,6 +33,9 @@ import { unlockToShow } from '../state/mapProgress.ts';
 import { MapScreen, MOVE_MS } from './map.ts';
 import { ChapterCard } from './chapter.ts';
 import { Journal } from './journal.ts';
+import { HomeScreen } from './home.ts';
+import { homeWords } from '../state/home.ts';
+import type { HomeStart } from '../state/home.ts';
 import { difficultyOf } from '../state/difficulty.ts';
 import { gardenSketch, journalPages, openingPage } from '../state/journal.ts';
 import { chapterFinishedBy, chapterLine, chapterTotals, formatDuration } from '../state/chapters.ts';
@@ -80,6 +83,8 @@ export interface E2EHooks {
   /** Record these gardens as solved (to reach a chapter's last garden quickly), and save. */
   markSolved(ids: string[]): void;
   isSolved(id: string): boolean;
+  /** Frames the home screen's garden has drawn (it draws none while still). */
+  homeFrames(): number;
   platform: TestPlatform;
 }
 
@@ -94,6 +99,9 @@ export class GameApp {
   private readonly hintSheet = new HintSheet();
   private readonly settingsSheet: SettingsSheet;
   private readonly mapScreen: MapScreen;
+  private readonly homeScreen: HomeScreen;
+  /** The saved board as the game opened, resumed when the home screen's button is pressed. */
+  private launchSave: CurrentPlay | null = null;
   /** Boards of levels left unsolved, kept so their retry resumes them (newest last). */
   private parked: CurrentPlay[] = [];
   private board!: BoardView;
@@ -178,7 +186,15 @@ export class GameApp {
       settings: () => this.openSettings(),
       journal: () => this.openJournal(),
     }, palette);
-    this.journal.onClose = () => { this.mapScreen.root.inert = false; };
+    this.homeScreen = new HomeScreen({
+      go: () => this.leaveHome(),
+      settings: () => this.openSettings(),
+      journal: () => this.openJournal(),
+    }, palette);
+    this.journal.onClose = () => {
+      this.mapScreen.root.inert = false;
+      this.homeScreen.root.inert = false;
+    };
     this.settingsSheet = new SettingsSheet({
       sound: (on) => this.setSound(on),
       motion: (m) => this.setMotion(m),
@@ -195,7 +211,7 @@ export class GameApp {
     const stored = await this.loadStored();
     this.restoreState(stored);
     this.host.replaceChildren(this.screen.root);
-    this.screen.root.append(this.mapScreen.root, this.chapterCard.root, this.journal.root, this.hintSheet.backdrop, this.settingsSheet.backdrop);
+    this.screen.root.append(this.mapScreen.root, this.homeScreen.root, this.chapterCard.root, this.journal.root, this.hintSheet.backdrop, this.settingsSheet.backdrop);
     const behind = () => [...this.screen.root.children].filter(
       (c): c is HTMLElement => c instanceof HTMLElement && c !== this.hintSheet.backdrop && c !== this.settingsSheet.backdrop);
     this.hintSheet.background = behind;
@@ -226,13 +242,9 @@ export class GameApp {
     this.startSessionClock();
     this.emit({ type: 'session_start', platform: this.platform.name, coins: this.wallet.coins });
 
-    // Launch: back into an unfinished board; a first-time player straight into the first garden;
-    // anyone else to the map, with Continue.
-    const saved = stored.save?.current;
-    if (!(saved && !this.session.isSolved(saved.levelId) && this.resume(saved))) {
-      if (this.session.progress.history.length === 0) this.advance();
-      else this.showMap({ welcome: true });
-    }
+    // Launch: every player opens on the home screen (Michael, 2026-11-28); its button carries on.
+    this.launchSave = stored.save?.current ?? null;
+    this.showHome();
     // Write back at once, so storage holds the validated version, not whatever was loaded.
     this.scheduleSave();
   }
@@ -285,7 +297,8 @@ export class GameApp {
         placed: [...p.placed], locked: [...p.locked], seconds: p.seconds,
         placements: p.placements, undos: p.undos, restarts: p.restarts, hints: p.hints,
       }
-      : null;
+      // The home screen is open over a saved board it hasn't resumed yet: keep it saved.
+      : this.launchSave;
     const pr = this.session.progress;
     return {
       install: this.install, session: this.log.session, coins: this.wallet.coins, bank: this.wallet.bank,
@@ -357,7 +370,7 @@ export class GameApp {
 
   /** A sheet or an ad is in front of the board: no taps, moves, hints or clock. */
   private blocked(): boolean {
-    return this.adShowing || this.hintSheet.isOpen || this.settingsSheet.isOpen || this.mapScreen.isOpen;
+    return this.adShowing || this.hintSheet.isOpen || this.settingsSheet.isOpen || this.mapScreen.isOpen || this.homeScreen.isOpen;
   }
 
   private reducedMotion(): boolean {
@@ -369,6 +382,7 @@ export class GameApp {
     this.board.setReducedMotion(reduced);
     this.screen.setReducedMotion(reduced);
     this.mapScreen.setMotion(!reduced);
+    this.homeScreen.setMotion(!reduced);
     this.journal.setMotion(!reduced);
   }
 
@@ -384,14 +398,15 @@ export class GameApp {
     this.scheduleSave();
   }
 
-  /** The garden journal, over the map (only the map has its button). */
+  /** The garden journal, over the map or the home screen (only they have its button). */
   private openJournal(): void {
-    if (!this.mapScreen.isOpen || this.journal.isOpen || this.chapterCard.isOpen || this.adShowing || this.settingsSheet.isOpen) return;
+    const over = this.mapScreen.isOpen ? this.mapScreen : this.homeScreen.isOpen ? this.homeScreen : null;
+    if (!over || this.journal.isOpen || this.chapterCard.isOpen || this.adShowing || this.settingsSheet.isOpen) return;
     const pages = journalPages(this.catalog.chapters, (id) => this.session.isSolved(id), this.session.progress.history,
       (id) => this.catalog.levels.get(id)?.tier ?? 1);
     // Open first, so the journal records the book button as where focus returns; then the map goes inert.
     this.journal.open(pages, openingPage(pages), (id) => (this.session.isSolved(id) ? gardenSketch(this.catalog.board(id), this.catalog.solution(id)) : null));
-    this.mapScreen.root.inert = true;
+    over.root.inert = true;
   }
 
   private openSettings(): void {
@@ -606,7 +621,7 @@ export class GameApp {
     this.flushSave();
   }
 
-  private showMap(opts: { holdFlight?: number; welcome?: boolean } = {}): void {
+  private showMap(opts: { holdFlight?: number } = {}): void {
     const solved = (id: string) => this.session.isSolved(id);
     const nextMain = this.catalog.mainPath.find((id) => !solved(id));
     const nextPlace = nextMain ? this.catalog.place(nextMain) : undefined;
@@ -633,8 +648,6 @@ export class GameApp {
       continueLabel: nextMain ? 'Continue' : 'Every garden is glowing',
       continueSub: nextPlace ? `Chapter ${chapterNo} · Garden ${nextPlace.index + 1}` : 'More gardens are on the way',
       finished: !nextMain,
-      // A returning player is welcomed back, with where they left off.
-      ...(opts.welcome ? { note: nextPlace ? `Welcome back. Chapter ${chapterNo} · Garden ${nextPlace.index + 1} is waiting.` : 'Welcome back. Every garden is glowing.' } : {}),
       flyFrom: unlock.from,
       motion: !this.reducedMotion(),
     });
@@ -764,11 +777,78 @@ export class GameApp {
   /** The play screen under the map: inert while the map is open (focus and screen readers). */
   private mapBackground(): HTMLElement[] {
     return [...this.screen.root.children].filter((c): c is HTMLElement =>
-      c instanceof HTMLElement && c !== this.mapScreen.root && c !== this.chapterCard.root && c !== this.journal.root
+      c instanceof HTMLElement && c !== this.mapScreen.root && c !== this.homeScreen.root && c !== this.chapterCard.root && c !== this.journal.root
       && c !== this.hintSheet.backdrop && c !== this.settingsSheet.backdrop);
   }
 
+  // ---------------------------------------------------------------- home
+
+  /** Where the home screen's button goes, and so what Pip says. */
+  private homeStart(): HomeStart {
+    const solved = (id: string) => this.session.isSolved(id);
+    const word = (id: string) => difficultyOf(this.catalog.levels.get(id)?.tier ?? 1).word;
+    const where = (id: string) => {
+      const p = this.catalog.place(id);
+      return p ? { chapter: this.catalog.chapters.indexOf(p.chapter) + 1, garden: p.index + 1 } : null;
+    };
+    const nextMain = this.catalog.mainPath.find((id) => !solved(id));
+    const saved = this.launchSave;
+    if (saved && !solved(saved.levelId)) return { kind: 'resume', at: where(saved.levelId), word: word(saved.levelId) };
+    if (this.session.progress.history.length === 0 && this.session.progress.solved.size === 0) return { kind: 'first' };
+    if (!nextMain) return { kind: 'finished' };
+    const unlock = this.pendingUnlock();
+    if (unlock !== null) return { kind: 'unlock', chapter: unlock + 1 };
+    const at = where(nextMain);
+    if (!at) return { kind: 'finished' };
+    return { kind: 'next', ...at, word: word(nextMain), glowing: this.catalog.mainPath.filter(solved).length };
+  }
+
+  /** A chapter finished whose unlock flight the map hasn't played yet (its index), or null. */
+  private pendingUnlock(): number | null {
+    return unlockToShow(this.catalog.chapters.map((c) => ({ id: c.id, finished: c.levels.every((id) => this.session.isSolved(id)) })), this.mapSeen).from;
+  }
+
+  private showHome(): void {
+    for (const el of this.homeBackground()) el.inert = true;
+    this.homeScreen.show({ words: homeWords(this.homeStart()), coins: this.wallet.coins, motion: !this.reducedMotion() });
+  }
+
+  private closeHome(): void {
+    this.homeScreen.root.inert = false;
+    this.homeScreen.hide();
+    for (const el of this.homeBackground()) el.inert = false;
+  }
+
+  /**
+   * The home screen's button: back into the unfinished board; the map when a chapter's unlock
+   * flight is waiting or every garden glows; otherwise the next garden.
+   */
+  private leaveHome(): void {
+    if (!this.homeScreen.isOpen || this.journal.isOpen || this.settingsSheet.isOpen || this.adShowing) return;
+    const start = this.homeStart();
+    const saved = this.launchSave;
+    this.launchSave = null;
+    this.closeHome();
+    if (saved && !this.session.isSolved(saved.levelId) && this.resume(saved)) {
+      this.screen.focusMap();
+      return;
+    }
+    if (start.kind === 'unlock' || start.kind === 'finished') {
+      this.showMap();
+      return;
+    }
+    this.advance();
+    this.screen.focusMap();
+  }
+
+  /** Everything under the home screen: inert while it is open (focus and screen readers). */
+  private homeBackground(): HTMLElement[] {
+    return [...this.screen.root.children].filter((c): c is HTMLElement =>
+      c instanceof HTMLElement && c !== this.homeScreen.root && c !== this.journal.root && c !== this.hintSheet.backdrop && c !== this.settingsSheet.backdrop);
+  }
+
   private show(next: NextLevel, play: Play): void {
+    if (this.homeScreen.isOpen) this.closeHome();
     cancelFlights();
     const opens = this.catalog.place(next.id);
     this.opening = next.id === this.catalog.mainPath[0] ? FIRST_GARDEN
@@ -1185,6 +1265,7 @@ export class GameApp {
         this.flushSave();
       },
       isSolved: (id) => this.session.isSolved(id),
+      homeFrames: () => this.homeScreen.frames,
       platform: this.platform as TestPlatform,
     };
   }
