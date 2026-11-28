@@ -47,6 +47,8 @@ describe('key map', () => {
     expect(key('ArrowLeft')).toEqual({ kind: 'move', dir: 'left' });
     expect(key(' ')).toEqual({ kind: 'toggle' });
     expect(key('Enter')).toEqual({ kind: 'toggle' });
+    expect(key('x')).toEqual({ kind: 'mark' });
+    expect(key('X')).toEqual({ kind: 'mark' });
     expect(key('z')).toEqual({ kind: 'undo' });
     expect(key('Z')).toEqual({ kind: 'undo' }); // caps lock
     expect(key('z', { ctrlKey: true })).toEqual({ kind: 'undo' });
@@ -55,7 +57,8 @@ describe('key map', () => {
   });
 
   it('leaves other keys and browser chords alone', () => {
-    expect(key('x')).toBeNull();
+    expect(key('q')).toBeNull();
+    expect(key('x', { ctrlKey: true })).toBeNull(); // cut, not a mark
     expect(key('Tab')).toBeNull();
     expect(key('h', { ctrlKey: true })).toBeNull();
     expect(key('z', { altKey: true })).toBeNull();

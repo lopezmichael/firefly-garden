@@ -38,15 +38,20 @@ describe('status card', () => {
   });
 
   it('heads hints with a short line and gives the reason below: crossed tiles, a ring, or a firefly that must go', () => {
-    const cross = { kind: 'cross', technique: 'T1-satisfied', reason: 'R', because: [1] } as const;
-    expect(noticeStatus({ kind: 'hint', hint: { ...cross, cells: [5] } })).toMatchObject({ title: 'No firefly on this tile', sub: 'R' });
-    expect(noticeStatus({ kind: 'hint', hint: { ...cross, cells: [5, 6] } })).toMatchObject({ title: 'No fireflies on these tiles', sub: 'R' });
+    const cross = (cells: number[]) => {
+      const part = { cells, technique: 'T1-satisfied', reason: 'R', because: [1] } as const;
+      return { kind: 'cross', ...part, parts: [part] } as const;
+    };
+    expect(noticeStatus({ kind: 'hint', hint: cross([5]) })).toMatchObject({ title: 'No firefly on this tile', sub: 'R' });
+    expect(noticeStatus({ kind: 'hint', hint: cross([5, 6]) })).toMatchObject({ title: 'No fireflies on these tiles', sub: 'R' });
+    expect(noticeStatus({ kind: 'hint', hint: { kind: 'wrong-x', cell: 3, reason: 'W' } })).toMatchObject({ title: 'No firefly on this tile', sub: 'W' });
     const point = { kind: 'point', reason: 'P', because: [1], target: 2 } as const;
     expect(noticeStatus({ kind: 'hint', hint: { ...point, technique: 'T2-one-source' } })).toMatchObject({ title: 'Look at this dark tile', sub: 'P' });
     expect(noticeStatus({ kind: 'hint', hint: { ...point, technique: 'T1-needs-all' } }).title).toBe('Look at this bush');
     expect(noticeStatus({ kind: 'hint', hint: { ...point, technique: null } }).title).toBe('Look around here');
     expect(noticeStatus({ kind: 'hint', hint: { kind: 'remove', cell: 0, reason: 'X' } })).toMatchObject({ title: "That firefly can't stay", sub: 'X' });
-    expect(noticeStatus({ kind: 'no-coins', coinsPerSolve: coins }).sub).toContain(String(coins));
+    expect(noticeStatus({ kind: 'no-hints' }).title).toBe('No hints left here');
+    expect(noticeStatus({ kind: 'tip-hold' }).sub).toMatch(/Hold a tile/);
     expect(noticeStatus({ kind: 'jar-empty' }).title).toBe('The jar is empty');
   });
 
@@ -87,7 +92,7 @@ describe('status wording fits the card', () => {
 
   it('every title fits on one line and every sub-line in two', () => {
     const all = everyStatus();
-    expect(all).toHaveLength(53);
+    expect(all).toHaveLength(55);
     for (const s of all) {
       expect(s.title.length, s.title).toBeLessThanOrEqual(TITLE_MAX);
       expect(s.sub.length, s.sub).toBeLessThanOrEqual(SUB_MAX);

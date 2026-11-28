@@ -61,7 +61,7 @@ export class PlayScreen {
   private readonly undoButton = el('button', 'ff-quiet');
   private readonly resetButton = el('button', 'ff-quiet');
   private readonly hintButton = el('button', 'ff-hint');
-  private readonly hintCost = el('span');
+  private readonly hintCount = el('span');
   private readonly announcer = el('div', 'ff-sr');
   private mapButton: HTMLButtonElement | null = null;
   private readonly complete: CompleteCard;
@@ -152,9 +152,9 @@ export class PlayScreen {
       b.addEventListener('click', () => fn());
     }
     this.hintButton.type = 'button';
-    // "Hint · 30" (or "Hint · 2 saved"), as on the canvas; the label says "coins" for screen readers.
+    // "Hint · 3": the garden's free hints left (or "2 saved" from a video; a video mark when none).
     const cost = el('span', 'ff-cost');
-    cost.append(el('span', 'ff-cost-sep', '·'), this.hintCost);
+    cost.append(el('span', 'ff-cost-sep', '·'), this.hintCount);
     this.hintButton.append(icon('hint'), document.createTextNode('Hint'), cost);
     this.hintButton.addEventListener('click', () => handlers.hint());
     controls.append(this.hintButton, this.undoButton, this.resetButton);
@@ -358,13 +358,25 @@ export class PlayScreen {
     tick();
   }
 
-  setCoins(coins: number, hintCost: number, bank: number): void {
+  setCoins(coins: number): void {
     // A pending landing is superseded by the real balance.
     if (this.coinTimer !== null) clearTimeout(this.coinTimer);
     this.coinTimer = null;
     this.coins.textContent = String(coins);
-    this.hintCost.textContent = bank > 0 ? `${bank} saved` : String(hintCost);
-    this.hintButton.setAttribute('aria-label', bank > 0 ? `Hint, ${bank} saved` : `Hint, ${hintCost} coins`);
+  }
+
+  /** The hint button's count: this garden's free hints left, else hints saved from a video, else a video mark. */
+  setHints(free: number, saved: number): void {
+    if (free > 0) {
+      this.hintCount.replaceChildren(String(free));
+      this.hintButton.setAttribute('aria-label', `Hint, ${free} free left`);
+    } else if (saved > 0) {
+      this.hintCount.replaceChildren(`${saved} saved`);
+      this.hintButton.setAttribute('aria-label', `Hint, ${saved} saved`);
+    } else {
+      this.hintCount.replaceChildren(icon('video'));
+      this.hintButton.setAttribute('aria-label', 'Hint, watch a video for more');
+    }
   }
 
   setStatus(s: Status): void {

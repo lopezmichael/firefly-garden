@@ -8,7 +8,7 @@
 // reports/ (census gate evidence, simulations, report tables).
 import { mkdirSync, writeFileSync } from 'node:fs';
 import {
-  buildBoard, buildRamp, canonicalKey, cellIndex, combine, DIFFICULTY_CONFIG, generate, gradeLevel, measure, PLAYER_CONFIG, rampRoles,
+  buildBoard, buildRamp, hintCap, canonicalKey, cellIndex, combine, DIFFICULTY_CONFIG, generate, gradeLevel, measure, PLAYER_CONFIG, rampRoles,
   simSteps, simulate, simulateWithPolicy,
   type Economy, type SimLevel, type Generated, type GenSpec, type Level, type RampLevel, type ShapeId,
 } from '../packages/core/src/index.ts';
@@ -208,7 +208,7 @@ const toSim = (id: string, chapter: string, role: SimLevel['role']): SimLevel =>
   const d = measure(level, board, g);
   return {
     id, chapter, role, steps: simSteps(g, board), fireflies: g.fireflies.length,
-    tier: d.tier, score: d.score, estimatedSeconds: d.estimatedSeconds,
+    tier: d.tier, score: d.score, estimatedSeconds: d.estimatedSeconds, hintCap: hintCap(board),
   };
 };
 const simLevels: SimLevel[] = playedChapters.flatMap((c) => c.levels.map((l) => toSim(l.id, c.id, roles.get(l.id)!)));
@@ -237,7 +237,7 @@ writeFileSync('reports/dash/players.json', JSON.stringify(simLevels.flatMap((l, 
 /** Population-weighted summary of one economy across every profile. */
 function summarize(economy: Economy, canBeShipped = true) {
   const res = runAll(economy);
-  let coin = 0, ad = 0, refused = 0, banked = 0, finish = 0, interstitials = 0, rewarded = 0, minutes = 0;
+  let free = 0, ad = 0, refused = 0, banked = 0, finish = 0, interstitials = 0, rewarded = 0, minutes = 0;
   res.forEach((r, k) => {
     const w = PLAYER_CONFIG.profiles[k]!.share;
     finish += (w * r.finished) / r.runs;
@@ -245,20 +245,19 @@ function summarize(economy: Economy, canBeShipped = true) {
     rewarded += w * r.rewardedPerPlayer;
     minutes += w * r.minutesPerPlayer;
     for (const o of r.levels) {
-      coin += (w * o.coinHints) / r.runs;
+      free += (w * o.freeHints) / r.runs;
       ad += (w * o.adHints) / r.runs;
       refused += (w * o.refusedHints) / r.runs;
       banked += (w * o.bankedHints) / r.runs;
     }
   });
-  const asked = coin + ad + refused + banked;
+  const asked = free + ad + refused + banked;
   const s = PLAYER_CONFIG.economy;
   return {
     ...economy,
-    shipped: canBeShipped && economy.startingCoins === s.startingCoins && economy.coinsPerSolve === s.coinsPerSolve
-      && economy.hintCost === s.hintCost && economy.hintsPerAd === s.hintsPerAd,
+    shipped: canBeShipped && economy.freeHints === s.freeHints && economy.hintsPerAd === s.hintsPerAd,
     finish, newcomerFinish: res[0]!.finished / res[0]!.runs,
-    coinShare: asked ? coin / asked : 0, adShare: asked ? ad / asked : 0,
+    freeShare: asked ? free / asked : 0, adShare: asked ? ad / asked : 0,
     bankedShare: asked ? banked / asked : 0, refusedShare: asked ? refused / asked : 0,
     casualEndCoins: Math.round(res[1]!.meanEndCoins),
     interstitialsPerPlayer: interstitials, rewardedPerPlayer: rewarded,
@@ -266,17 +265,13 @@ function summarize(economy: Economy, canBeShipped = true) {
   };
 }
 
-const hintsPerAd = PLAYER_CONFIG.economy.hintsPerAd;
 const economyRows = [];
-for (const startingCoins of PLAYER_CONFIG.sweep.startingCoins) {
-  for (const coinsPerSolve of PLAYER_CONFIG.sweep.coinsPerSolve) {
-    for (const hintCost of PLAYER_CONFIG.sweep.hintCost) {
-      economyRows.push({ key: `${startingCoins}-${coinsPerSolve}-${hintCost}`, group: 'sweep', ...summarize({ startingCoins, coinsPerSolve, hintCost, hintsPerAd }) });
-    }
-  }
+// Free hints per garden (coins never buy hints; they plant the map).
+for (const freeHints of PLAYER_CONFIG.sweep.freeHints) {
+  economyRows.push({ key: `free-${freeHints}`, group: 'sweep', ...summarize({ ...PLAYER_CONFIG.economy, freeHints }) });
 }
-// Hints per rewarded ad, at the shipped economy and at a tight one where ads matter.
-const TIGHT: Omit<Economy, 'hintsPerAd'> = { startingCoins: 30, coinsPerSolve: 10, hintCost: 60 };
+// Hints per rewarded ad, at the shipped economy and at a tight one (two free) where ads matter.
+const TIGHT: Omit<Economy, 'hintsPerAd'> = { ...PLAYER_CONFIG.economy, freeHints: 2 };
 for (const [name, base] of [['shipped', PLAYER_CONFIG.economy], ['tight', TIGHT]] as const) {
   for (const n of PLAYER_CONFIG.sweep.hintsPerAd) {
     // Only the sweep row carries the shipped flag, so it is unique across the file.

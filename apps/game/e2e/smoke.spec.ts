@@ -19,7 +19,7 @@ declare global {
   }
 }
 
-const { startingCoins, hintCost, coinsPerSolve, hintsPerAd } = PLAYER_CONFIG.economy;
+const { startingCoins, coinsPerSolve, freeHints, hintsPerAd } = PLAYER_CONFIG.economy;
 
 /** Every launch opens on the home screen: press its button to carry on into the garden. */
 async function pastHome(page: Page): Promise<void> {
@@ -35,6 +35,21 @@ async function open(page: Page): Promise<void> {
 }
 
 const level = (page: Page) => page.evaluate(() => window.__ff.level()!);
+
+/** A real press held past the hold time on a cell (the player's own X); `to` drags on before letting go. */
+async function holdCell(page: Page, cell: number, to: number[] = []): Promise<void> {
+  const p = await page.evaluate((c) => window.__ff.cellPoint(c), cell);
+  if (!p) throw new Error(`cell ${cell} is not on screen`);
+  await page.mouse.move(p.x, p.y);
+  await page.mouse.down();
+  await page.waitForTimeout(450);
+  for (const t of to) {
+    const q = await page.evaluate((c) => window.__ff.cellPoint(c), t);
+    if (!q) throw new Error(`cell ${t} is not on screen`);
+    await page.mouse.move(q.x, q.y, { steps: 6 });
+  }
+  await page.mouse.up();
+}
 
 /** A real pointer tap at a cell's centre on screen. */
 async function tapCell(page: Page, cell: number): Promise<void> {
@@ -104,45 +119,51 @@ test('solves the first garden by tapping its answer, the complete card credits t
   expect(moves).toEqual([expect.objectContaining({ level: l.id, choice: 'next' })]);
 });
 
-test('buys a hint with coins; a cancelled ad credits nothing and is silent; a finished ad credits hints', async ({ page }) => {
+test('three free one-tap hints per garden, then a video: a cancelled ad credits nothing and is silent; a finished one credits hints; coins never pay', async ({ page }) => {
   await open(page);
-  // A garden whose next hint crosses tiles out after one firefly (a tap is the gesture that turns
-  // sound on). After a cross, asking again always opens the sheet; a repeated point would not.
+  // The last garden of the build: big enough that three hints and a few fireflies leave it unsolved.
   const chapters = await page.evaluate(() => window.__ff.chapters());
-  for (const id of chapters.slice(0, 3).flat()) {
-    await page.evaluate((lid) => window.__ff.openLevel(lid), id);
-    await tapCell(page, (await level(page)).answer[0]!);
-    if ((await page.evaluate(() => window.__ff.peekHint())) === 'cross' && (await level(page)).placed.length === 1) break;
+  await page.evaluate((lid) => window.__ff.openLevel(lid), chapters.at(-1)!.at(-1)!);
+  const l = await level(page);
+  await tapCell(page, l.answer[0]!); // a gesture, so sound is on
+  for (let n = 1; n <= freeHints; n++) {
+    await page.getByRole('button', { name: /^Hint/ }).click();
+    // One tap: no sheet while the garden's free hints last.
+    await expect.poll(async () => (await level(page)).hints).toBe(n);
+    await expect(page.getByRole('dialog')).toBeHidden();
+    // A firefly of the player's between hints, so a pointing hint is never asked twice.
+    const now = await level(page);
+    const next = now.answer.find((c) => !now.placed.includes(c));
+    if (next !== undefined) await tapCell(page, next);
   }
-  expect(await page.evaluate(() => window.__ff.peekHint())).toBe('cross');
-  await page.getByRole('button', { name: /^Hint/ }).click();
-  await page.getByRole('dialog').getByRole('button', { name: /^Use a hint/ }).click();
-  await expect.poll(async () => (await level(page)).notice).toBe('hint');
-  // A hint never places a firefly.
-  expect((await level(page)).placed).toHaveLength(1);
-  expect((await level(page)).locked).toEqual([]);
-  expect((await page.evaluate(() => window.__ff.wallet())).coins).toBe(startingCoins - hintCost);
-  const afterPaid = await level(page);
+  expect((await level(page)).placed.length).toBeGreaterThan(0);
+  expect((await level(page)).locked).toEqual([]); // a hint never places a firefly
+  expect(await page.evaluate(() => window.__ff.wallet())).toEqual({ coins: startingCoins, bank: 0 });
+  const afterFree = await level(page);
 
-  // Cancelled ad: no credit, no hint, coins untouched, and sound muted while it shows.
+  // Cancelled ad: no credit, no hint, and sound muted while it shows.
   await page.evaluate(() => {
     window.__ff.platform.adMs = 1200;
     window.__ff.platform.queueRewarded('cancel', 'complete');
   });
   await page.getByRole('button', { name: /^Hint/ }).click();
+  await expect(page.getByRole('dialog')).toContainText(`${freeHints} free hints are used`);
   await page.getByRole('dialog').getByRole('button', { name: /Watch a video/ }).click();
   await expect.poll(() => page.evaluate(() => window.__ff.platform.adShowing)).toBe(true);
   expect((await page.evaluate(() => window.__ff.audio())).reasons).toContain('ad');
   await expect.poll(async () => (await page.evaluate(() => window.__ff.audio())).context).not.toBe('running');
   await expect.poll(() => page.evaluate(() => window.__ff.platform.adShowing)).toBe(false);
-  expect(await page.evaluate(() => window.__ff.wallet())).toEqual({ coins: startingCoins - hintCost, bank: 0 });
-  expect((await level(page)).crossed).toEqual(afterPaid.crossed);
+  expect(await page.evaluate(() => window.__ff.wallet())).toEqual({ coins: startingCoins, bank: 0 });
+  expect((await level(page)).hints).toBe(afterFree.hints);
+  expect((await level(page)).crossed).toEqual(afterFree.crossed);
   expect((await page.evaluate(() => window.__ff.audio())).reasons).not.toContain('ad');
 
-  // Finished ad: the hints are credited, one is used right away, the rest are banked.
+  // Finished ad: the hints are credited, one is used right away, the rest are saved.
   await page.getByRole('button', { name: /^Hint/ }).click();
   await page.getByRole('dialog').getByRole('button', { name: /Watch a video/ }).click();
   await expect.poll(() => page.evaluate(() => window.__ff.wallet().bank)).toBe(hintsPerAd - 1);
+  await expect.poll(async () => (await level(page)).hints).toBe(freeHints + 1);
+  expect((await page.evaluate(() => window.__ff.wallet())).coins).toBe(startingCoins);
 });
 
 /** Open the first garden of the first three chapters whose next hint is the kind asked for. */
@@ -159,25 +180,35 @@ test('a hint crosses tiles out and says why; tapping a hint X says it again; und
   await open(page);
   const id = await openWhereHintIs(page, 'cross');
   await page.getByRole('button', { name: /^Hint/ }).click();
-  await page.getByRole('dialog').getByRole('button', { name: /^Use a hint/ }).click();
   await expect.poll(async () => (await level(page)).crossed.length).toBeGreaterThan(0);
+  await expect(page.getByRole('dialog')).toBeHidden(); // one tap
   const l = await level(page);
   expect(l.id).toBe(id);
   expect(l.placed).toEqual([]);
   // Every X is a tile outside the answer, and the card says so with the reason.
   for (const c of l.crossed) expect(l.answer).not.toContain(c);
   const status = page.locator('.ff-status-text');
-  await expect(page.locator('.ff-status-title')).toHaveText(/^No fireflies? on th(is|ese) tiles?$/);
-  const reason = (await status.textContent())!;
+  await expect(page.locator('.ff-status-title')).toHaveText(/^No firefl(y|ies) on th(is|ese) tiles?$/);
+  // The lead reason; tapping that X brings back its own reason (the lead's) under its own title.
+  const reason = (await page.locator('.ff-status-sub').textContent())!;
   // A move replaces the hint's line; tapping one of its X marks brings the reason back, and is not a move.
   const free = l.answer[0]!;
   await tapCell(page, free);
-  await expect(status).not.toContainText(/No fireflies? on th/);
+  await expect(status).not.toContainText(/No firefl(y|ies) on th/);
   const placedBefore = (await level(page)).placed;
   await tapCell(page, l.crossed[0]!);
   await expect.poll(async () => (await level(page)).notice).toBe('hint');
-  await expect(status).toHaveText(reason);
+  await expect(page.locator('.ff-status-sub')).toHaveText(reason);
   expect((await level(page)).placed).toEqual(placedBefore);
+  // A hold that starts on a hint's X marks nothing, so its drag never erases the player's own X.
+  const mine = l.paths.find((p) => !l.crossed.includes(p) && !l.answer.includes(p));
+  if (mine !== undefined) {
+    await holdCell(page, mine);
+    expect((await level(page)).marks).toEqual([mine]);
+    await holdCell(page, l.crossed[0]!, [mine]);
+    expect((await level(page)).marks).toEqual([mine]);
+    await holdCell(page, mine); // clear it again
+  }
   // The paid X marks are locked: reset and undo leave them.
   await page.getByRole('button', { name: 'Reset' }).click();
   await page.getByRole('button', { name: 'Undo' }).click();
@@ -194,21 +225,19 @@ test('a pointing hint rings a bush or tile and places nothing; asking again on t
   await open(page);
   await openWhereHintIs(page, 'point');
   await page.getByRole('button', { name: /^Hint/ }).click();
-  await page.getByRole('dialog').getByRole('button', { name: /^Use a hint/ }).click();
   await expect(page.locator('.ff-status-title')).toHaveText(/^Look /);
   const l = await level(page);
   expect(l.placed).toEqual([]);
   expect(l.crossed).toEqual([]);
-  const coins = (await page.evaluate(() => window.__ff.wallet())).coins;
-  expect(coins).toBe(startingCoins - hintCost);
-  // Again, with nothing changed: the same ring and line, no sheet, no charge.
+  expect(l.hints).toBe(1);
+  // Again, with nothing changed: the same ring and line, and no hint used.
   await page.getByRole('button', { name: /^Hint/ }).click();
   await expect(page.getByRole('dialog')).toBeHidden();
-  expect((await page.evaluate(() => window.__ff.wallet())).coins).toBe(coins);
+  expect((await level(page)).hints).toBe(1);
   expect((await level(page)).notice).toBe('hint');
 });
 
-test('a player cycles a tile by taps: firefly, X, empty; X marks are free, undoable and saved', async ({ page }) => {
+test('a tap places or lifts a firefly and leaves no X; holding a tile marks your own X, dragging paints more; free, undoable and saved', async ({ page }) => {
   await open(page);
   const l = await level(page);
   const c = l.answer[0]!;
@@ -216,23 +245,50 @@ test('a player cycles a tile by taps: firefly, X, empty; X marks are free, undoa
   expect(await level(page)).toMatchObject({ placed: [c], marks: [] });
   const jar = (await level(page)).remaining;
   await tapCell(page, c);
+  // Lifting a firefly is not a deduction: no X is left behind.
+  expect(await level(page)).toMatchObject({ placed: [], marks: [] });
+  await holdCell(page, c);
   expect(await level(page)).toMatchObject({ placed: [], marks: [c] });
   // An X takes nothing from the jar, and an X on an answer tile is never judged.
   expect((await level(page)).remaining).toBe(jar + 1);
   expect((await level(page)).notice).toBeNull();
+  // A tap on your own X clears it.
   await tapCell(page, c);
-  expect(await level(page)).toMatchObject({ placed: [], marks: [] });
-  // Undo walks back through the cycle.
+  expect((await level(page)).marks).toEqual([]);
+  // Hold and drag: every tile passed gets the same X.
+  // Two neighbours in a row, so the drag passes over nothing else.
+  const a = l.paths.find((p) => p !== c && p + 1 !== c && l.paths.includes(p + 1) && Math.floor(p / l.w) === Math.floor((p + 1) / l.w));
+  const b = a! + 1;
+  await holdCell(page, a!, [b]);
+  expect([...(await level(page)).marks].sort((x, y) => x - y)).toEqual([a!, b!].sort((x, y) => x - y));
+  // Undo takes back the drag's last X; holding a marked tile clears it.
   await page.getByRole('button', { name: 'Undo' }).click();
-  expect((await level(page)).marks).toEqual([c]);
-  // The X is saved with the board.
+  expect((await level(page)).marks).toEqual([a!]);
+  // Right-click marks on desktop.
+  const rp = await page.evaluate((x) => window.__ff.cellPoint(x), c);
+  await page.mouse.click(rp!.x, rp!.y, { button: 'right' });
+  expect([...(await level(page)).marks].sort((x, y) => x - y)).toEqual([a!, c].sort((x, y) => x - y));
+  // The X marks are saved with the board.
   await page.waitForTimeout(800);
   await page.reload();
   await pastHome(page);
-  expect((await level(page)).marks).toEqual([c]);
+  expect([...(await level(page)).marks].sort((x, y) => x - y)).toEqual([a!, c].sort((x, y) => x - y));
   // Reset clears the player's own X marks too.
   await page.getByRole('button', { name: 'Reset' }).click();
   expect((await level(page)).marks).toEqual([]);
+});
+
+test('a hint lifts a wrong firefly and leaves a hint X on its tile', async ({ page }) => {
+  await open(page);
+  const l = await level(page);
+  const wrong = l.paths.find((p) => !l.answer.includes(p))!;
+  await tapCell(page, wrong);
+  await page.getByRole('button', { name: /^Hint/ }).click();
+  await expect.poll(async () => (await level(page)).crossed).toEqual([wrong]);
+  expect((await level(page)).placed).toEqual([]);
+  // Tapping that X says why.
+  await tapCell(page, wrong);
+  await expect(page.locator('.ff-status-title')).toHaveText('No firefly on this tile');
 });
 
 test('a reload resumes the exact board', async ({ page }) => {
@@ -279,7 +335,7 @@ test('landscape and a fold mid-level keep the board, the undo stack and the cloc
   expect((await level(page)).placed).toHaveLength(before.placed.length - 1);
 });
 
-test('the keyboard plays: arrows move the ring, space cycles a tile, Z undoes, H opens the hint sheet', async ({ page }) => {
+test('the keyboard plays: arrows move the ring, space places a firefly, X marks a tile, Z undoes, H asks for a hint', async ({ page }) => {
   await open(page);
   const board = page.locator('.ff-board');
   for (let i = 0; i < 12 && !(await board.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press('Tab');
@@ -305,17 +361,17 @@ test('the keyboard plays: arrows move the ring, space cycles a tile, Z undoes, H
   await page.keyboard.press('Space');
   await page.keyboard.press('Control+Shift+z'); // redo chord: not an undo
   expect((await level(page)).placed).toEqual([target]);
-  // Space cycles like a tap: firefly, then the player's own X, then empty again.
-  await page.keyboard.press('Space');
-  expect((await level(page)).marks).toEqual([target]);
+  // X marks the focused tile with the player's own X (a firefly there goes home); X again clears it.
+  await page.keyboard.press('x');
+  expect(await level(page)).toMatchObject({ placed: [], marks: [target] });
   await expect(page.locator('.ff-app > .ff-sr')).toContainText('marked with an X');
-  await page.keyboard.press('Space');
+  await page.keyboard.press('x');
   expect(await level(page)).toMatchObject({ placed: [], marks: [] });
   await page.keyboard.press('Space');
   expect((await level(page)).placed).toEqual([target]);
+  // H asks for a hint: one key, no sheet while free hints last.
   await page.keyboard.press('h');
-  await expect(page.getByRole('dialog')).toBeVisible();
-  await page.keyboard.press('Escape');
+  await expect.poll(async () => (await level(page)).hints).toBe(1);
   await expect(page.getByRole('dialog')).toBeHidden();
 });
 

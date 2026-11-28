@@ -1,4 +1,5 @@
-import type { Evaluation, Hint, TechniqueId } from '@firefly/core';
+import type { Evaluation, TechniqueId } from '@firefly/core';
+import type { ShownHint } from './play.ts';
 
 /**
  * The status card's words: it teaches by reacting to the board (design
@@ -15,9 +16,12 @@ export interface StatusText {
 }
 
 export type Notice =
-  | { readonly kind: 'hint'; readonly hint: Exclude<Hint, { kind: 'none' }> }
+  | { readonly kind: 'hint'; readonly hint: ShownHint }
   | { readonly kind: 'locked' }
-  | { readonly kind: 'no-coins'; readonly coinsPerSolve: number }
+  /** This garden's free hints are used and no rewarded video is available here. */
+  | { readonly kind: 'no-hints' }
+  /** One-time tip, after a hint first crosses tiles: the player can mark their own X. */
+  | { readonly kind: 'tip-hold' }
   | { readonly kind: 'reset' }
   | { readonly kind: 'jar-empty' }
   /** One-time tip: beams crossed for the first time (state/teach.ts). */
@@ -65,10 +69,12 @@ export function noticeStatus(n: Notice): StatusText {
   switch (n.kind) {
     case 'locked':
       return { title: 'Hint fireflies stay put', sub: "A hint firefly is always right, so it's locked in place.", tone: 'glow' };
-    case 'no-coins':
-      return { title: 'Not enough coins for a hint', sub: `Solve a garden to earn ${n.coinsPerSolve} more.`, tone: 'plain' };
+    case 'no-hints':
+      return { title: 'No hints left here', sub: 'This garden\u2019s hints are used. The X marks you have stay.', tone: 'plain' };
+    case 'tip-hold':
+      return { title: 'Mark your own X', sub: 'Hold a tile to mark it with an X. Hold again to clear it.', tone: 'glow' };
     case 'jar-empty':
-      return { title: 'The jar is empty', sub: 'Every firefly is out. Tap one to call it back; empty tiles take an X.', tone: 'plain' };
+      return { title: 'The jar is empty', sub: 'Tap a firefly on the board to call it back, then try another spot.', tone: 'plain' };
     case 'reset':
       return { title: 'Board cleared', sub: 'A hint\u2019s X marks stay.', tone: 'plain' };
     case 'tip-cross':
@@ -78,8 +84,11 @@ export function noticeStatus(n: Notice): StatusText {
       // never grows the card (see the status-length test).
       const h = n.hint;
       if (h.kind === 'remove') return { title: "That firefly can't stay", sub: h.reason, tone: 'glow' };
+      if (h.kind === 'wrong-x') return { title: 'No firefly on this tile', sub: h.reason, tone: 'glow' };
       if (h.kind === 'cross') {
-        return { title: h.cells.length === 1 ? 'No firefly on this tile' : 'No fireflies on these tiles', sub: h.reason, tone: 'glow' };
+        // Worded for the lead reason's own tiles (the ringed ones), so title and line agree.
+        const n = h.parts[0]?.cells.length ?? h.cells.length;
+        return { title: n === 1 ? 'No firefly on this tile' : 'No fireflies on these tiles', sub: h.reason, tone: 'glow' };
       }
       return { title: h.technique === null ? 'Look around here' : POINT_TITLES[h.technique], sub: h.reason, tone: 'glow' };
     }

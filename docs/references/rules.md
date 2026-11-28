@@ -94,9 +94,17 @@ sporecap became the mushroom. Data: `reports/archive/mushroom-experiment-2026-11
 
 A hint is the grader's next step on the player's current board, and it never places a firefly
 (decided 2026-11-28, plan `docs/plans/2026-11-28-hints-coins-journal.md`): it removes one wrong
-firefly, crosses out tiles that can't hold one, or points at what to look at, always with a
-one-line reason. Hints are bought with coins or granted by a rewarded ad; one ad grants **3 hints**
-(one used now, two saved), because a single hint is thin pay for a 30 to 60 second video.
+firefly (leaving a hint X on its tile), crosses out tiles that can't hold one, or points at
+what to look at, always with a one-line reason per X.
+
+**Free hints (decided 2026-11-28).** Each garden starts with **3 free hints**
+(`PLAYER_CONFIG.economy.freeHints`), and a hint is one tap: no sheet, no price. They are counted per
+garden board, not per play: a quit board resumed as a retry starts its own counters but keeps its
+free hints used (`CurrentPlay.priorHints`), so leaving and coming back never refills them. Once they are
+used, hints saved from an earlier video come next; after that the Hint button offers an optional
+rewarded video for **3 more** (one used now, two saved). Coins never buy hints: they only plant the
+garden map. Where the platform has no rewarded ads, the card says the garden's hints are used.
+The button shows the free hints left ("Hint · 3"), then saved ones ("2 saved"), then a video mark.
 
 **Presentation.** A hint's X marks are locked: the player cannot remove them, and undo and reset
 keep them (a paid hint is never lost). They look exactly like the player's own X (one hand-drawn
@@ -116,13 +124,18 @@ hint flies the wrong firefly home to the jar so the player sees what changed.
    shown on the jar, the solution's size, as the level was rated). Every firefly on the board is
    then part of the answer and every hint X is outside it, so its deductions are sound. The
    player's own X marks are never passed: they may be wrong.
-   - **Cross:** if the grader's first step rules a tile out, the hint is the first run of its
-     `empty` steps that share that step's technique and reason cells (`because`), at most
-     `HINT_CROSS_CAP` (4), so one hint never clears half the board. Every tile in it gets a hint
-     X; the reason is the technique's ruling-out line (`RULE_OUT_REASONS`, `{tiles}` read as
-     "this tile" or "these tiles"; a satisfied bush that wants none says so). Answer cells are
-     filtered out (defense in depth).
-   - **Point:** if the first step places a firefly (nothing left to rule out first), the hint rings
+   - **Cross (before pointing):** the grader runs again ruling tiles out only
+     (`GradeOptions.emptyOnly`), simplest technique first, and the hint crosses every tile it
+     reaches, up to the board's cap (`hintCap`: 3 up to 5×5, 4 up to 7×7, 6 above; bigger gardens
+     get bigger hints) and never with a technique harder than the garden's own tier (or than the
+     next step, if that is harder still; `HintOptions.maxTier`), so an Easy garden never gets a
+     lookahead X. Every tile gets a hint X. The tiles split into `parts`, one per technique and
+     reason cells, each with its own line (`RULE_OUT_REASONS`, `{tiles}` read as "this tile" or
+     "these tiles"; a satisfied bush that wants none says so); a later part may rest on an earlier
+     part's X marks. The status card shows the lead part's line and rings its reason cells together
+     with its X marks (so "this tile" in the line is the ringed one); tapping any X shows its own
+     part's line and ring. Answer cells are filtered out (defense in depth).
+   - **Point:** if nothing can be ruled out and the next step places a firefly, the hint rings
      the step's reason cells (the bush, the dark tile, two overlapping bushes) and says what to look
      for. When the reason is the firefly's own tile (lookahead and trial, or a dark tile only it can
      light), ringing it alone would all but place the firefly, so the ring takes its whole row and
@@ -130,8 +143,9 @@ hint flies the wrong firefly home to the jar so the player sees what changed.
      from one spot. Which?"). `target`, the firefly cell, is for analytics only and never shown.
      Asking again on an unchanged position (fireflies and hint X marks) shows the same point free
      (`Play.repeatsPoint`).
-   A property test checks, on every chapter 1 to 3, reserve and twisted board, that each cross
-   reads true on the visible board (fireflies, the tiles they light, earlier hint X marks): a
+   A property test checks, on every played, reserve and twisted board, that each cross stays within
+   the cap and the garden's tier and that each part reads true on the visible board (fireflies, the
+   tiles they light, earlier hint X marks, the hint's earlier parts): a
    satisfied bush really has its number, no way to seat a bush's fireflies uses a bush-room tile,
    a count bound's needs are disjoint and use up the jar exactly; and that each T1-needs-all and
    T2-one-source point reads true the same way.
@@ -152,27 +166,33 @@ level's full grader trace (`gradeLevel(level, board)`, the count-aware trace the
 with) of the step that decides the hinted cell (the removed firefly, the first crossed tile, or a
 point's target).
 
-**The player's own X marks.** Tapping cycles a tile: empty, firefly, X, empty (Space on the
-keyboard does the same). An X is free, never judged and takes nothing from the jar (with the jar empty, a tap on an empty
-tile goes straight to an X); undo covers
-it, reset clears it with the player's fireflies, and it is saved per garden. Tapping a hint X
-shows its reason instead; a hint that crosses a tile the player had marked takes the X over
-(locked) and drops the player's undo steps on that tile. Press-and-hold stays free for a later
-light preview.
+**The player's own X marks (revised 2026-11-28).** A tap places or lifts a firefly and never
+leaves an X (lifting a firefly is not a deduction). **Holding** a tile for 320 ms (`HOLD_MS`)
+marks it with the player's own X, or clears one; a firefly there goes home first. Dragging on
+after a hold paints the same change over every tile passed (fireflies and hint X marks are passed
+over). On desktop, right-click does what a hold does; on the keyboard, X does (Space places or
+lifts a firefly). A tap on the player's own X clears it. An X is free, never judged and takes
+nothing from the jar; undo covers it, reset clears it with the player's fireflies, and it is saved
+per garden. Tapping a hint X shows its reason instead; a hint that crosses a tile the player had
+marked takes the X over (locked) and drops the player's undo steps on that tile. After the first
+hint that crosses tiles, the player's next move shows a one-time tip: "Hold a tile to mark it with
+an X." (The light preview once planned for press-and-hold is dropped.)
 
 **Simulated players (`players.ts`, `simHintGroup`).** A stuck player's hint crosses out, in trace
-order, the first group of empty steps still open on the board (one technique and reason cells, at
-most four, stopping at the next firefly to place): not crossed by a hint and not lit by a firefly
-already down (`SimStep.litAt`). The grader never reads the player's own marks, so that group may be
-tiles the player worked out long ago, and they stay stuck and ask again. `tests/economy.test.ts`
-holds the model to the real `hint`: from every step of every played garden, the two agree on
-crossing versus pointing at least 95% of the time and on the exact tiles at least 80% (632 and 535
-of 653 over the Rose Bed on 2026-11-28). When no empty step is left before the firefly, the hint points and the player finds it
-(`pointedTimeFactor`). Economy guardrails (`tests/economy.test.ts`) hold with this model.
+order, the empty steps still open on the board (not crossed by a hint and not lit by a firefly
+already down, `SimStep.litAt`), up to the level's cap (`SimLevel.hintCap`) and its tier, looking
+past at most the next two fireflies still to place. The grader never reads the player's own marks,
+so those may be tiles the player worked out long ago, and they stay stuck and ask again. When
+nothing is open, the hint points and the player finds it (`pointedTimeFactor`). Hints are free up
+to `freeHints` a play, then saved, then a video (each profile's `adWillingness`), else refused.
+`tests/economy.test.ts` holds the model to the real `hint`: from every step of every played garden
+the two agree on crossing versus pointing at least 95% of the time (626 of 653 over the Rose Bed on
+2026-11-28; the exact tiles match less often, 313, since the real grader orders deductions from the
+real position). Economy guardrails (`tests/economy.test.ts`) hold with this model.
 
 **The firefly jar (Phase 2, milestone 3).** The game shows how many fireflies the garden needs:
 the jar holds the answer's count minus its lanterns (which are already on the board). Player and
-locked hint fireflies together never exceed it: a tap with an empty jar places no firefly (the tile takes an X), undo
+locked hint fireflies together never exceed it: a tap with an empty jar places nothing, undo
 brings back only what fits, and a saved board holding more than the jar is dropped on load.
 A full but wrong jar always gets a removal hint first, so hints never overfill it.
 
@@ -184,10 +204,11 @@ resumed when the policy serves that level as a retry; the retry keeps the firefl
 its own counters. A quit detour is never served again, so its board is not parked.
 
 **Rules for the game build (from the Phase 1 security review):**
-- Saved progress stores the hint X marks per level (as groups: cells, technique, reason cells),
+- Saved progress stores the hint X marks per level (as groups: cells, technique or `wrong` for a
+  lifted wrong firefly's single tile, reason cells),
   any old locked hint fireflies, the player's own X marks and the banked hint count, and a load
   validates them like `parseLevel` does: a hint X must be a path cell outside the level's unique
-  solution, in one group of 1 to 4 tiles with a known technique (the reason's words come from the
+  solution, in one group of 1 to 6 tiles (`HINT_CROSS_MAX`) with a known technique (the reason's words come from the
   technique, never from the save); a locked cell must be a cell of the solution; a player firefly
   or X must sit on a free path tile (not a lantern, locked cell or hint X); the bank is a small
   non-negative integer. Any bad tile drops that whole set. A corrupt or edited save must never put

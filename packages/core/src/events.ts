@@ -22,7 +22,8 @@ interface Base {
   readonly session: number;
 }
 
-export type HintSource = 'coins' | 'ad' | 'bank';
+/** `free`: the garden's free allowance. `coins` is from builds before 2026-11-28 (hints cost coins then). */
+export type HintSource = 'free' | 'ad' | 'bank' | 'coins';
 export type AdKind = 'midgame' | 'rewarded';
 
 export type AnalyticsEvent =
@@ -134,7 +135,7 @@ export function validateEvent(e: unknown, options: { readonly levels?: ReadonlyS
       break;
     case 'hint':
       need('level', isText, 'a level id');
-      need('source', (v) => v === 'coins' || v === 'ad' || v === 'bank', '"coins", "ad" or "bank"');
+      need('source', (v) => v === 'free' || v === 'ad' || v === 'bank' || v === 'coins', '"free", "ad", "bank" or "coins"');
       need('step', isCount, 'a count');
       break;
     case 'ad':
