@@ -44,7 +44,15 @@ export type AnalyticsEvent =
     })
   | (Base & { readonly type: 'hint'; readonly level: string; readonly source: HintSource; readonly step: number })
   | (Base & { readonly type: 'ad'; readonly kind: AdKind; readonly completed: boolean; readonly seconds: number })
-  | (Base & { readonly type: 'coins'; readonly delta: number; readonly balance: number; readonly why: 'solve' | 'hint' | 'doubler' | 'start' });
+  | (Base & { readonly type: 'coins'; readonly delta: number; readonly balance: number; readonly why: 'solve' | 'hint' | 'doubler' | 'start' | 'chapter' })
+  | (Base & {
+      /** The player moves on from a solved garden: whether they lingered or rushed. */
+      readonly type: 'continue';
+      readonly level: string;
+      readonly choice: 'next' | 'map';
+      /** Seconds from the solve to the tap. */
+      readonly seconds: number;
+    });
 
 export type EventType = AnalyticsEvent['type'];
 
@@ -70,6 +78,7 @@ const FIELDS: Readonly<Record<string, readonly string[]>> = {
   hint: ['level', 'source', 'step'],
   ad: ['kind', 'completed', 'seconds'],
   coins: ['delta', 'balance', 'why'],
+  continue: ['level', 'choice', 'seconds'],
 };
 const BASE_FIELDS = ['v', 'install', 'at', 'session', 'type'];
 const isText = (v: unknown, max = 64) => typeof v === 'string' && v.length > 0 && v.length <= max;
@@ -89,7 +98,8 @@ export function validateEvent(e: unknown, options: { readonly levels?: ReadonlyS
   if (r.v !== EVENT_SCHEMA_VERSION) p.push(`v must be ${EVENT_SCHEMA_VERSION}`);
   if (!isInstallId(r.install)) p.push('install must be a random hex id');
   if (!isTimestamp(r.at)) p.push('at must be a millisecond timestamp');
-  const type = String(r.type);
+  // Never String() an untrusted value: an object such as {"toString":1} throws on conversion.
+  const type = typeof r.type === 'string' ? r.type : '';
   // Own keys only: a type like "constructor" or "__proto__" must not reach Object.prototype.
   const typeFields = Object.hasOwn(FIELDS, type) ? FIELDS[type]! : [];
   const allowed = new Set([...BASE_FIELDS, ...typeFields]);
@@ -99,7 +109,7 @@ export function validateEvent(e: unknown, options: { readonly levels?: ReadonlyS
   for (const k of Object.keys(r)) if (!allowed.has(k)) p.push(`unknown field "${k}"`);
   if (!isCount(r.session)) p.push('session must be a count');
   const need = (key: string, ok: (v: unknown) => boolean, what: string) => {
-    if (!ok(r[key])) p.push(`${String(r.type)}.${key} must be ${what}`);
+    if (!ok(r[key])) p.push(`${type}.${key} must be ${what}`);
   };
   switch (r.type) {
     case 'session_start':
@@ -135,10 +145,15 @@ export function validateEvent(e: unknown, options: { readonly levels?: ReadonlyS
     case 'coins':
       need('delta', (v) => typeof v === 'number' && Number.isInteger(v) && Math.abs(v) < 1e6, 'an integer');
       need('balance', isCount, 'a count');
-      need('why', (v) => v === 'solve' || v === 'hint' || v === 'doubler' || v === 'start', 'a known reason');
+      need('why', (v) => v === 'solve' || v === 'hint' || v === 'doubler' || v === 'start' || v === 'chapter', 'a known reason');
+      break;
+    case 'continue':
+      need('level', isText, 'a level id');
+      need('choice', (v) => v === 'next' || v === 'map', '"next" or "map"');
+      need('seconds', isSeconds, 'seconds');
       break;
     default:
-      p.push(`unknown event type ${JSON.stringify(r.type)}`);
+      p.push(`unknown event type ${type ? JSON.stringify(type.slice(0, 40)) : typeof r.type}`);
   }
   return p;
 }

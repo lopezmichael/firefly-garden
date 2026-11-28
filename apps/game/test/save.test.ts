@@ -280,7 +280,7 @@ describe('save fuzz', () => {
     if (depth > 2 || r < 0.3) return pick([null, true, -1, 0, 1, 1e300, -0, NaN, 'x', '__proto__', '', [], {}, 3.14, Infinity]);
     if (r < 0.6) return Array.from({ length: Math.floor(rng.next() * 6) }, () => junk(depth + 1));
     const o: Record<string, unknown> = {};
-    for (let i = 0; i < 5; i++) o[pick(['levelId', 'reason', 'placed', 'locked', 'coins', 'bank', 'x', '__proto__', 'constructor', 'seconds'])] = junk(depth + 1);
+    for (let i = 0; i < 5; i++) o[pick(['levelId', 'reason', 'placed', 'locked', 'coins', 'bank', 'x', '__proto__', 'constructor', 'seconds', 'toString', 'valueOf'])] = junk(depth + 1);
     return o;
   };
   const FIELDS = ['session', 'coins', 'bank', 'solved', 'history', 'playedReserve', 'quitMain', 'current', 'parked', 'settings', 'mapSeen', 'tips'];
@@ -289,6 +289,8 @@ describe('save fuzz', () => {
     for (let i = 0; i < 3000; i++) {
       const raw = tamper((o) => {
         for (const f of FIELDS) if (rng.next() < 0.4) o[f] = junk(0);
+        // The version field too: an object whose toString isn't a function must not throw.
+        if (rng.next() < 0.1) o.v = rng.next() < 0.5 ? junk(0) : { toString: 1, valueOf: 1 };
         if (rng.next() < 0.3) {
           o.parked = Array.from({ length: Math.floor(rng.next() * 9) }, () => {
             const lid = pick([...catalog.mainPath, 'nope']);

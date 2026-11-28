@@ -163,7 +163,8 @@ writeFileSync('levels/reserve.json', JSON.stringify({ pack: 'reserve', levels: r
 writeFileSync('levels/manifest.json', JSON.stringify({
   packs: [{ file: 'launch.json', count: launchLevels.length }, { file: 'reserve.json', count: reserveLevels.length }],
   chapters: chapters.map((c) => ({
-    id: c.id, title: c.title, area: planById.get(c.id)!.area, debut: planById.get(c.id)!.debut, levels: c.levels.map((l) => l.id),
+    id: c.id, title: c.title, area: planById.get(c.id)!.area, debut: planById.get(c.id)!.debut,
+    intro: planById.get(c.id)!.intro, levels: c.levels.map((l) => l.id),
   })),
 }, null, 2) + '\n');
 writeFileSync('reports/phase1-data.json', JSON.stringify({

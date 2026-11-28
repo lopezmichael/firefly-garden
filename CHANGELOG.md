@@ -4,7 +4,71 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+- **The garden code:** Settings → Garden code moves a garden to another device or browser by copy and paste, with no account and no server.
+  - **Copy my garden code** puts one line (`FG1.…`, a few hundred characters) on the clipboard. Where the clipboard is refused, as in some portal frames, the code is shown so it can be copied by hand.
+  - **Enter a garden code** reads a pasted code and says what it holds against what this device has (and warns if it has fewer gardens). Nothing changes until **Replace my garden**. This device's garden is kept in the backup slot, and the game reloads into the new one only once storage has really taken it.
+  - **The code is untrusted input, like a save.** It is length-capped and carries a checksum, so a cut-off or mistyped code is caught. It is inflated with a size cap, so a small code can't expand into a huge one. What comes out is validated field by field by the save parser.
+  - **What stays with the device:** the analytics install id and sitting count (two devices never share an id), and the sound and motion settings.
+- **The chapter bonus doubler** (rewards plan):
+  - The chapter card offers an optional "Watch a video to double it" under the +30 chip. Start chapter stays the main button.
+  - Only a finished ad pays, and it pays the bonus once more (a `coins` event, `why: 'doubler'`). A cancelled ad pays nothing and leaves the offer up.
+  - The hint sheet and the doubler now share one rewarded-ad path: sound muted while the ad plays, an `ad` event logged, and an adapter that rejects counts as not finished.
+- **Seals on the map:** each finished chapter's stop carries its red ink seal, the chapter card's stamp, as a keepsake.
+- Small delights before the playtest (rewards plan):
+  - **The moon travels:** through each chapter, garden by garden, it moves along the sky toward the end of the area title and warms toward gold.
+  - **Tap the moon:** a firefly crosses the sky.
+  - **Tap a bush:** it rustles, its roses bob and its dots pulse once. It's not a move and reveals nothing.
+  - **Coins fly to the pill:** after a solve, coins hop from the card's +10 chip into the pill, which counts up.
+  - **Reduced motion** keeps the moon's place and the final count, and drops the movement.
+- The conflict beam ("crossed gazes"), from Michael's 2026-11-12 feedback. When two fireflies see each other (once the second has landed), two streaks shoot out of their glowing tails, each with a small glow where the gaze leaves, and meet in the middle; sparks then stream from each toward the meeting point, the line quivers like a plucked string, and a small star flickers where the gazes clash. When the conflict clears, the beam pulls back into the fireflies. The broken rule is visible, not just a tint on each firefly. Reduced motion shows the line and the star, still.
+- A smoke test plays a garden (with an undo), moves on and quits the next to the map, then checks every logged event passes the schema and matches the play.
+
+### Fixed
+- **A tampered save or event log could stop the game from opening.** A value like `{"toString":1}` made the parsers throw, and the bad data stayed in storage, so every reload failed. Untrusted values are no longer stringified, and the fuzz tests now cover it.
+- **Loading treats a failing storage adapter as empty** instead of failing to start.
+- **An unreadable save is backed up** before a fresh start (before, only a save from another version was).
+- The game's sounds, picked on a sound audition page (three synthesized takes per moment).
+  - **Ten voices, still no audio files:** glass note, soft breath, wind chime, two bells, wood taps, hollow knock, four notes and a glow, tiny tick, warm bloom, sparkle trail.
+  - **A small generated reverb** gives them a garden-at-night room.
+  - **New cues:** each firefly reaching the progress track ticks, the chapter card blooms, and Start chapter plays the sparkle trail. Before, these moments borrowed the solve and hint sounds.
+  - **New test:** the smoke test renders every voice offline and fails on silence or clipping.
+- The smaller moments (flow plan C):
+  - **First garden:** it now teaches the goal before the first move: "Light up every dark path".
+  - **New-technique and twist intros (moment 6):** a chapter's first garden says what it brings ("New: bushes that share"). The wording lives in `scripts/launch-plan.ts` and travels in the manifest; the catalog validates it against the status card's length budget.
+  - **The map:** a returning player is welcomed back with where they left off, and a chapter with a parked garden says one is waiting.
+  - **The ending card:** the build's last chapter ends on it, with thanks and build-wide figures.
+  - **Settings:** the reduced-motion line no longer names the old sparkle burst.
+- Chapter finished (flow plan B), in two taps. A chapter's last garden offers **Finish the
+  chapter**: the board shrinks into its chapter's stop as the map opens around it, and a chapter
+  card settles over the map (an ink seal, a line about what the chapter taught, gardens, time and
+  hints, and a **+30 chapter bonus**). **Start chapter N** flies a firefly along the path, lights
+  the next stop and zooms into it as its first garden opens. Reduced motion uses cuts; a reload on
+  the card goes to the map and plays the flight once. The bonus is `PLAYER_CONFIG.economy.chapterBonus`,
+  credited and saved at the solve, logged as a `coins` event (`why: 'chapter'`), and simulated by
+  both player simulators (the economy ratchets hold; `reports/` regenerated).
+
 ### Changed
+- Tap to continue (flow plan `docs/plans/2026-11-13-flow-and-transitions.md`, A): a solved
+  garden waits for the player. The auto-advance, its countdown bar and the code that paused and
+  re-armed it for sheets and hidden tabs are gone; Next garden (seal red, focused once the card
+  is ready) or Garden map moves on. The solve's +10 lands in the coin pill as the card's chip
+  rises (a small bump; reduced motion updates it in place). A new `continue` event logs the
+  choice and the seconds from solve to tap, so the playtest shows whether people linger or rush.
+- The solve celebration and the light (plan `docs/plans/2026-11-27-solve-celebration.md`). A win
+  now plays out on the board before the complete card arrives: every firefly flashes together
+  twice, a warm halo swells round the board's edge and settles into an afterglow, a soft wave of
+  light rolls across the lit tiles, the bushes bloom (petals burst from the roses and tumble down
+  turning over; small sparks of light rise from the leaves and twinkle out, replacing the milky
+  motes and the row of rising petals), then the fireflies
+  lift off one by one and fly to the garden progress track in the top bar (above the board on
+  phones, in the side panel on desktop) with comet trails; the solved garden's dash turns gold as
+  the first lands and glints for each one after, while the garden keeps glowing. The board's
+  halo is skipped where it has no room to glow softly (a desktop board filling its canvas). The complete card rises in with the bloom and takes taps once the fireflies lift off,
+  so a stray tap can't skip the garden mid-celebration. Reduced motion lands the roses, the afterglow and the card at once and keeps
+  the fireflies on their tiles. Lit tiles in play read as paper lit from within (a luminous
+  centre, gold pooling at the edge), a firefly's glow is additive so its tile is the light's
+  source, and tiles lit by two or more beams are a touch brighter (from the 2026-11-12 feedback).
 - Look pass 2: the ink and wash theme (plan `docs/plans/2026-11-12-ink-wash-theme.md`, design
   canvas "Firefly Garden · Character"). A theme change only: game logic, levels, layout bands and
   the screen flow are as they were.
@@ -69,6 +133,12 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
   called back, and hints send a gold one; saves holding more fireflies than the jar are dropped.
 
 ### Fixed
+- 320 px phones, found when the ink and wash look met the browser smoke test:
+  - The status card grew when long titles wrapped. Narrow cards now tighten the lantern and set
+    titles at 14 px.
+  - The title's 1.2 line height was shorter than Young Serif's glyphs. It is now 1.3.
+  - The Hint button ran off the screen. The control row tightens below 340 px, and the smoke test
+    checks it fits.
 - The status card still grew by 0.4 px on 320–360 px phones for two-line sub-lines: its title used
   the font's own line height (about 22 px) while the card reserves 1.2 (21.6 px). Found by the new
   browser height check; the title now has an explicit line height.

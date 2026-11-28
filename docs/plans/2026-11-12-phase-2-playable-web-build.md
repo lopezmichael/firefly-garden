@@ -211,27 +211,42 @@ the same transitions are tested in Node and in Playwright.
       main-path level. Never throws.
 - [x] Fuzz test: random and hostile saves (prototype keys, huge numbers, wrong cells,
       unknown levels) never lock a wrong cell, never grant more than the cap, never crash.
-- [ ] `/security-review` on the save and storage code before it lands.
+- [x] `/security-review` on the save and storage code before it lands. *Done 2026-11-27* (a
+      dedicated review of save.ts, events.ts and the adapters): one real finding, fixed. A tampered
+      save or event log holding an object like `{"toString":1}` made `String()` throw, so the game
+      failed to open on every reload. Untrusted values are no longer stringified; the fuzz tests now
+      cover it (a mutation that brings the bug back fails them). Also: adapters must never reject
+      (documented; loading treats a rejection as empty), and an unreadable save is backed up before
+      a fresh start instead of only one from another version.
 
 ### D. Board renderer and juice (`view/`)
 
 - [x] Pixi app sized to the board area, devicePixelRatio-aware, paused when hidden.
-- [ ] 2.5D board: raised tiles with a front edge, slight downward tilt (vertical squash
+- [x] 2.5D board: raised tiles with a front edge, slight downward tilt (vertical squash
       plus front edges, no 3D camera), bushes standing off the board with soft shadows,
       dot rows that fill as fireflies land.
-- [ ] Glow without a filter stack: additive-blended radial sprites generated once at
+      *Done in the ink and wash pass (#7):* raised tiles with a front edge, bushes, and dots
+      filling gold. The tray and the tilt were dropped by decision (2026-11-12).
+- [x] Glow without a filter stack: additive-blended radial sprites generated once at
       startup (cheap on a Chromebook); WebGL first, Pixi's fallback chain otherwise.
-- [ ] Juice list, each item a separate effect that reduced motion can switch off:
-      - [ ] firefly drop with bounce, hover bob, wing flutter, breathing shadow
-      - [ ] light ripples tile by tile along row and column with a bloom per tile
-      - [ ] motes drifting up from lit tiles (pooled, capped)
-      - [ ] bush satisfied: dots glow gold, star twinkle, chime
-      - [ ] conflict: nervous flicker and pink tint
-      - [ ] solve: flowers pop on bushes, sparkle burst, then auto-advance
-      - [ ] ambient: twinkling stars, moon, slow parallax
-- [ ] **Hint fireflies:** gold ring and a small sparkle, distinct from player fireflies and
+      *Done (#7):* glows and washes are baked per cell size into the texture cache, with no live
+      filters.
+- [x] Juice list, each item a separate effect that reduced motion can switch off:
+      - [x] firefly drop with bounce, hover bob, wing flutter, breathing shadow
+      - [x] light ripples tile by tile along row and column (the wash spreads from the firefly)
+      - [x] motes: drifting over the hills (DOM), and rising from bushes at the solve (pooled on
+            the board's tween list)
+      - [x] bush satisfied: dots fill gold, roses open, chime (placeholder voice)
+      - [x] conflict: shiver lines and hatching, pink tint; an overfull bush wilts and slumps
+      - [x] solve: every bush blooms in a ripple from the last firefly (this replaced the sparkle
+            burst). The auto-advance is due to become a tap to continue
+            (`2026-11-13-flow-and-transitions.md`)
+      - [x] ambient: grained night, crescent moon, hills with roses (no parallax, by choice)
+- [x] **Hint fireflies:** gold ring and a small sparkle, distinct from player fireflies and
       lanterns; the `because` cells pulse briefly; a removal hint lifts the wrong firefly
       away visibly. A tap on a locked firefly gives a small "locked" wiggle, nothing else.
+      *Done in ink and wash (#7):* a seal-red dashed halo and a seal; one rounded outline around
+      the hint's cells, breathing gently.
 - [x] Every color from `theme.css` tokens (read once into a Pixi palette); new tokens added
       there, none hardcoded (ratchet).
 - [ ] Performance: object pools, a particle cap, an fps readout in dev builds; target
@@ -248,13 +263,16 @@ the same transitions are tested in Node and in Playwright.
       Chromebook). Waiting for the juice pass: pools and the particle cap (no particles yet), and
       batching the additive halos into one layer (fewer draw calls, but halos would then glow over
       neighbouring tiles, a look decision).
+      *2026-11-27:* the celebration added the capped pieces (trail motes capped at 160, one flier
+      per firefly, every particle destroyed by its tween). Still open: the 60 fps check on a real GPU.
 
 ### E. UI, layout, accessibility (`ui/`)
 
-- [ ] Tall band: top bar (area, chapter progress, coins) above the board, status card and
+- [x] Tall band: top bar (area, chapter progress, coins) above the board, status card and
       controls (undo, reset, hint with bank count) below. Wide band: the same in side
-      panels. Near-square band for foldables and tablets (see "Foldables").
-- [ ] Safe-area insets; every button at least 44 px; the board's cells sized from the
+      panels. Near-square band for foldables and tablets (see "Foldables"). *Done (bands in
+      `view/layout.ts`; the smoke test covers landscape and a fold).*
+- [x] Safe-area insets; every button at least 44 px; the board's cells sized from the
       viewport. **Known squeeze:** 8x8 on a 360 px-wide phone gives about 42 px cells, so
       the board gets no outer gutter in portrait; checked in a 360x740 screenshot.
 - [x] Garden map: the Rose Bed with chapter progress toward the next area, "Continue".
@@ -277,8 +295,9 @@ the same transitions are tested in Node and in Playwright.
       through a tap and two hints. *Now in the CI browser smoke test, for every message.*
 - [x] Settings: sound, reduced motion (defaults to `prefers-reduced-motion`, overridable),
       play log. *Sound On/Off added (milestone 3), saved, applied at load.*
-- [ ] First-level teaching: the one-line hint from the plan ("Tap a tile to place a
-      firefly"), no text tutorial.
+- [x] First-level teaching: the one-line hint from the plan ("Tap a tile to place a
+      firefly"), no text tutorial. *Done 2026-11-27 (flow plan C):* the first garden opens on
+      "Light up every dark path" with the tap line under it.
 - [x] Keyboard for desktop portals: arrows move a focus ring, space/enter toggles, Z undo,
       H hint. Board has an accessible label and a live region announcing "solved".
       *Done (milestone 3):* the ring follows the board as drawn (rotation-aware, skips cells outside
@@ -289,7 +308,10 @@ the same transitions are tested in Node and in Playwright.
 
 ### F. Audio (`audio/`)
 
-- [ ] Synthesized with Web Audio (no audio files, nothing added to the bundle): placement
+- [x] Synthesized with Web Audio (no audio files, nothing added to the bundle). *Voices designed
+      2026-11-27* on the sound audition page: ten voices, listed with their moments in
+      `docs/design/assets.md` ("Sound"); the smoke test renders each offline (silence or clipping
+      fails). Earlier notes: Planned voices: placement
       chime pitched by row, bush-satisfied chime, solve flourish, soft conflict tone.
       *Plumbing done, voices are placeholders (milestone 3):* `state/cues.ts` decides which moment
       gets which sound (tested), `audio/engine.ts` synthesizes seven voices; tuning waits for the
@@ -302,7 +324,8 @@ the same transitions are tested in Node and in Playwright.
       activates only on the former, and iOS unlocks audio only from touchend or click. Headless
       Chromium doesn't enforce that rule, so **this needs a real phone check (iPhone Safari,
       Android Chrome) before the playtest**.
-- [ ] Stretch: ambient night loop (crickets, wind), off by default.
+- [ ] Stretch: ambient night loop (crickets, wind), off by default. *Auditioned 2026-11-27 and left
+      off by Michael.*
 
 ### G. Analytics, logged locally (`state/events.ts`)
 
@@ -312,8 +335,9 @@ the same transitions are tested in Node and in Playwright.
 - [x] Ring buffer (last 2,000 events) saved through `Platform.save`; random install id
       from `crypto.getRandomValues` on first launch.
 - [x] Play log panel: levels played and solved, hints, copy-as-JSON.
-- [ ] Test: a scripted play-through emits a valid event stream whose `level_end` rows
-      match the play (counts, outcome, reason, attempt).
+- [x] Test: a scripted play-through emits a valid event stream whose `level_end` rows
+      match the play (counts, outcome, reason, attempt). *Done 2026-11-27 (smoke test):* a solve with
+      an undo, Next, then a quit to the map; every event passes `validateEvent` and matches the play.
 
 ### H. Platform adapter
 
@@ -335,18 +359,24 @@ the same transitions are tested in Node and in Playwright.
       pinned to 1.63.0, the version of the Chromium preinstalled in Claude's cloud sessions.
       No garden in this build is non-square, so the board never turns in play; rot90 is covered by
       the display-mapping unit tests, and the fold test asserts the board stays upright.
-- [ ] Screenshots for review: 390x844, 360x740, 844x390, 1280x720, iPhone Duo inner
+- [x] Screenshots for review: 390x844, 360x740, 844x390, 1280x720, iPhone Duo inner
       626x890 and 890x626, outer 470x670; reduced motion on; each juice moment; a short
-      clip of a solve; the fold/unfold resize test.
+      clip of a solve; the fold/unfold resize test. *Done across the milestones (shared in the
+      sessions and PRs); the smoke test covers the fold.*
 - [x] Bundle stays well under 8 MB (expect ~1 MB with Pixi and fonts).
 - [x] New ratchets in `tests/ratchets.test.ts`:
       - `apps/game/src/state` imports only `@firefly/core` and itself
       - no color literals (`#rrggbb`, `0xrrggbb`, `rgb(`) in `apps/game/src` outside `theme.css`
       - economy numbers appear only in `PLAYER_CONFIG` (game reads, never restates)
-- [ ] Reviews per CLAUDE.md before each substantive commit; `/security-review` for saves,
+- [x] Reviews per CLAUDE.md before each substantive commit; `/security-review` for saves,
       storage and the ad placeholder flow.
-- [ ] Living docs: ARCHITECTURE (game layers), rules.md (hint reasons, locked cells as
+- [x] Living docs: ARCHITECTURE (game layers), rules.md (hint reasons, locked cells as
       implemented), analytics.md (where the local log lives), CHANGELOG, ROADMAP.
+      *ARCHITECTURE, CHANGELOG and ROADMAP are current as of 2026-11-13 (release #9); rules.md and
+      analytics.md checked against the build 2026-11-27 (one stale line: how a hint firefly looks).*
+- [x] Garden code (added 2026-11-27, after Michael asked how progress is saved): Settings copies
+      the garden as one line of text and pastes it on another device, validated like a save
+      (rules.md, "The garden code"). Covers the gap until portal cloud saves (Phase 3).
 
 ### J. Playtest and gate
 
@@ -362,11 +392,14 @@ Two things confused him on first play, plus two ideas worth keeping.
 1. **Light crossing light reads as wrong.** It is allowed (only fireflies may not see each other),
    but the status line "Fireflies in the same row or column need a bush between them" invites the
    misreading "light can't overlap". Planned, all in the open look:
-   - [ ] On a conflict, draw a pink beam between the two fireflies that see each other (the broken
+   - [x] On a conflict, draw a pink beam between the two fireflies that see each other (the broken
          rule made visible), not only a pink tint on each. *Logic done:* `conflictPairs` (core) gives
          the nearest pairs, cross-checked against `evaluate` on every shipped level; screen readers
-         already hear the pair. The beam itself waits for the design.
-   - [ ] Tiles lit by two beams look a touch brighter, so crossing reads as fine. *Logic done:*
+         already hear the pair. *Done 2026-11-27:* "crossed gazes": two streaks shoot from the
+         fireflies and meet; sparks stream from each toward the middle, the line quivers like a
+         plucked string, and a small star flickers where the gazes clash. Reduced motion: the line
+         and the star, still.
+   - [x] Tiles lit by two beams look a touch brighter, so crossing reads as fine. *Logic done:*
          `lightCounts` / `crossings` (core). Drawing waits for the design.
    - [x] A one-line tip the first time beams cross in the opening levels: "Light can cross. Only
          fireflies can't see each other." *Done (milestone 3):* chapter 1 only, once per install
@@ -421,7 +454,14 @@ Each milestone ends with typecheck, tests, build, screenshots and a commit (when
    garden map (milestone 3): until then a play only ends by solving.
 3. **Look and juice:** the mockup look, every juice item, audio, reduced motion, both
    layouts, keyboard.
+   *Done 2026-11-13:* the ink and wash look (#7) and milestone 3 (#5): keyboard, sound plumbing,
+   the crossing tip, idle rendering and the Playwright smoke test. Released to `main` in #9.
+   Merging the two found the 320 px status card and control row overflowing (both fixed; the
+   smoke test now checks the row fits). Still open: the sound voices, the conflict beam,
+   brighter crossings, and a real-device fps check.
 4. **Polish and playtest:** Playwright in CI, performance pass, docs, deploy, friends.
+   Before the playtest: tap to continue (`docs/plans/2026-11-13-flow-and-transitions.md`, A).
+   The chapter moment (B) can follow.
 
 ## Risks
 

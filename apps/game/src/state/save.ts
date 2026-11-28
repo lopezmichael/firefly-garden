@@ -247,7 +247,10 @@ export function parseSave(raw: string | null, catalog: Catalog, now: number, fre
     return { data: null, problems: ['save is not valid JSON'] };
   }
   if (!isObject(json)) return { data: null, problems: ['save is not an object'] };
-  if (own(json, 'v') !== SAVE_VERSION) return { data: null, unknownVersion: true, problems: [`unknown save version ${String(own(json, 'v')).slice(0, 20)}`] };
+  const version = own(json, 'v');
+  // Never String() an untrusted object: {"toString":1} would throw and break "never throws".
+  const shown = typeof version === 'number' || typeof version === 'string' ? String(version).slice(0, 20) : typeof version;
+  if (version !== SAVE_VERSION) return { data: null, unknownVersion: true, problems: [`unknown save version ${shown}`] };
   const problems: string[] = [];
 
   const storedInstall = own(json, 'install');

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bushLayout, dotPositions, FACE_CENTER_Y, FLY_BOXES, bloomDelays, MOTION_TIMING, outlinePolylines, rippleDelays, ROSE_SLOTS, ROSE_VARIANTS, roseVariants, UNIT } from '../src/view/art/geometry.ts';
+import { BEAM, beamEnds, beamRetract, beamReveal, bushLayout, gazeMotes, quiver, cappedRipple, CELEBRATION, dotPositions, FACE_CENTER_Y, flightAt, FLY_BOXES, bloomDelays, haloStrength, MOTION_TIMING, syncFlash, outlinePolylines, rippleDelays, ROSE_SLOTS, ROSE_VARIANTS, roseVariants, UNIT } from '../src/view/art/geometry.ts';
 
 const DOT_R = 3.6;
 
@@ -178,13 +178,117 @@ describe('the solve bloom finishes before the next garden', () => {
     expect(order[0]).toBe(0);
   });
 
-  it('lands the last rose before the auto-advance, even on the farthest bush', () => {
+  it('opens the last rose within the moment, even on the farthest bush', () => {
     const big = bloomDelays(Array.from({ length: 400 }, (_, i) => i), 0, 20, true);
-    const lastRose = 480 + MOTION_TIMING.bloomStart + Math.max(...big.values()) + MOTION_TIMING.roseOpen + 2 * MOTION_TIMING.roseStagger;
-    expect(lastRose).toBeLessThan(3000);
+    const lastRose = MOTION_TIMING.bloomStart + Math.max(...big.values()) + MOTION_TIMING.roseOpen + 2 * MOTION_TIMING.roseStagger;
+    expect(lastRose).toBeLessThan(MOMENT_MS);
   });
 
   it('is all at once without motion', () => {
     expect([...bloomDelays([0, 99], 0, 10, false).values()]).toEqual([0, 0]);
+  });
+});
+
+/** A solved garden's whole moment stays short: everything on the board lands within this. */
+const MOMENT_MS = 3500;
+
+describe('the solve celebration', () => {
+  const T = CELEBRATION;
+
+  it('flashes twice, together, and is dark at the start and end', () => {
+    expect(syncFlash(0)).toBe(0);
+    expect(syncFlash(1)).toBe(0);
+    expect(syncFlash(0.25)).toBeCloseTo(1);
+    expect(syncFlash(0.75)).toBeCloseTo(1);
+    expect(syncFlash(0.5)).toBeCloseTo(0);
+  });
+
+  it('swells the halo to full, then settles on the afterglow it keeps', () => {
+    expect(haloStrength(0)).toBe(0);
+    expect(haloStrength(T.haloRise)).toBeCloseTo(1);
+    expect(haloStrength(T.haloRise + T.haloSettle)).toBeCloseTo(T.afterglow);
+    expect(haloStrength(60_000)).toBe(T.afterglow);
+    // Never brighter than full, never darker than the afterglow once risen.
+    for (let ms = T.haloRise; ms < T.haloRise + T.haloSettle; ms += 50) {
+      expect(haloStrength(ms)).toBeLessThanOrEqual(1);
+      expect(haloStrength(ms)).toBeGreaterThanOrEqual(T.afterglow - 1e-9);
+    }
+  });
+
+  it('flies each firefly up and out: it starts where it sat and ends gone above', () => {
+    const start = flightAt(0, 1.3, 6);
+    expect(start.x).toBeCloseTo(0);
+    expect(start.y).toBeCloseTo(0);
+    expect(start.scale).toBe(1);
+    expect(start.alpha).toBe(1);
+    const end = flightAt(1, 1.3, 6);
+    expect(end.y).toBeCloseTo(-6);
+    expect(end.alpha).toBe(0);
+    // Always climbing after a gentle start.
+    let y = 0;
+    for (let t = 0.05; t <= 1; t += 0.05) {
+      const p = flightAt(t, 0.4, 6);
+      expect(p.y).toBeLessThan(y);
+      y = p.y;
+    }
+  });
+
+  it('releases every firefly and lands the last one within the moment', () => {
+    const order = cappedRipple(Array.from({ length: 100 }, (_, i) => i), 0, 10, T.releasePerCell, T.releaseSpan, true);
+    const lastLanding = T.releaseStart + Math.max(...order.values()) + T.flight;
+    expect(lastLanding).toBeLessThan(MOMENT_MS);
+  });
+
+  it('brings the card in with the bloom and lets it take taps once the fireflies lift off', () => {
+    // Shown as the bloom starts (flow plan A: a player who taps straight away isn't kept waiting
+    // for decoration), but a stray tap can't skip the flash and the release.
+    expect(T.cardDelay).toBe(MOTION_TIMING.bloomStart);
+    expect(T.cardReady).toBe(T.releaseStart);
+    expect(T.cardReady).toBeGreaterThan(T.flashStart + T.flashDur);
+  });
+});
+
+describe('the conflict beam', () => {
+  it('runs between two fireflies, pulled clear of both', () => {
+    expect(beamEnds({ x: 0, y: 10 }, { x: 100, y: 10 }, 20)).toEqual([20, 10, 80, 10]);
+    const down = beamEnds({ x: 5, y: 0 }, { x: 5, y: 60 }, 10)!;
+    expect(down[1]).toBeCloseTo(10);
+    expect(down[3]).toBeCloseTo(50);
+  });
+
+  it('is left out when the fireflies are too close for a visible beam', () => {
+    expect(beamEnds({ x: 0, y: 0 }, { x: 30, y: 0 }, 20)).toBeNull();
+  });
+});
+
+describe('the conflict beam\'s motion (crossed gazes)', () => {
+  it('shoots in from both fireflies and stays met', () => {
+    expect(beamReveal(0)).toBe(0);
+    expect(beamReveal(BEAM.revealMs / 2)).toBeGreaterThan(0.5); // eased out: fast, then settling
+    expect(beamReveal(BEAM.revealMs)).toBe(1);
+    expect(beamReveal(60_000)).toBe(1);
+  });
+
+  it('streams sparks evenly from each firefly toward the meeting point, always inward', () => {
+    const now = gazeMotes(1234), later = gazeMotes(1234 + 50);
+    expect(now).toHaveLength(BEAM.motes);
+    for (const s of now) expect(s).toBeGreaterThanOrEqual(0), expect(s).toBeLessThan(1);
+    const sorted = [...now].sort((a, b) => a - b);
+    for (let k = 1; k < sorted.length; k++) expect(sorted[k]! - sorted[k - 1]!).toBeCloseTo(1 / BEAM.motes);
+    // Each spark moves toward the middle (unless it just wrapped back to its firefly).
+    now.forEach((s, k) => { if (later[k]! > s) expect(later[k]! - s).toBeCloseTo(50 / BEAM.motePeriodMs); });
+  });
+
+  it('pulls back into the fireflies when the conflict is over', () => {
+    expect(beamRetract(0)).toBe(1);
+    expect(beamRetract(BEAM.retractMs / 2)).toBeGreaterThan(0.5); // eased in: slow, then gone
+    expect(beamRetract(BEAM.retractMs)).toBe(0);
+  });
+
+  it('quivers most in the middle and never at the fireflies', () => {
+    const peak = BEAM.quiverMs / 2;
+    expect(quiver(0, peak)).toBeCloseTo(0);
+    expect(quiver(1, peak)).toBeCloseTo(0);
+    expect(Math.abs(quiver(0.5, peak))).toBeCloseTo(1);
   });
 });

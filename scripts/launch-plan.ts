@@ -20,8 +20,30 @@ export interface ChapterPlan {
   readonly area: string;
   /** The twist or technique this chapter introduces, if any. */
   readonly debut: string | null;
+  /** The status card's line on the chapter's first garden, for its debut (flow plan, moment 6). */
+  readonly intro: ChapterIntro | null;
   readonly pool: readonly GenSpec[];
 }
+
+/** One line for the status card: a short title (one line on a phone) and a sub-line (two at most). */
+export interface ChapterIntro {
+  readonly title: string;
+  readonly sub: string;
+}
+
+/**
+ * What a chapter's debut says on its first garden, before the first move (flow plan, moment 6).
+ * Written next to the debuts so the wording travels with the levels; the game's status-length
+ * tests and the browser height check read them from the manifest.
+ */
+export const INTROS: Readonly<Record<string, ChapterIntro>> = {
+  T3: { title: 'New: bushes that share', sub: 'Two bushes can need the same spot. Read their numbers together.' },
+  T4: { title: 'New: think a move ahead', sub: 'Some spots only make sense once you look one move further.' },
+  shaped: { title: 'New: shaped gardens', sub: 'Light stops where the garden ends, just as it does at an edge.' },
+  mushrooms: { title: 'New: mushrooms', sub: 'A mushroom counts only its four side tiles, never the diagonals.' },
+  moonlit: { title: 'New: moonlit tiles', sub: 'Moonlit tiles are already lit. A firefly may still sit on one.' },
+  lanterns: { title: 'New: lanterns', sub: 'A lantern is a firefly that never moves. Nothing may see it.' },
+};
 
 type Twist = 'mushrooms' | 'moonlit' | 'lanterns' | 'shaped';
 
@@ -161,6 +183,7 @@ export function launchPlan(): ChapterPlan[] {
       plans.push({
         area: area.name,
         debut,
+        intro: debut ? INTROS[debut] ?? null : null,
         pool,
         spec: {
           id, title: `${area.name} ${j + 1}`, count, tiers: [tlo, thi], maxSeconds, pool: id,

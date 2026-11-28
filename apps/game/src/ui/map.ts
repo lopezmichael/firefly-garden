@@ -21,6 +21,8 @@ export interface BedView {
   readonly solved: number;
   readonly total: number;
   readonly state: 'done' | 'now' | 'dark';
+  /** A garden left unfinished in this chapter is parked, waiting to be resumed. */
+  readonly waiting: boolean;
 }
 
 export interface MapView {
@@ -32,6 +34,8 @@ export interface MapView {
   readonly continueLabel: string;
   readonly continueSub: string;
   readonly finished: boolean;
+  /** The card's line under the area's progress (a returning player's welcome), or the default. */
+  readonly note?: string;
   /** Index of a newly finished chapter whose unlock flight plays now, or null. */
   readonly flyFrom: number | null;
   readonly motion: boolean;
@@ -45,6 +49,10 @@ export interface MapHandlers {
 const SVG_NS = 'http://www.w3.org/2000/svg';
 /** Unlock flight timing: the firefly travels, then the stop it lands on rings gold. */
 const FLIGHT = { delay: 500, travel: 2600, land: 900 } as const;
+/** The same flight when the player asked for it (Start chapter N): no wait, a quicker trip. */
+const FLIGHT_ASKED = { delay: 150, travel: 1500, land: 900 } as const;
+/** The moves between the board and the map at a chapter's end (the board shrinking in, the zoom out). */
+export const MOVE_MS = 900;
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
@@ -77,6 +85,20 @@ function orbitFly(): SVGGElement {
   return g;
 }
 
+/**
+ * A finished chapter's keepsake (rewards plan): its seal, the chapter card's red ink stamp, small
+ * at the stop's lower left, clear of its label.
+ */
+function seal(p: Point): SVGGElement {
+  const g = svg('g', { transform: `translate(${f(p.x - 26)} ${f(p.y + 24)}) rotate(-8) scale(0.3) translate(-38 -38)` }, 'ff-mseal');
+  g.append(
+    svg('circle', { cx: 38, cy: 38, r: 33 }, 'ff-seal-disc'),
+    svg('circle', { cx: 38, cy: 38, r: 27 }, 'ff-seal-rim'),
+    svg('path', { d: 'M38 38 m-3 0 a4.5 4.5 0 1 1 7.5 3.6 a9 9 0 1 1 -13.8 -7.8 a13.8 13.8 0 1 1 20.4 13.2' }, 'ff-seal-rose'),
+  );
+  return g;
+}
+
 /** The little bush on a stop, with `roses` roses. */
 function bushlet(roses: number): SVGGElement {
   const g = svg('g');
@@ -96,6 +118,7 @@ export class MapScreen {
   private readonly areaName = el('h2', 'ff-map-area');
   private readonly areaCount = el('span', 'ff-map-count');
   private readonly areaFill = el('div', 'ff-map-fill');
+  private readonly note = el('p', 'ff-map-note');
   private readonly field = el('div', 'ff-map-field');
   private readonly drawing = svg('svg', {}, 'ff-map-drawing');
   private readonly beds = el('ol', 'ff-map-beds');
@@ -103,12 +126,22 @@ export class MapScreen {
   private readonly continueButton = el('button', 'ff-map-continue');
   private readonly continueSub = el('span', 'ff-map-continue-sub');
   private readonly continueLabel = el('span');
+  private readonly gear = el('button', 'ff-gear');
   private view: MapView | null = null;
   private frame = 0;
   private flight: Animation | null = null;
   private flightTimer: ReturnType<typeof setTimeout> | null = null;
   /** The unlock flight has started for this open: a redraw (a resize) must never replay it. */
   private flown = false;
+  /** The last layout's stops and path segments (field pixels), for flights and the moves in and out. */
+  private stops: readonly Point[] = [];
+  private segments: readonly MapSegment[] = [];
+  /** Callbacks waiting for the next draw (the move into the map needs the stops' positions). */
+  private drawWaiters: (() => void)[] = [];
+  /** A running zoom into a stop (the move out to a new chapter); cancelled on hide. */
+  private zoom: Animation | null = null;
+  /** Called once the on-demand flight is over: landed, or stopped (closed, motion turned off). */
+  private landed: (() => void) | null = null;
 
   constructor(handlers: MapHandlers, private readonly palette: Palette) {
     this.root.setAttribute('aria-labelledby', 'ff-map-title');
@@ -122,7 +155,7 @@ export class MapScreen {
     title.id = 'ff-map-title';
     const coinBox = el('div', 'ff-coins');
     coinBox.append(coin(), this.coins);
-    const gear = el('button', 'ff-gear');
+    const gear = this.gear;
     gear.type = 'button';
     gear.setAttribute('aria-label', 'Settings');
     gear.append(icon('settings'));
@@ -136,7 +169,7 @@ export class MapScreen {
     head.append(this.areaName, this.areaCount);
     const bar = el('div', 'ff-map-bar');
     bar.append(this.areaFill);
-    card.append(head, bar, el('p', 'ff-map-note', 'Each garden you light brings more roses back.'));
+    card.append(head, bar, this.note);
 
     this.drawing.setAttribute('aria-hidden', 'true');
     this.beds.setAttribute('aria-label', 'Chapters');
@@ -163,11 +196,14 @@ export class MapScreen {
     this.areaName.textContent = `The ${view.area}`;
     this.areaCount.textContent = `${view.solved} of ${view.total}`;
     this.areaFill.style.width = `${view.total === 0 ? 0 : Math.round((view.solved / view.total) * 100)}%`;
+    this.note.textContent = view.note ?? 'Each garden you light brings more roses back.';
     this.beds.replaceChildren(...view.beds.map((b) => {
       const li = el('li', 'ff-map-bed');
       li.dataset.state = b.state;
       const what = b.state === 'done' ? `${b.solved} of ${b.total} glowing`
-        : b.state === 'now' ? `${b.solved} of ${b.total} · you are here` : 'Still dark';
+        : b.waiting ? `${b.solved} of ${b.total} · a garden is waiting`
+          : b.state === 'now' ? `${b.solved} of ${b.total} · you are here` : 'Still dark';
+      li.dataset.waiting = String(b.waiting);
       li.append(el('strong', undefined, b.title), el('span', undefined, what));
       return li;
     }));
@@ -191,6 +227,71 @@ export class MapScreen {
   hide(): void {
     this.root.hidden = true;
     this.stopFlight();
+    this.zoom?.cancel();
+    this.zoom = null;
+    for (const w of this.drawWaiters.splice(0)) w();
+  }
+
+  /** The coin pill, after a change while the map is open (the chapter card's double). */
+  setCoins(coins: number): void {
+    this.coins.textContent = String(coins);
+  }
+
+  /**
+   * Focus the map's Continue button (after the chapter card closes on the build's last chapter),
+   * or Settings when Continue is disabled because every garden is glowing.
+   */
+  focusContinue(): void {
+    (this.continueButton.disabled ? this.gear : this.continueButton).focus({ preventScroll: true });
+  }
+
+  /** Resolves once the map has been laid out and drawn for this open (or is closed). */
+  whenDrawn(): Promise<void> {
+    if (this.root.hidden) return Promise.resolve();
+    return new Promise((resolve) => {
+      this.drawWaiters.push(resolve);
+      this.queue();
+    });
+  }
+
+  /** A chapter stop's centre in viewport pixels, or null before the map has been drawn. */
+  stopCenter(index: number): Point | null {
+    const p = this.stops[index];
+    if (!p) return null;
+    const r = this.field.getBoundingClientRect();
+    return { x: r.left + p.x, y: r.top + p.y };
+  }
+
+  /**
+   * The unlock flight on demand (the chapter card's Start button): one firefly flies from stop
+   * `from` to the next, which rings gold. Resolves as it lands; at once without motion or a path.
+   */
+  playFlight(from: number): Promise<void> {
+    const seg = this.segments[from];
+    if (!seg || this.root.dataset.motion !== 'full' || this.root.hidden) return Promise.resolve();
+    this.flown = true;
+    return new Promise((resolve) => this.fly(seg, resolve, FLIGHT_ASKED));
+  }
+
+  /**
+   * The move out to a new chapter: the map zooms into stop `index` and fades, as its first
+   * garden opens. Resolves when done; at once without motion.
+   */
+  zoomInto(index: number): Promise<void> {
+    const p = this.stops[index];
+    if (!p || this.root.dataset.motion !== 'full' || this.root.hidden) return Promise.resolve();
+    const root = this.root.getBoundingClientRect(), field = this.field.getBoundingClientRect();
+    const ox = field.left - root.left + p.x, oy = field.top - root.top + p.y;
+    this.root.style.transformOrigin = `${ox.toFixed(0)}px ${oy.toFixed(0)}px`;
+    const anim = this.root.animate(
+      [{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(2.6)', opacity: 0 }],
+      { duration: MOVE_MS, easing: 'cubic-bezier(0.5, 0, 0.75, 0)', fill: 'forwards' },
+    );
+    this.zoom = anim;
+    return new Promise((resolve) => {
+      anim.onfinish = () => resolve();
+      anim.oncancel = () => resolve();
+    });
   }
 
   private queue(): void {
@@ -208,6 +309,8 @@ export class MapScreen {
     const w = this.field.clientWidth, h = this.field.clientHeight;
     if (w < 1 || h < 1) return;
     const layout = mapLayout(view.beds.length + 1, w, 44, Math.max(88, h - 36));
+    this.stops = layout.stops;
+    this.segments = layout.segments;
     this.drawing.setAttribute('viewBox', `0 0 ${w} ${h}`);
     this.drawing.setAttribute('width', String(w));
     this.drawing.setAttribute('height', String(h));
@@ -228,7 +331,7 @@ export class MapScreen {
       }
       if (b.state === 'now') g.append(svg('circle', { r: 38 }, 'ff-mstop-dash'));
       parts.push(g);
-      if (b.state === 'done') parts.push(...this.orbits(p));
+      if (b.state === 'done') parts.push(...this.orbits(p), seal(p));
       if (b.state === 'now') parts.push(this.hover(p));
     });
     const t = layout.stops[view.beds.length]!;
@@ -247,6 +350,7 @@ export class MapScreen {
         this.fly(seg);
       }
     }
+    for (const wait of this.drawWaiters.splice(0)) wait();
   }
 
   private placeLabel(node: HTMLElement, p: Point, right: boolean, w: number): void {
@@ -286,7 +390,8 @@ export class MapScreen {
   }
 
   /** The unlock flight: one firefly along the path to the next stop, which rings gold as it lands. */
-  private fly(seg: MapSegment): void {
+  private fly(seg: MapSegment, landed?: () => void, timing: typeof FLIGHT | typeof FLIGHT_ASKED = FLIGHT): void {
+    this.landed = landed ?? null;
     const sprite = el('div', 'ff-flier ff-map-flier');
     sprite.setAttribute('aria-hidden', 'true');
     // Constant markup (firefly C), never game or player data.
@@ -300,20 +405,25 @@ export class MapScreen {
     }));
     this.flightTimer = setTimeout(() => {
       this.flightTimer = null;
-      const anim = sprite.animate(frames, { duration: FLIGHT.travel, easing: 'ease-in-out', fill: 'forwards' });
+      const anim = sprite.animate(frames, { duration: timing.travel, easing: 'ease-in-out', fill: 'forwards' });
       this.flight = anim;
       const done = () => {
         sprite.remove();
         if (this.flight === anim) this.flight = null;
       };
-      anim.oncancel = done;
+      anim.oncancel = () => {
+        done();
+        this.land();
+      };
       anim.onfinish = () => {
         done();
         const ring = svg('circle', { cx: seg.to.x, cy: seg.to.y, r: 38 }, 'ff-mstop-land');
         this.drawing.append(ring);
-        setTimeout(() => ring.remove(), FLIGHT.land + 100);
+        setTimeout(() => ring.remove(), timing.land + 100);
+        // Let the gold ring land before moving on.
+        if (this.landed) setTimeout(() => this.land(), timing.land * 0.6);
       };
-    }, FLIGHT.delay);
+    }, timing.delay);
   }
 
   private stopFlight(): void {
@@ -322,6 +432,13 @@ export class MapScreen {
     this.flight?.cancel();
     this.flight = null;
     this.field.querySelectorAll('.ff-map-flier').forEach((n) => n.remove());
+    this.land();
+  }
+
+  private land(): void {
+    const done = this.landed;
+    this.landed = null;
+    done?.();
   }
 
   /** Night, grain and hills behind the map, rising behind Continue. */

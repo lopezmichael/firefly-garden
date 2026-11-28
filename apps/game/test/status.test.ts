@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { PLAYER_CONFIG } from '@firefly/core';
 import { createCatalog } from '../src/state/catalog.ts';
 import { Play } from '../src/state/play.ts';
-import { boardStatus, clockText, completeLine, litPercent, noticeStatus } from '../src/state/status.ts';
+import { boardStatus, clockText, completeLine, litPercent, noticeStatus, opensUntouched } from '../src/state/status.ts';
 import { everyStatus } from './status-samples.ts';
 
 const LEVELS = join(import.meta.dirname, '../../../levels');
@@ -85,10 +85,28 @@ describe('status wording fits the card', () => {
 
   it('every title fits on one line and every sub-line in two', () => {
     const all = everyStatus();
-    expect(all).toHaveLength(35);
+    expect(all).toHaveLength(42);
     for (const s of all) {
       expect(s.title.length, s.title).toBeLessThanOrEqual(TITLE_MAX);
       expect(s.sub.length, s.sub).toBeLessThanOrEqual(SUB_MAX);
     }
+  });
+});
+
+describe('the opening line (first garden, chapter intro)', () => {
+  const empty = { placed: 0, locked: 0, placements: 0, solved: false, notice: false };
+
+  it('shows only on a truly untouched board', () => {
+    expect(opensUntouched(empty)).toBe(true);
+    // A resumed board keeps its fireflies but restarts its counters: not untouched.
+    expect(opensUntouched({ ...empty, placed: 2 })).toBe(false);
+    expect(opensUntouched({ ...empty, locked: 1 })).toBe(false);
+    // Played, then undone back to empty: the player is past the opening.
+    expect(opensUntouched({ ...empty, placements: 3 })).toBe(false);
+  });
+
+  it('never hides a notice or the solved line', () => {
+    expect(opensUntouched({ ...empty, notice: true })).toBe(false);
+    expect(opensUntouched({ ...empty, solved: true })).toBe(false);
   });
 });

@@ -117,9 +117,115 @@ export const MOTION_TIMING = {
   spreadPerCell: 55, spreadFade: 160,
   roseOpen: 380, roseStagger: 70,
   slump: 420,
-  bloomStart: 260, bloomPerCell: 110, bloomSpan: 1500,
+  bloomStart: 500, bloomPerCell: 110, bloomSpan: 1500,
   particle: 1400,
 } as const;
+
+/**
+ * The solve's moments (docs/plans/2026-11-27-solve-celebration.md), in ms after the last
+ * firefly lands: every firefly flashes together twice, a warm halo swells behind the board and
+ * settles into an afterglow, a wave of light rolls out in rings, the roses open (MOTION_TIMING),
+ * then the fireflies lift off to the progress track. The complete card comes in with the bloom
+ * (`cardDelay`) and takes taps once the fireflies lift off (`cardReady`); nothing moves on until
+ * the player taps (docs/plans/2026-11-13-flow-and-transitions.md, A).
+ */
+export const CELEBRATION = {
+  flashStart: 120, flashDur: 900,
+  haloRise: 650, haloSettle: 1400, afterglow: 0.55,
+  waveStart: 300, wavePerCell: 90, waveSpan: 600, waveDur: 500,
+  releaseStart: 1100, releasePerCell: 70, releaseSpan: 450, flight: 1700,
+  trailEvery: 45, trailLife: 650, trailCap: 160,
+  cardDelay: 500, cardReady: 1100,
+} as const;
+
+/**
+ * A conflict beam's ends (board pixels): the segment between two firefly centres, pulled in by
+ * `inset` at each end so it runs between the fireflies, not over them. Null when they are too
+ * close for a visible beam.
+ */
+export function beamEnds(a: { x: number; y: number }, b: { x: number; y: number }, inset: number): [number, number, number, number] | null {
+  const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
+  if (len <= 2 * inset) return null;
+  const ux = dx / len, uy = dy / len;
+  return [a.x + ux * inset, a.y + uy * inset, b.x - ux * inset, b.y - uy * inset];
+}
+
+/**
+ * The conflict beam's motion ("crossed gazes"): two streaks shoot from the fireflies and meet in
+ * the middle, then sparks keep streaming from each firefly toward the meeting point, the line
+ * between them quivers like a plucked string, and a small star flickers where the gazes clash.
+ */
+export const BEAM = { revealMs: 260, retractMs: 200, motes: 4, motePeriodMs: 900, quiverMs: 95, swellMs: 420 } as const;
+
+/**
+ * Where a beam leaves its firefly, in tile units: the glowing tail (the light it sees with), and
+ * how far out from it the line starts, so it reads as coming out of that light, clear of the body.
+ */
+export const BEAM_SOURCE = { x: 42, y: 46, inset: 15 } as const;
+
+/** How far each streak has reached the middle, 0..1, `ms` after the conflict began (eased out). */
+export function beamReveal(ms: number): number {
+  const k = Math.min(1, Math.max(0, ms / BEAM.revealMs));
+  return 1 - (1 - k) ** 3;
+}
+
+/** The same once the conflict is over: the streaks pull back into the fireflies, 1 → 0 (eased in). */
+export function beamRetract(ms: number): number {
+  const k = Math.min(1, Math.max(0, ms / BEAM.retractMs));
+  return 1 - k * k;
+}
+
+/**
+ * Where each streaming spark is at `ms`, as a fraction of the way from its firefly to the meeting
+ * point (0 at the firefly, 1 at the middle), evenly spaced and always moving inward.
+ */
+export function gazeMotes(ms: number): number[] {
+  const base = (ms / BEAM.motePeriodMs) % 1;
+  return Array.from({ length: BEAM.motes }, (_, k) => (base + k / BEAM.motes) % 1);
+}
+
+/**
+ * The string's sideways offset at `s` along the whole beam (0..1), as a fraction of its amplitude:
+ * still at both ends, widest in the middle, quivering over time.
+ */
+export function quiver(s: number, ms: number): number {
+  return Math.sin(Math.PI * Math.min(1, Math.max(0, s))) * Math.sin((ms / BEAM.quiverMs) * Math.PI);
+}
+
+/** The fireflies' synchronised flash over 0..1: two bright beats, dark between and after. */
+export function syncFlash(t: number): number {
+  if (t <= 0 || t >= 1) return 0;
+  const s = Math.sin(2 * Math.PI * t);
+  return s * s;
+}
+
+/** The board halo's strength over the solve: 0 → 1 by `haloRise`, then down to the afterglow. */
+export function haloStrength(ms: number): number {
+  const { haloRise, haloSettle, afterglow } = CELEBRATION;
+  if (ms <= 0) return 0;
+  if (ms < haloRise) return Math.sin((ms / haloRise) * (Math.PI / 2));
+  if (ms < haloRise + haloSettle) {
+    const k = (ms - haloRise) / haloSettle;
+    return 1 - (1 - afterglow) * (k * k * (3 - 2 * k));
+  }
+  return afterglow;
+}
+
+/**
+ * A released firefly's path at `t` (0..1 of its flight), in cells from where it sat: it lifts,
+ * swings side to side as it rises (`phase` picks the side), and climbs `rise` cells, easing in
+ * so it leaves gently and then goes. Scale shrinks (it is going away); alpha fades at the end.
+ */
+export function flightAt(t: number, phase: number, rise: number): { x: number; y: number; scale: number; alpha: number } {
+  const k = Math.min(1, Math.max(0, t));
+  const climb = k * k * (1.6 - 0.6 * k);
+  return {
+    x: Math.sin(k * Math.PI * 1.6 + phase) * 0.45 * k + Math.sin(phase) * 0.3 * k,
+    y: -climb * rise - Math.sin(k * Math.PI) * 0.15,
+    scale: 1 - 0.4 * k,
+    alpha: k < 0.7 ? 1 : k >= 1 ? 0 : 1 - (k - 0.7) / 0.3,
+  };
+}
 
 /**
  * When each cell's moment starts: `perCell` ms per step of distance from `origin`
@@ -163,14 +269,21 @@ export const FLY_BOXES = {
 } as const satisfies Record<string, UnitBox>;
 
 /**
- * The solve ripple's start times: `bloomPerCell` per step out from the last firefly, but never
- * spread over more than `bloomSpan`, so on the largest boards the last bush still opens well
- * before the auto-advance (3 s) moves on. Without motion, all at once.
+ * A ring ripple's start times, `perCell` per step out from `origin`, but never spread over more
+ * than `span`: on the largest boards the pace is squeezed so the moment still fits before the
+ * next garden opens. Without motion, all at once.
  */
-export function bloomDelays(cells: readonly number[], origin: number, width: number, motion: boolean): Map<number, number> {
-  const raw = rippleDelays(cells, origin, width, MOTION_TIMING.bloomPerCell, motion);
+export function cappedRipple(
+  cells: readonly number[], origin: number, width: number, perCell: number, span: number, motion: boolean,
+): Map<number, number> {
+  const raw = rippleDelays(cells, origin, width, perCell, motion);
   const longest = Math.max(0, ...raw.values());
-  if (longest <= MOTION_TIMING.bloomSpan) return raw;
-  const k = MOTION_TIMING.bloomSpan / longest;
+  if (longest <= span) return raw;
+  const k = span / longest;
   return new Map([...raw].map(([c, ms]) => [c, Math.round(ms * k)]));
+}
+
+/** The solve's rose ripple: `bloomPerCell` per step from the last firefly, within `bloomSpan`. */
+export function bloomDelays(cells: readonly number[], origin: number, width: number, motion: boolean): Map<number, number> {
+  return cappedRipple(cells, origin, width, MOTION_TIMING.bloomPerCell, MOTION_TIMING.bloomSpan, motion);
 }

@@ -1,6 +1,7 @@
 import { HINT_REASONS, PLAYER_CONFIG, REMOVE_REASONS, TRY_HERE_REASON } from '@firefly/core';
 import type { Evaluation, Hint, TechniqueId } from '@firefly/core';
-import { boardStatus, finishedStatus, noticeStatus } from '../src/state/status.ts';
+import { readFileSync } from 'node:fs';
+import { boardStatus, finishedStatus, FIRST_GARDEN, introStatus, noticeStatus } from '../src/state/status.ts';
 import type { Notice, StatusText } from '../src/state/status.ts';
 
 /**
@@ -16,6 +17,16 @@ export function evaluation(o: { solved?: boolean; conflicts?: number[]; over?: b
     fireflies: [], lit: [], conflicts: o.conflicts ?? [], unlit: o.unlit ?? 0, solved: o.solved ?? false,
     bushes: o.over ? [{ cell: 0, want: 1, have: 2, state: 'over' }] : [],
   };
+}
+
+/** The chapter intros in the shipped manifest. */
+export function shippedIntros(): { title: string; sub: string }[] {
+  const manifest = JSON.parse(readFileSync(new URL('../../../levels/manifest.json', import.meta.url), 'utf8')) as {
+    chapters: { intro?: { title: string; sub: string } | null }[];
+  };
+  const seen = new Map<string, { title: string; sub: string }>();
+  for (const c of manifest.chapters) if (c.intro) seen.set(c.intro.title, c.intro);
+  return [...seen.values()];
 }
 
 /**
@@ -42,6 +53,9 @@ export function everyStatus(): StatusText[] {
     boardStatus(dark, false, coins),
     boardStatus(evaluation({}), false, coins),
     finishedStatus(),
+    FIRST_GARDEN,
+    // Every chapter intro the manifest ships (written in scripts/launch-plan.ts).
+    ...shippedIntros().map(introStatus),
     ...Object.values(notices).map((n) => noticeStatus(n, dark)),
     hint({ kind: 'try-here', cell: 0, reason: TRY_HERE_REASON }),
   ];

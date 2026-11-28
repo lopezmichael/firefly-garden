@@ -68,7 +68,7 @@ canvas texture at startup from noise; **painted** = optional scan from Michael's
 | --- | --- | --- | --- |
 | Paper grain, card fibre, wash wobble, pooled edge | procedural | Value noise (one shared generator, seeded); fibre is the same noise stretched 12:1. Generated per tile size and cached, as the board's textures are today | 0 KB, < 30 ms at startup |
 | Dark tile | code + procedural | Card face, front edge, fibre, inner dusk wash | — |
-| Lit tile | code + procedural | Paper rim, gold wash, pooled edge, soft warm centre, paper grain; same however it was lit | — |
+| Lit tile | code + procedural | Paper lit from within: a pale gold wash, a luminous warm-white centre over most of the face, gold pooling at the wobbled edge, light grain. A tile two or more beams light has a wider, whiter centre (crossing reads as more light). The firefly's glow is blended additively, so its own tile is the brightest | — |
 | Bush, numbered | code | Three-lobe moss shape, ink outline, leaf highlights | ~2 KB |
 | Bush, no number | code | Deeper, leafier variant | ~1 KB |
 | Wilted bush | code | Slumped olive mound, falling petals, dashed warn border | ~1 KB |
@@ -78,7 +78,7 @@ canvas texture at startup from noise; **painted** = optional scan from Michael's
 | Conflict | code | Rose tail and glow, sumi shiver lines either side, soft rose hatching on the tile; slow sway | ~0.5 KB |
 | Ruled-out cross | code | Two pale brush strokes | ~0.2 KB |
 | Hint reason outline | code | Dashed gold rounded outline around the cells a hint names | — |
-| Solve moment | code | All bushes bloom in a ripple from the last firefly; petals and motes rise | — |
+| Solve moment | code | Fireflies flash together twice, a warm halo swells round the board's edge and settles to an afterglow, a wave of light rolls across the lit tiles, every bush blooms in a ripple, then the fireflies fly to the garden progress track with comet trails and its dash turns gold (`CELEBRATION` in `view/art/geometry.ts`, `release` in `ui/flight.ts`) | — |
 
 ### Scene and chrome
 
@@ -107,13 +107,28 @@ canvas texture at startup from noise; **painted** = optional scan from Michael's
 
 ### Sound (synthesized, WebAudio)
 
-Not designed yet; the audition page comes next. There is no audio in the game today: the sound
-setting is saved but nothing plays, so the audio engine and the ad-break mute are new work, with
-the portal mute hook inside `apps/game/src/platform/` like every other SDK call. Planned set, all synthesized at runtime
-(0 KB of audio files): place (soft glass note), call back (reverse of it), bush blooms (small
-chime, pitched by bush), solve (rising four-note flourish), empty jar (paper rustle), hint (two
-bells), chapter unlock (wing flutter and chime), optional ambient (crickets and wind, generated
-noise). Every sound mutable (the settings toggle and the sound on/off icon drive it); muted during ads.
+Designed 2026-11-27 on the sound audition page (https://claude.ai/artifact/3m1NrYk5B37HRbWyffJbWB:
+three takes per moment, Michael picked one each). All synthesized at runtime in
+`apps/game/src/audio/engine.ts` (0 KB of audio files), through a small generated night-garden
+reverb. Muted by the setting, a hidden tab or an ad; nothing plays before the first gesture.
+
+| Moment | Voice | Sound |
+| --- | --- | --- |
+| A firefly lands | `place` | Glass note, pitched by the row on screen |
+| Calling a firefly back | `lift` | Soft breath (a falling puff of air) |
+| A bush blooms | `bush` | Wind chime |
+| A hint firefly arrives | `hint` | Two bells, a fifth apart |
+| Fireflies see each other | `conflict` | Two wood taps ("not quite", never "wrong") |
+| The jar is empty | `empty` | Hollow knock |
+| The garden is solved | `solve` | Four notes and a glow |
+| A firefly reaches the progress track | `land` | Tiny tick, one per firefly |
+| Chapter complete | `chapter` | Warm bloom |
+| A new chapter opens | `opens` | Sparkle trail along the map path |
+
+Fireflies landing on the progress track in the same instant tick once, not in a stack (a tick
+within 30 ms of the last is skipped; each has a hair of jitter), so a big release patters instead of
+clicking. Night sounds (crickets, wind) were auditioned and left off. The browser smoke test renders every
+voice offline and fails if one is silent or clips.
 
 ## Motion (what reduced motion keeps and drops)
 
@@ -123,9 +138,12 @@ noise). Every sound mutable (the settings toggle and the sound on/off icon drive
 | Light spreads | The wash spreads tile by tile along row and column, then settles | All lit tiles appear at once |
 | Bush satisfied | Roses open (mushrooms: spores puff) | Roses shown open |
 | Too many | Bush slumps and drops petals | Shown slumped |
-| Conflict | Slow uneasy sway | Still; shiver lines and hatching stay |
-| Solve | Bloom ripple, petals and motes rise, card slides in | Everything shown open; card appears |
+| Conflict | Slow uneasy sway; the beam between the pair shoots in, sparks stream toward the middle, the line quivers, a star flickers where they meet | Still; shiver lines, hatching, the beam and its star stay |
+| Solve | Sync flash, halo swells, light wave, bloom ripple with petals and motes, fireflies fly to the progress track and its dash turns gold; the card rises in with the bloom and takes taps from 1.1 s | Roses open, afterglow shown, fireflies stay on their tiles, the dash turns gold; card appears at once |
 | Ambient | Motes drift over the hills; ripples and koi in ponds | Still |
+| The moon | Glides along the sky garden by garden through a chapter, warming toward gold; a tap sends a firefly across | Sits in its place for the garden; a tap does nothing |
+| Tap a bush | It rustles, its roses bob, its dots pulse once | Nothing (it is never a move) |
+| Coins after a solve | Hop from the card's chip into the pill, which counts up | The pill shows the new total |
 | Map | Fireflies circle finished chapters; unlock flight along the path | Still; the new stop appears lit |
 
 Every state change stays under reduced motion; only movement goes.
