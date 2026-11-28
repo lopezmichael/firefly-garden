@@ -50,7 +50,7 @@ export class ChapterCard {
   private readonly title = el('h2', 'ff-chapter-title');
   private readonly line = el('p', 'ff-chapter-line');
   private readonly nums = [el('span', 'ff-chapter-num'), el('span', 'ff-chapter-num'), el('span', 'ff-chapter-num')] as const;
-  private readonly labels = [el('span', 'ff-chapter-label'), el('span', 'ff-chapter-label'), el('span', 'ff-chapter-label')] as const;
+  private readonly labels = [el('span', 'ff-chapter-stat-label'), el('span', 'ff-chapter-stat-label'), el('span', 'ff-chapter-stat-label')] as const;
   private readonly bonus = el('div', 'ff-chapter-bonus');
   private readonly bonusText = el('span');
   private readonly button = el('button', 'ff-chapter-go');

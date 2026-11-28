@@ -33,6 +33,7 @@ import { unlockToShow } from '../state/mapProgress.ts';
 import { MapScreen, MOVE_MS } from './map.ts';
 import { ChapterCard } from './chapter.ts';
 import { Journal } from './journal.ts';
+import { difficultyOf } from '../state/difficulty.ts';
 import { gardenSketch, journalPages, openingPage } from '../state/journal.ts';
 import { chapterFinishedBy, chapterLine, chapterTotals, formatDuration } from '../state/chapters.ts';
 import type { BedView } from './map.ts';
@@ -386,7 +387,8 @@ export class GameApp {
   /** The garden journal, over the map (only the map has its button). */
   private openJournal(): void {
     if (!this.mapScreen.isOpen || this.journal.isOpen || this.chapterCard.isOpen || this.adShowing || this.settingsSheet.isOpen) return;
-    const pages = journalPages(this.catalog.chapters, (id) => this.session.isSolved(id), this.session.progress.history);
+    const pages = journalPages(this.catalog.chapters, (id) => this.session.isSolved(id), this.session.progress.history,
+      (id) => this.catalog.levels.get(id)?.tier ?? 1);
     // Open first, so the journal records the book button as where focus returns; then the map goes inert.
     this.journal.open(pages, openingPage(pages), (id) => (this.session.isSolved(id) ? gardenSketch(this.catalog.board(id), this.catalog.solution(id)) : null));
     this.mapScreen.root.inert = true;
@@ -796,10 +798,13 @@ export class GameApp {
     const chapter = place?.chapter ?? this.chapterForProgress();
     const dots = chapter.levels.map((id, i): 'done' | 'now' | 'todo' =>
       place && i === place.index ? 'now' : this.session.isSolved(id) ? 'done' : 'todo');
+    // "3 of 10" beside the difficulty (screen readers hear "Garden 3 of 10"): the row is narrow on phones.
     const label = place
-      ? `Garden ${place.index + 1} of ${chapter.levels.length}`
+      ? `${place.index + 1} of ${chapter.levels.length}`
       : 'Bonus garden';
-    this.screen.setChapter(label, `The ${chapter.area}`, dots);
+    const level = this.catalog.levels.get(next.id);
+    this.screen.setChapter(label, `The ${chapter.area}`, dots, level ? difficultyOf(level.tier) : undefined,
+      place ? `Garden ${label}` : label);
     this.refresh(true);
     this.resumeClock();
     this.platform.gameplayStart();

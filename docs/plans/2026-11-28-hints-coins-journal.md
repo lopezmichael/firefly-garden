@@ -86,15 +86,15 @@ chapters can't be opened. Reduced motion: pages swap without the turn.
 
 ## 5. Difficulty labels
 
-Every garden's stored tier (1 to 4, count-aware) as a word and leaves: Gentle, Steady, Tricky,
-Thorny. Shown on the complete card, the journal and the map; in play, small leaves beside the
+Every garden's stored tier (1 to 4, count-aware) as a word and leaves: Easy, Medium, Hard, Expert
+(Michael, 2026-11-28: plain labels; leaves warm from moss and gold to amber and red). Shown on the complete card, the journal and the map; in play, small leaves beside the
 garden title inside the status card's reserved height (measured, as `test/status.test.ts` does).
 
 ## Order
 
 - [x] Plan (this file) and the hint mock on the design canvas (with the X mark and its animation).
 - [x] Journal. *Built 2026-11-28:* book button on the map header, a page per chapter, pressed sketches from each garden's own layout with its fireflies, unit and e2e tests. Follow-up: the history keeps only recent plays, so a page whose plays were trimmed shows a dash for time and hints; saving each chapter's totals when it finishes would keep them for good (a save field, validated).
-- [ ] Difficulty labels.
+- [x] Difficulty labels. *Built 2026-11-28:* leaves and the word beside the garden's place in the play header ("3 of 10"; the word drops on narrow phones), and under each garden in the journal. Not on the complete card (the header above it already shows the label, and the card's height must not change) or the map (a chapter mixes tiers).
 - [ ] Hints that rule out (core `hint`, reasons, game drawing, saves, simulation re-run).
 - [ ] Player X marks.
 - [ ] Coins plant the map: mock, then build.

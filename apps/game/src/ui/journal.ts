@@ -1,7 +1,8 @@
 import type { JournalPage, Sketch } from '../state/journal.ts';
 import { formatDuration } from '../state/chapters.ts';
 import { SEAL_SVG } from './chapter.ts';
-import { icon } from './icons.ts';
+import { icon, leaves } from './icons.ts';
+import { difficultyOf, MAX_LEAVES } from '../state/difficulty.ts';
 
 /**
  * The garden journal (design canvas "Garden journal: a page per chapter"): a paper book over the
@@ -103,7 +104,7 @@ export class Journal {
     this.reduced = !on;
   }
 
-  /** Open on `start` (the chapter in play). `sketch` draws a grown garden. */
+  /** Open on page `start` (the first chapter still growing, see `openingPage`). `sketch` draws a grown garden. */
   open(pages: readonly JournalPage[], start: number, sketch: (id: string) => Sketch | null): void {
     this.pages = pages;
     this.sketch = sketch;
@@ -197,8 +198,11 @@ export class Journal {
       } else {
         frame.classList.add('ff-journal-frame-empty');
       }
-      li.setAttribute('aria-label', `Garden ${i + 1}, ${g.grown ? 'grown' : 'not grown yet'}`);
-      li.append(frame, el('span', 'ff-journal-garden-n', String(i + 1)));
+      const d = difficultyOf(g.tier);
+      li.setAttribute('aria-label', `Garden ${i + 1}, ${d.word}, ${g.grown ? 'grown' : 'not grown yet'}`);
+      const lv = leaves(d.leaves, MAX_LEAVES);
+      lv.dataset.leaves = String(d.leaves);
+      li.append(frame, el('span', 'ff-journal-garden-n', String(i + 1)), lv);
       grid.append(li);
     });
 

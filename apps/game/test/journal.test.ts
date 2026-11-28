@@ -20,7 +20,7 @@ describe('journal pages', () => {
 
   it('a finished chapter is done with its card line and totals; the next one grows and the journal opens there', () => {
     const solved = new Set([...c1!.levels, ...c2!.levels.slice(0, 4)]);
-    const history = [...solved].map((levelId, i) => ({ levelId, seconds: 30 + i, hints: i === 2 ? 1 : 0 }));
+    const history = [...solved].map((levelId, i) => ({ levelId, seconds: 30 + i, hints: i === 2 ? 1 : 0, solved: true }));
     const pages = journalPages(catalog.chapters, (id) => solved.has(id), history);
     expect(pages.map((p) => p.state)).toEqual(['done', 'growing', 'dark']);
     expect(pages[0]!.line).toMatch(/glowing/);
@@ -35,6 +35,11 @@ describe('journal pages', () => {
   it('a chapter with a garden grown out of order is not dark (a save from a later build)', () => {
     const pages = journalPages(catalog.chapters, (id) => id === catalog.chapters[2]!.levels[0], []);
     expect(pages[2]!.state).toBe('growing');
+  });
+
+  it('carries each garden’s tier for its difficulty label', () => {
+    const pages = journalPages(catalog.chapters, () => false, [], (id) => catalog.levels.get(id)!.tier);
+    expect(pages[0]!.gardens.map((g) => g.tier)).toEqual(c1!.levels.map((id) => catalog.levels.get(id)!.tier));
   });
 
   it('opens on the last chapter when every one is done', () => {

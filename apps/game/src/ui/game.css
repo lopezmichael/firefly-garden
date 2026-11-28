@@ -75,7 +75,26 @@
 
 .ff-top { grid-area: top; position: relative; display: flex; align-items: center; gap: 10px; }
 .ff-chapter { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.ff-progress-row { display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; }
 .ff-chapter-label { font-size: 13px; font-weight: 600; color: var(--ff-paper-quiet); }
+.ff-difficulty { min-width: 0; display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; color: var(--ff-paper-quiet); }
+.ff-difficulty[hidden] { display: none; }
+.ff-leaves { width: 40px; height: 11px; min-width: 20px; flex-shrink: 1; }
+.ff-chapter { container: ff-chapter / inline-size; }
+/* Narrow phones: the leaves alone (the word stays for screen readers). */
+@container ff-chapter (max-width: 150px) {
+  .ff-difficulty-word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+.ff-leaf-on { fill: var(--ff-moss-hi); stroke: var(--ff-sumi); stroke-width: 0.6; }
+/* Leaves warm with difficulty; the word takes the colour from Hard up. */
+[data-leaves='2'] .ff-leaf-on { fill: var(--ff-gold); }
+[data-leaves='3'] .ff-leaf-on { fill: var(--ff-level-hard); }
+[data-leaves='4'] .ff-leaf-on { fill: var(--ff-level-expert); }
+.ff-difficulty[data-leaves='3'] .ff-difficulty-word { color: var(--ff-level-hard); }
+.ff-difficulty[data-leaves='4'] .ff-difficulty-word { color: var(--ff-level-expert-text); }
+.ff-journal .ff-leaf-off { stroke: var(--ff-sumi-quiet); }
+.ff-journal-garden .ff-leaves { width: 30px; height: 8px; }
+.ff-leaf-off { fill: none; stroke: var(--ff-paper-quiet); stroke-width: 0.8; opacity: 0.7; }
 .ff-dots { display: flex; gap: 4px; }
 .ff-dot { width: 16px; height: 4px; border-radius: 2px; background: var(--ff-dusk-quiet); }
 .ff-dot[data-state='done'] { background: var(--ff-gold); }
@@ -346,7 +365,12 @@
 .ff-app .ff-map .ff-moon { left: auto; right: max(26px, calc(50% - 234px)); top: 70px; width: 50px; height: 48px; }
 .ff-map-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .ff-map-top-right { display: flex; align-items: center; gap: 10px; }
-.ff-map-title { margin: 0; font-family: var(--ff-font-display); font-weight: 400; font-size: 24px; color: var(--ff-paper); }
+.ff-map-title { margin: 0; min-width: 0; font-family: var(--ff-font-display); font-weight: 400; font-size: 24px; color: var(--ff-paper); }
+/* Narrow phones: the header holds the book, the coins and the gear beside the title. */
+@media (max-width: 380px) {
+  .ff-map-title { font-size: 20px; }
+  .ff-map-top-right { gap: 6px; }
+}
 .ff-map-card {
   border: 2px solid var(--ff-sumi); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px;
   color: var(--ff-sumi); background: var(--ff-paper-texture, none) 0 0 / 128px 128px, var(--ff-paper);
@@ -519,7 +543,7 @@
 }
 .ff-chapter-stat { display: flex; flex-direction: column; gap: 2px; }
 .ff-chapter-num { font-family: var(--ff-font-display); font-size: 24px; }
-.ff-chapter-label { font-size: 13px; font-weight: 600; color: var(--ff-sumi-quiet); }
+.ff-chapter-stat-label { font-size: 13px; font-weight: 600; color: var(--ff-sumi-quiet); }
 .ff-chapter-bonus {
   display: flex; align-items: center; gap: 8px; padding: 6px 12px; border: 2px solid var(--ff-sumi); border-radius: 18px;
   background: var(--ff-paper-warm); font-weight: 700; font-size: 16px;

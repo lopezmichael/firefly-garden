@@ -529,6 +529,8 @@ test('the garden journal: a page per chapter with its seal and pressed gardens, 
   await expect(journal.locator('.ff-journal-sketch')).toHaveCount(3);
   await expect(journal.getByRole('img', { name: 'The seal, not stamped yet' })).toBeVisible();
   await expect(journal.getByRole('button', { name: 'Chapter 3, still dark' })).toBeDisabled();
+  // Every garden carries its difficulty.
+  await expect(journal.getByRole('listitem').first()).toHaveAccessibleName(/^Garden 1, (Easy|Medium|Hard|Expert), grown$/);
   // Back a page: chapter 1 is done, sealed, every garden pressed.
   await journal.getByRole('button', { name: 'Previous chapter' }).click();
   await expect(journal.getByRole('button', { name: /^Chapter 1/ })).toHaveAttribute('aria-current', 'page');
@@ -542,4 +544,50 @@ test('the garden journal: a page per chapter with its seal and pressed gardens, 
   await expect(journal).toBeHidden();
   expect(await page.locator('.ff-map').evaluate((el) => (el as HTMLElement).inert)).toBe(false);
   await expect(book).toBeFocused();
+  // Tab stays inside the journal and never lands on a dark chapter's tab.
+  await book.click();
+  for (let k = 0; k < 8; k++) {
+    await page.keyboard.press('Tab');
+    expect(await page.evaluate(() => document.activeElement?.closest('.ff-journal-layer') != null)).toBe(true);
+    expect(await page.evaluate(() => (document.activeElement as HTMLButtonElement | null)?.disabled ?? false)).toBe(false);
+  }
+  await page.keyboard.press('Escape');
+  // The map's header fits the narrowest phones with a big balance.
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.waitForTimeout(300); // let the map's resize redraw land first: it rewrites the coin count
+  // Set the balance and measure in one step, so no redraw can put the real count back in between.
+  const fits = await page.evaluate(() => {
+    const c = document.querySelector('.ff-map-top .ff-coins span:last-child')!;
+    c.textContent = '9999';
+    const top = document.querySelector('.ff-map-top')!, map = document.querySelector('.ff-map')!;
+    return top.scrollWidth <= top.clientWidth + 1 && map.scrollWidth <= map.clientWidth + 1;
+  });
+  expect(fits).toBe(true);
+});
+
+test('every garden shows its difficulty beside its place in the chapter', async ({ page }) => {
+  await open(page);
+  // The first garden is chapter 1's gentlest: one leaf of four, its word read out with its place.
+  const row = page.locator('.ff-progress-row');
+  await expect(row.locator('.ff-sr')).toHaveText('Garden 1 of 10');
+  await expect(row.locator('[aria-hidden="true"]').first()).toHaveText('1 of 10');
+  await expect(row.locator('.ff-difficulty-word')).toHaveText('Easy');
+  await expect(row.locator('.ff-difficulty')).toHaveAttribute('data-leaves', '1');
+  await expect(row.locator('.ff-leaf-on')).toHaveCount(1);
+  // The build's hardest gardens read Expert, in red.
+  const chapters = await page.evaluate(() => window.__ff.chapters());
+  await page.evaluate((id) => window.__ff.openLevel(id), chapters[2]![9]!);
+  await expect(row.locator('.ff-difficulty-word')).toHaveText('Expert');
+  await expect(row.locator('.ff-leaf-on')).toHaveCount(4);
+  // The row never runs under the coins, on the narrowest phones, with a big balance.
+  for (const width of [320, 360]) {
+    await page.setViewportSize({ width, height: 700 });
+    await page.waitForTimeout(300);
+    const fits = await page.evaluate(() => {
+      document.querySelector('.ff-top .ff-coins span:last-child')!.textContent = '9999';
+      const r = document.querySelector('.ff-progress-row')!, t = document.querySelector('.ff-top')!;
+      return r.scrollWidth <= r.clientWidth + 1 && t.scrollWidth <= t.clientWidth + 1;
+    });
+    expect(fits, `${width} px`).toBe(true);
+  }
 });

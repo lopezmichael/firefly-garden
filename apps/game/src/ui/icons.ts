@@ -85,3 +85,23 @@ export function lantern(): SVGSVGElement {
 export function moon(): SVGSVGElement {
   return svg('304 74 50 48', 'ff-moon', '<path class="ff-moon-face" d="M330 78 a24 24 0 1 0 20 37 a18 18 0 1 1 -20 -37 z"></path>');
 }
+
+/**
+ * A difficulty label's leaves: `filled` of `total` small leaves, the rest drawn as outlines
+ * (constant markup; the count is a number). Decorative: the word beside them is what's read out.
+ */
+export function leaves(filled: number, total: number): SVGSVGElement {
+  total = Math.max(1, Math.min(4, Math.floor(total))); // a label has at most four leaves
+  const s = document.createElementNS(SVG_NS, 'svg');
+  s.setAttribute('viewBox', `0 0 ${total * 9} 10`);
+  s.setAttribute('aria-hidden', 'true');
+  s.setAttribute('class', 'ff-leaves');
+  for (let k = 0; k < total; k++) {
+    const p = document.createElementNS(SVG_NS, 'path');
+    // A leaf leaning right, its stem at the foot.
+    p.setAttribute('d', `M${k * 9 + 2} 9 C${k * 9 + 0.5} 5.5 ${k * 9 + 2.5} 2 ${k * 9 + 7.5} 1 C${k * 9 + 7.5} 5.5 ${k * 9 + 5.5} 8.5 ${k * 9 + 2} 9 Z`);
+    p.setAttribute('class', k < filled ? 'ff-leaf-on' : 'ff-leaf-off');
+    s.append(p);
+  }
+  return s;
+}

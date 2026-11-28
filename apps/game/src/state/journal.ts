@@ -14,6 +14,8 @@ export type PageState = 'done' | 'growing' | 'dark';
 export interface JournalGarden {
   readonly id: string;
   readonly grown: boolean;
+  /** Its difficulty tier (1 to 4), for the label under its sketch. */
+  readonly tier: number;
 }
 
 export interface JournalPage {
@@ -43,17 +45,18 @@ export interface JournalPage {
 export function journalPages(
   chapters: readonly ChapterInfo[],
   isSolved: (id: string) => boolean,
-  history: readonly (Pick<PlayRecord, 'levelId' | 'seconds' | 'hints'> & { readonly solved?: boolean })[],
+  history: readonly Pick<PlayRecord, 'levelId' | 'seconds' | 'hints' | 'solved'>[],
+  tierOf: (id: string) => number = () => 1,
 ): JournalPage[] {
   let previousDone = true;
   return chapters.map((c, i) => {
-    const gardens = c.levels.map((id) => ({ id, grown: isSolved(id) }));
+    const gardens = c.levels.map((id) => ({ id, grown: isSolved(id), tier: tierOf(id) }));
     const grown = gardens.filter((g) => g.grown).length;
     const done = grown === gardens.length;
     const state: PageState = done ? 'done' : previousDone || grown > 0 ? 'growing' : 'dark';
     previousDone = done;
     const totals = chapterTotals(c, history);
-    const playedSolved = new Set(history.filter((h) => 'solved' in h ? h.solved : true).map((h) => h.levelId));
+    const playedSolved = new Set(history.filter((h) => h.solved).map((h) => h.levelId));
     const totalsKnown = gardens.every((g) => !g.grown || playedSolved.has(g.id));
     const left = gardens.length - grown;
     const line = state === 'done'

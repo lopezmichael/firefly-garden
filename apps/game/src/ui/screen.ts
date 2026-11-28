@@ -1,7 +1,9 @@
 import type { Band } from '../view/layout.ts';
 import { CompleteCard } from './complete.ts';
 import type { CompleteView } from './complete.ts';
-import { coin, icon, LANTERN_LIGHTS, lantern, moon } from './icons.ts';
+import { LANTERN_LIGHTS, coin, icon, lantern, leaves, moon } from './icons.ts';
+import { MAX_LEAVES } from '../state/difficulty.ts';
+import type { Difficulty } from '../state/difficulty.ts';
 import { hillsFor, HILLS } from '../view/layout.ts';
 import { drawScenery } from '../view/art/scenery.ts';
 import { coinFlight, crossSky, SKY_MS } from './flight.ts';
@@ -43,7 +45,9 @@ export interface ScreenHandlers {
 export class PlayScreen {
   readonly root = el('div', 'ff-app');
   readonly boardHost = el('div', 'ff-board');
-  private readonly chapterLabel = el('div', 'ff-chapter-label');
+  private readonly chapterLabel = el('span', 'ff-chapter-label');
+  /** The garden's difficulty beside its place in the chapter: leaves and a word (Easy to Expert). */
+  private readonly difficulty = el('span', 'ff-difficulty');
   private readonly dots = el('div', 'ff-dots');
   private readonly coins = el('span');
   private coinTimer: ReturnType<typeof setTimeout> | null = null;
@@ -97,7 +101,9 @@ export class PlayScreen {
     const top = el('header', 'ff-top');
     const chapter = el('div', 'ff-chapter');
     this.dots.setAttribute('aria-hidden', 'true');
-    chapter.append(this.chapterLabel, this.dots);
+    const progress = el('div', 'ff-progress-row');
+    progress.append(this.chapterLabel, this.difficulty);
+    chapter.append(progress, this.dots);
     const coinBox = el('div', 'ff-coins');
     coinBox.append(coin(), this.coins);
     const gear = el('button', 'ff-gear');
@@ -268,8 +274,17 @@ export class PlayScreen {
     setTimeout(() => { this.skyBusy = false; }, SKY_MS + 800);
   }
 
-  setChapter(label: string, title: string, dots: readonly ('done' | 'now' | 'todo')[]): void {
-    this.chapterLabel.textContent = label;
+  /** `spoken` is what screen readers hear in place of `label` ("Garden 3 of 10" for "3 of 10"). */
+  setChapter(label: string, title: string, dots: readonly ('done' | 'now' | 'todo')[], difficulty?: Difficulty, spoken = label): void {
+    const shown = el('span', undefined, label);
+    if (spoken !== label) shown.setAttribute('aria-hidden', 'true');
+    this.chapterLabel.replaceChildren(shown, ...(spoken !== label ? [el('span', 'ff-sr', spoken)] : []));
+    this.difficulty.hidden = !difficulty;
+    if (difficulty) {
+      // The word is always there for screen readers; narrow phones show the leaves alone.
+      this.difficulty.replaceChildren(leaves(difficulty.leaves, MAX_LEAVES), el('span', 'ff-difficulty-word', difficulty.word));
+      this.difficulty.dataset.leaves = String(difficulty.leaves);
+    }
     this.title.textContent = title;
     // The moon's place: the current garden's (or, for a bonus garden, the gardens done so far).
     const now = dots.indexOf('now');
